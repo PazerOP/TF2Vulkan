@@ -2,9 +2,10 @@
 #include "TF2Vulkan/Material.h"
 #include "TF2Vulkan/MaterialSystem.h"
 #include "TF2Vulkan/MaterialSystemHardwareConfig.h"
-#include "Util/KeyValues.h"
-#include "Util/Placeholders.h"
-#include "Util/std_algorithm.h"
+
+#include <TF2Vulkan/Util/KeyValues.h>
+#include <TF2Vulkan/Util/Placeholders.h>
+#include <TF2Vulkan/Util/std_algorithm.h>
 
 #include <filesystem.h>
 #include <materialsystem/idebugtextureinfo.h>
@@ -15,8 +16,6 @@
 #include <tier1/utlbuffer.h>
 #include <tier2/tier2.h>
 #include <tier3/tier3.h>
-
-#include <vulkan/vulkan.hpp>
 
 #include <string>
 #include <unordered_map>
@@ -251,6 +250,8 @@ namespace
 		IMaterial* CreateMaterial(const CUtlSymbolDbg& materialName, KeyValues* vmtKeyValues, const CUtlSymbolDbg& textureGroupName,
 			bool complain = false, const char* complainPrefix = nullptr);
 
+
+
 		// This is what was set, but probably not what we're actually using
 		std::string m_ShaderAPIDLL;
 
@@ -307,6 +308,8 @@ InitReturnVal_t VulkanMaterialSystem::Init()
 {
 	if (!CommandLine()->CheckParm("-insecure"))
 		Error("The vulkan rendering backend is not officially supported by Valve. To avoid getting VAC banned, you must run with -insecure.");
+
+
 
 	return INIT_OK;
 }

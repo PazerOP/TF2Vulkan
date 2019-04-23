@@ -1,4 +1,4 @@
-#include "Util/utlsymbol.h"
+#include "TF2Vulkan/Util/utlsymbol.h"
 
 size_t std::hash<CUtlSymbol>::operator()(const CUtlSymbol& s) const
 {

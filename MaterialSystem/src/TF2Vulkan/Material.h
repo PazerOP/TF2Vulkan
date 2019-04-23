@@ -2,7 +2,8 @@
 
 #include "TF2Vulkan/IMaterial2.h"
 #include "TF2Vulkan/MaterialVar.h"
-#include "Util/utlsymbol.h"
+
+#include <TF2Vulkan/Util/utlsymbol.h>
 
 #include <tier1/utlsymbol.h>
 

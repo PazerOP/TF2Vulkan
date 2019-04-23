@@ -30,27 +30,18 @@
     <ClCompile Include="src\TF2Vulkan\Material.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Util\KeyValues.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Util\utlsymbol.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\TF2Vulkan\MaterialVar.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\Vulkan\VulkanCore.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\Util\std_algorithm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\TF2Vulkan\MaterialSystem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Util\Placeholders.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\TF2Vulkan\DebugTextureInfo.h">
@@ -62,22 +53,13 @@
     <ClInclude Include="src\TF2Vulkan\IMaterial2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Util\std_utility.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Util\KeyValues.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\TF2Vulkan\MaterialVar.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Util\utlsymbol.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\TF2Vulkan\IMaterialVar2.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Util\std_charconv.h">
+    <ClInclude Include="src\TF2Vulkan\Vulkan\VulkanCore.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,9 +1,9 @@
 #include "TF2Vulkan/Material.h"
 #include "TF2Vulkan/MaterialVar.h"
 #include "TF2Vulkan/MaterialSystem.h"
-#include "Util/Placeholders.h"
-#include "Util/std_algorithm.h"
-#include "Util/std_charconv.h"
+#include <TF2Vulkan/Util/Placeholders.h>
+#include <TF2Vulkan/Util/std_algorithm.h>
+#include <TF2Vulkan/Util/std_charconv.h>
 
 #include <materialsystem/imaterial.h>
 #include <materialsystem/imaterialsystem.h>

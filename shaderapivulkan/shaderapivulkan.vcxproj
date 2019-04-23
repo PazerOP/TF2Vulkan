@@ -12,9 +12,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{50EC43A3-9DD6-4C1E-840E-2E23E66BFA70}</ProjectGuid>
+    <ProjectGuid>{B47D0193-FBE9-4F6D-B722-215E3D12DC15}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>MaterialSystem</RootNamespace>
+    <RootNamespace>shaderapivulkan</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -39,13 +39,11 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
-    <Import Project="MaterialSystem_Shared_Project.props" />
     <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
-    <Import Project="MaterialSystem_Shared_Project.props" />
     <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -60,7 +58,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;MATERIALSYSTEM_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;SHADERAPIVULKAN_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -76,7 +74,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;MATERIALSYSTEM_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;SHADERAPIVULKAN_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
     <Link>
@@ -88,23 +86,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\DLLBase.cpp" />
-    <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Material.cpp" />
-    <ClCompile Include="src\TF2Vulkan\MaterialSystem.cpp" />
-    <ClCompile Include="src\TF2Vulkan\MaterialSystemHardwareConfig.cpp" />
-    <ClCompile Include="src\TF2Vulkan\MaterialVar.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Vulkan\VulkanCore.cpp" />
+    <ClInclude Include="src\TF2Vulkan\IShaderAPI2.h" />
+    <ClInclude Include="src\TF2Vulkan\ShaderAPI.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\TF2Vulkan\DebugTextureInfo.h" />
-    <ClInclude Include="src\TF2Vulkan\IMaterial2.h" />
-    <ClInclude Include="src\TF2Vulkan\IMaterialVar2.h" />
-    <ClInclude Include="src\TF2Vulkan\Material.h" />
-    <ClInclude Include="src\TF2Vulkan\MaterialSystem.h" />
-    <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h" />
-    <ClInclude Include="src\TF2Vulkan\MaterialVar.h" />
-    <ClInclude Include="src\TF2Vulkan\Vulkan\VulkanCore.h" />
+    <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
