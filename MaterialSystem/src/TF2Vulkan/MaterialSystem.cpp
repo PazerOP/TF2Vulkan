@@ -1,23 +1,26 @@
-#include "MaterialSystem.h"
+#include "TF2Vulkan/DebugTextureInfo.h"
+#include "TF2Vulkan/Material.h"
+#include "TF2Vulkan/MaterialSystem.h"
+#include "TF2Vulkan/MaterialSystemHardwareConfig.h"
+#include "Util/KeyValues.h"
+#include "Util/Placeholders.h"
+#include "Util/PooledString.h"
 #include "Util/std_algorithm.h"
 
+#include <filesystem.h>
+#include <materialsystem/idebugtextureinfo.h>
 #include <materialsystem/imaterialsystem.h>
+#include <tier1/KeyValues.h>
+#include <tier1/tier1.h>
+#include <tier1/utlbuffer.h>
+#include <tier2/tier2.h>
+#include <tier3/tier3.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
 using namespace TF2Vulkan;
-
-#define NOT_IMPLEMENTED_FUNC_NOBREAK() \
-	Warning("TF2Vulkan: %s in %s:%i not implemented\n", __FUNCSIG__, __FILE__, __LINE__);
-
-#ifdef MATT_HAYNIE
-#define NOT_IMPLEMENTED_FUNC() \
-	NOT_IMPLEMENTED_FUNC_NOBREAK(); \
-	__debugbreak();
-#else
-#define NOT_IMPLEMENTED_FUNC() NOT_IMPLEMENTED_FUNC_NOBREAK()
-#endif
 
 namespace
 {
@@ -47,6 +50,7 @@ namespace
 		void SetShaderAPI(const char* shaderAPIDLL) override;
 
 		void SetAdapter(int adapter, int flags) override;
+		void SetAdapter(int adapter, MaterialInitFlags_t flags);
 
 		void ModInit() override;
 		void ModShutdown() override;
@@ -248,6 +252,13 @@ namespace
 		std::vector<ModeChangeCallbackFunc_t> m_ModeChangeCallbacks;
 		std::vector<MaterialBufferReleaseFunc_t> m_ReleaseFuncs;
 		std::vector<MaterialBufferRestoreFunc_t> m_RestoreFuncs;
+
+		bool m_HasInit = false;
+		int m_Adapter = 0;
+		MaterialInitFlags_t m_InitFlags{};
+		IMaterialProxyFactory* m_ProxyFactory = nullptr;
+
+		std::map<Util::PooledString, std::unique_ptr<Material>> m_Materials;
 	};
 }
 
@@ -258,8 +269,19 @@ std::unique_ptr<IMaterialSystem> TF2Vulkan::CreateMaterialSystem()
 
 bool VulkanMaterialSystem::Connect(CreateInterfaceFn factory)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	ConnectTier1Libraries(&factory, 1);
+	ConnectTier2Libraries(&factory, 1);
+	ConnectTier3Libraries(&factory, 1);
+
+	if (!g_pFullFileSystem)
+	{
+		Warning("[TF2Vulkan] Failed to hook up g_pFullFileSystem\n");
+		assert(false);
+		return false;
+	}
+
+	//NOT_IMPLEMENTED_FUNC();
+	return true;
 }
 
 void VulkanMaterialSystem::Disconnect()
@@ -269,13 +291,19 @@ void VulkanMaterialSystem::Disconnect()
 
 void* VulkanMaterialSystem::QueryInterface(const char* interfaceName)
 {
+	if (!strcmp(interfaceName, MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION))
+		return TF2Vulkan::GetMaterialSystemHardwareConfig();
+	else if (!strcmp(interfaceName, DEBUG_TEXTURE_INFO_VERSION))
+		return TF2Vulkan::GetDebugTextureInfo();
+
+	Msg("[TF2Vulkan] " __FUNCTION__ "(): Reporting interface %s as unavailable\n", interfaceName);
 	return nullptr;
 }
 
 InitReturnVal_t VulkanMaterialSystem::Init()
 {
-	NOT_IMPLEMENTED_FUNC();
-	return InitReturnVal_t();
+	//NOT_IMPLEMENTED_FUNC();
+	return INIT_OK;
 }
 
 void VulkanMaterialSystem::Shutdown()
@@ -297,7 +325,14 @@ void VulkanMaterialSystem::SetShaderAPI(const char* shaderAPIDLL)
 
 void VulkanMaterialSystem::SetAdapter(int adapter, int flags)
 {
-	NOT_IMPLEMENTED_FUNC();
+	return SetAdapter(adapter, MaterialInitFlags_t(flags));
+}
+
+void VulkanMaterialSystem::SetAdapter(int adapter, MaterialInitFlags_t flags)
+{
+	assert(!m_HasInit);
+	m_Adapter = adapter;
+	m_InitFlags = flags;
 }
 
 void VulkanMaterialSystem::ModInit()
@@ -568,13 +603,12 @@ void VulkanMaterialSystem::GetShaderFallback(const char* shaderName, char* fallb
 
 IMaterialProxyFactory* VulkanMaterialSystem::GetMaterialProxyFactory()
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	return m_ProxyFactory;
 }
 
 void VulkanMaterialSystem::SetMaterialProxyFactory(IMaterialProxyFactory* factory)
 {
-	NOT_IMPLEMENTED_FUNC();
+	m_ProxyFactory = factory;
 }
 
 void VulkanMaterialSystem::EnableEditorMaterials()
@@ -663,8 +697,26 @@ IMaterial* VulkanMaterialSystem::CreateMaterial(const char* materialName, KeyVal
 IMaterial* VulkanMaterialSystem::FindMaterial(const char* materialName, const char* textureGroupName,
 	bool complain, const char* complainPrefix)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	const Util::PooledString pooledName(materialName);
+	if (auto found = m_Materials.find(pooledName); found != m_Materials.end())
+		return found->second.get();
+
+	char materialFileNameBuf[MAX_PATH];
+	sprintf_s(materialFileNameBuf, "%s.vmt", materialName);
+
+	KeyValues::AutoDelete kv(materialFileNameBuf);
+	if (!kv->LoadFromFile(g_pFullFileSystem, materialFileNameBuf))
+	{
+		Warning("Unable to read material from file \"%s\"\n", materialFileNameBuf);
+		assert(false);
+		return nullptr;
+	}
+
+	auto newMaterial = std::make_unique<Material>(*kv, pooledName, Util::PooledString(textureGroupName));
+	IMaterial* newMaterialPtr = newMaterial.get();
+	m_Materials[pooledName] = std::move(newMaterial);
+
+	return newMaterialPtr;
 }
 
 IMaterial* VulkanMaterialSystem::FindMaterialEx(const char* materialName, const char* textureGroupName,
@@ -713,8 +765,15 @@ int VulkanMaterialSystem::GetNumMaterials() const
 IMaterial* VulkanMaterialSystem::FindProceduralMaterial(const char* materialName, const char* textureGroupName,
 	KeyValues* vmtKeyValues)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	const Util::PooledString pooledName(materialName);
+	if (auto found = m_Materials.find(pooledName); found != m_Materials.end())
+		return found->second.get();
+
+	auto newMaterial = std::make_unique<Material>(*vmtKeyValues, pooledName, Util::PooledString(textureGroupName));
+	IMaterial* newMaterialPtr = newMaterial.get();
+	m_Materials[pooledName] = std::move(newMaterial);
+
+	return newMaterialPtr;
 }
 
 void VulkanMaterialSystem::SetAsyncTextureLoadCache(void* fileCache)
