@@ -2,7 +2,9 @@
 
 #include "TF2Vulkan/IMaterial2.h"
 #include "TF2Vulkan/MaterialVar.h"
-#include "Util/PooledString.h"
+#include "Util/utlsymbol.h"
+
+#include <tier1/utlsymbol.h>
 
 #include <atomic>
 #include <memory>
@@ -14,10 +16,10 @@ namespace TF2Vulkan
 	class Material final : public IMaterial2
 	{
 	public:
-		Material(const KeyValues& kv, const Util::PooledString& name, const Util::PooledString& textureGroupName);
+		Material(const KeyValues& kv, const CUtlSymbol& name, const CUtlSymbol& textureGroupName);
 
-		const char* GetName() const override { return m_Name.c_str(); }
-		const char* GetTextureGroupName() const override { return m_TextureGroupName.c_str(); }
+		const char* GetName() const override { return m_Name.String(); }
+		const char* GetTextureGroupName() const override { return m_TextureGroupName.String(); }
 
 		PreviewImageRetVal_t GetPreviewImageProperties(int* width, int* height,
 			ImageFormat* format, bool* isTranslucent) const override;
@@ -76,12 +78,13 @@ namespace TF2Vulkan
 
 		void SetShader(const char* shaderName) override;
 		void SetShaderAndParams(KeyValues* keyValues) override;
-		const char* GetShaderName() const { return m_ShaderName.c_str(); }
+		const char* GetShaderName() const { return m_ShaderName.String(); }
 
 		int GetNumPasses() const override;
 		int GetTextureMemoryBytes() const override;
 
 		void Refresh() override;
+		void RefreshPreservingMaterialVars() override;
 
 		bool NeedsLightmapBlendAlpha() const override;
 		bool NeedsSoftwareLighting() const override;
@@ -102,18 +105,16 @@ namespace TF2Vulkan
 		void CallBindProxy(void* proxyData) override;
 		IMaterial* CheckProxyReplacement(void* proxyData) override;
 
-		void RefreshPreservingMaterialVars() override;
-
 		bool WasReloadedFromWhitelist() const override;
 		bool IsPrecached() const override;
 
 	private:
 		std::atomic<uint_fast32_t> m_RefCount;
 
-		Util::PooledString m_Name;
-		Util::PooledString m_TextureGroupName;
-		Util::PooledString m_ShaderName;
+		CUtlSymbolDbg m_Name;
+		CUtlSymbolDbg m_TextureGroupName;
+		CUtlSymbolDbg m_ShaderName;
 
-		std::unordered_map<Util::PooledString, std::unique_ptr<MaterialVar>> m_Vars;
+		std::unordered_map<CUtlSymbol, std::unique_ptr<MaterialVar>> m_Vars;
 	};
 }

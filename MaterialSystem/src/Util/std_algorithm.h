@@ -2,8 +2,10 @@
 
 #include <algorithm>
 
-namespace Util
+namespace Util{ namespace algorithm
 {
+	using std::find;
+
 	template<typename TContainer, typename TValue>
 	inline bool contains(const TContainer& container, const TValue& value)
 	{
@@ -46,4 +48,4 @@ namespace Util
 	{
 		return find_and<TContainer, TValue>(container, value, [&](auto found) { container.erase(found); });
 	}
-}
+} }

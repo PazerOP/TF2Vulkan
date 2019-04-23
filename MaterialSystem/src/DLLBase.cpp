@@ -7,11 +7,11 @@ extern "C" __declspec(dllexport) void* CreateInterface(const char* pName, int* p
 {
 	if (!strcmp(pName, MATERIAL_SYSTEM_INTERFACE_VERSION))
 	{
-		auto retVal = TF2Vulkan::CreateMaterialSystem();
+		auto retVal = TF2Vulkan::GetMaterialSystem();
 		if (pReturnCode)
 			*pReturnCode = IFACE_OK;
 
-		return retVal.release();
+		return retVal;
 	}
 
 	if (pReturnCode)

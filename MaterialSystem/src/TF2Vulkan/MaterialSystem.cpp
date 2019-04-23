@@ -4,20 +4,22 @@
 #include "TF2Vulkan/MaterialSystemHardwareConfig.h"
 #include "Util/KeyValues.h"
 #include "Util/Placeholders.h"
-#include "Util/PooledString.h"
 #include "Util/std_algorithm.h"
 
 #include <filesystem.h>
 #include <materialsystem/idebugtextureinfo.h>
 #include <materialsystem/imaterialsystem.h>
+#include <tier0/icommandline.h>
 #include <tier1/KeyValues.h>
 #include <tier1/tier1.h>
 #include <tier1/utlbuffer.h>
 #include <tier2/tier2.h>
 #include <tier3/tier3.h>
 
-#include <map>
+#include <vulkan/vulkan.hpp>
+
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 using namespace TF2Vulkan;
@@ -246,6 +248,9 @@ namespace
 			int teamNum, uint64 randomSeed, KeyValues* stageDesc, uint32 texCompositeCreateFlags) override;
 
 	private:
+		IMaterial* CreateMaterial(const CUtlSymbolDbg& materialName, KeyValues* vmtKeyValues, const CUtlSymbolDbg& textureGroupName,
+			bool complain = false, const char* complainPrefix = nullptr);
+
 		// This is what was set, but probably not what we're actually using
 		std::string m_ShaderAPIDLL;
 
@@ -258,14 +263,12 @@ namespace
 		MaterialInitFlags_t m_InitFlags{};
 		IMaterialProxyFactory* m_ProxyFactory = nullptr;
 
-		std::map<Util::PooledString, std::unique_ptr<Material>> m_Materials;
+		std::unordered_map<CUtlSymbolDbg, std::unique_ptr<Material>> m_Materials;
 	};
 }
 
-std::unique_ptr<IMaterialSystem> TF2Vulkan::CreateMaterialSystem()
-{
-	return std::make_unique<VulkanMaterialSystem>();
-}
+static VulkanMaterialSystem s_MaterialSystem;
+IMaterialSystem* TF2Vulkan::GetMaterialSystem() { return &s_MaterialSystem; }
 
 bool VulkanMaterialSystem::Connect(CreateInterfaceFn factory)
 {
@@ -302,7 +305,9 @@ void* VulkanMaterialSystem::QueryInterface(const char* interfaceName)
 
 InitReturnVal_t VulkanMaterialSystem::Init()
 {
-	//NOT_IMPLEMENTED_FUNC();
+	if (!CommandLine()->CheckParm("-insecure"))
+		Error("The vulkan rendering backend is not officially supported by Valve. To avoid getting VAC banned, you must run with -insecure.");
+
 	return INIT_OK;
 }
 
@@ -405,8 +410,7 @@ int VulkanMaterialSystem::GetDisplayAdapterCount() const
 
 int VulkanMaterialSystem::GetCurrentAdapter() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return -1;
+	return m_Adapter;
 }
 
 void VulkanMaterialSystem::GetDisplayAdapterInfo(int adapter, MaterialAdapterInfo_t& info) const
@@ -433,7 +437,7 @@ void VulkanMaterialSystem::AddModeChangeCallBack(ModeChangeCallbackFunc_t func)
 
 void VulkanMaterialSystem::RemoveModeChangeCallBack(ModeChangeCallbackFunc_t func)
 {
-	Util::try_erase(m_ModeChangeCallbacks, func);
+	Util::algorithm::try_erase(m_ModeChangeCallbacks, func);
 }
 
 void VulkanMaterialSystem::GetDisplayMode(MaterialVideoMode_t& mode) const
@@ -539,24 +543,24 @@ void VulkanMaterialSystem::ReacquireResources()
 
 void VulkanMaterialSystem::AddReleaseFunc(MaterialBufferReleaseFunc_t func)
 {
-	assert(!Util::contains(m_ReleaseFuncs, func));
+	assert(!Util::algorithm::contains(m_ReleaseFuncs, func));
 	m_ReleaseFuncs.push_back(func);
 }
 
 void VulkanMaterialSystem::RemoveReleaseFunc(MaterialBufferReleaseFunc_t func)
 {
-	Util::try_erase(m_ReleaseFuncs, func);
+	Util::algorithm::try_erase(m_ReleaseFuncs, func);
 }
 
 void VulkanMaterialSystem::AddRestoreFunc(MaterialBufferRestoreFunc_t func)
 {
-	assert(!Util::contains(m_RestoreFuncs, func));
+	assert(!Util::algorithm::contains(m_RestoreFuncs, func));
 	m_RestoreFuncs.push_back(func);
 }
 
 void VulkanMaterialSystem::RemoveRestoreFunc(MaterialBufferRestoreFunc_t func)
 {
-	Util::try_erase(m_RestoreFuncs, func);
+	Util::algorithm::try_erase(m_RestoreFuncs, func);
 }
 
 void VulkanMaterialSystem::ResetTempHWMemory(bool exitingLevel)
@@ -690,15 +694,25 @@ void VulkanMaterialSystem::ReloadMaterials(const char* subString)
 
 IMaterial* VulkanMaterialSystem::CreateMaterial(const char* materialName, KeyValues* vmtKeyValues)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	return CreateMaterial(CUtlSymbol(materialName), vmtKeyValues, TEXTURE_GROUP_OTHER, true);
+}
+
+IMaterial* VulkanMaterialSystem::CreateMaterial(const CUtlSymbolDbg& materialName, KeyValues* vmtKeyValues,
+	const CUtlSymbolDbg& textureGroupName, bool complain, const char* complainPrefix)
+{
+	const CUtlSymbolDbg nameSymbol(materialName);
+	auto newMaterial = std::make_unique<Material>(*vmtKeyValues, nameSymbol, textureGroupName);
+	IMaterial* newMaterialPtr = newMaterial.get();
+	m_Materials[nameSymbol] = std::move(newMaterial);
+
+	return newMaterialPtr;
 }
 
 IMaterial* VulkanMaterialSystem::FindMaterial(const char* materialName, const char* textureGroupName,
 	bool complain, const char* complainPrefix)
 {
-	const Util::PooledString pooledName(materialName);
-	if (auto found = m_Materials.find(pooledName); found != m_Materials.end())
+	const CUtlSymbolDbg nameSymbol(materialName);
+	if (auto found = m_Materials.find(nameSymbol); found != m_Materials.end())
 		return found->second.get();
 
 	char materialFileNameBuf[MAX_PATH];
@@ -712,11 +726,7 @@ IMaterial* VulkanMaterialSystem::FindMaterial(const char* materialName, const ch
 		return nullptr;
 	}
 
-	auto newMaterial = std::make_unique<Material>(*kv, pooledName, Util::PooledString(textureGroupName));
-	IMaterial* newMaterialPtr = newMaterial.get();
-	m_Materials[pooledName] = std::move(newMaterial);
-
-	return newMaterialPtr;
+	return CreateMaterial(nameSymbol, kv, CUtlSymbol(textureGroupName), complain, complainPrefix);
 }
 
 IMaterial* VulkanMaterialSystem::FindMaterialEx(const char* materialName, const char* textureGroupName,
@@ -765,11 +775,11 @@ int VulkanMaterialSystem::GetNumMaterials() const
 IMaterial* VulkanMaterialSystem::FindProceduralMaterial(const char* materialName, const char* textureGroupName,
 	KeyValues* vmtKeyValues)
 {
-	const Util::PooledString pooledName(materialName);
+	const CUtlSymbol pooledName(materialName);
 	if (auto found = m_Materials.find(pooledName); found != m_Materials.end())
 		return found->second.get();
 
-	auto newMaterial = std::make_unique<Material>(*vmtKeyValues, pooledName, Util::PooledString(textureGroupName));
+	auto newMaterial = std::make_unique<Material>(*vmtKeyValues, pooledName, CUtlSymbol(textureGroupName));
 	IMaterial* newMaterialPtr = newMaterial.get();
 	m_Materials[pooledName] = std::move(newMaterial);
 

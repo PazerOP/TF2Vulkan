@@ -6,19 +6,27 @@
 
 using namespace TF2Vulkan;
 
-static Util::PooledString GetShaderName(const KeyValues& kv)
+static CUtlSymbol GetShaderName(const KeyValues& kv)
 {
 	auto name = kv.GetName();
-	return Util::PooledString(name);
+	kv.GetNameSymbol();
+	return CUtlSymbol(name);
 }
 
-Material::Material(const KeyValues& kv, const Util::PooledString& name, const Util::PooledString& textureGroupName) :
+Material::Material(const KeyValues& kv, const CUtlSymbol& name, const CUtlSymbol& textureGroupName) :
 	m_Name(name),
 	m_TextureGroupName(textureGroupName),
 	m_ShaderName(::GetShaderName(kv))
 {
+	// Workaround for broken const correctness
+	KeyValues::AutoDelete kv2(kv.MakeCopy());
 
-	IMaterialVar::Create(this, "test");
+	for (auto it = kv2->GetFirstValue(); it; it = it->GetNextValue())
+	{
+		auto varName = it->GetName();
+		auto varValue = it->GetString();
+		m_Vars[varName] = std::make_unique<MaterialVar>(this, varName, varValue);
+	}
 }
 
 PreviewImageRetVal_t Material::GetPreviewImageProperties(int* width, int* height, ImageFormat* format, bool* isTranslucent) const
@@ -249,7 +257,14 @@ int Material::GetTextureMemoryBytes() const
 
 void Material::Refresh()
 {
-	NOT_IMPLEMENTED_FUNC();
+	// TODO
+	//NOT_IMPLEMENTED_FUNC();
+}
+
+void Material::RefreshPreservingMaterialVars()
+{
+	// TODO
+	//NOT_IMPLEMENTED_FUNC();
 }
 
 bool Material::NeedsLightmapBlendAlpha() const
@@ -313,11 +328,6 @@ IMaterial* Material::CheckProxyReplacement(void* proxyData)
 {
 	NOT_IMPLEMENTED_FUNC();
 	return nullptr;
-}
-
-void Material::RefreshPreservingMaterialVars()
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 bool Material::WasReloadedFromWhitelist() const

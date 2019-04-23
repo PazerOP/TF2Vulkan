@@ -6,5 +6,5 @@ class IMaterialSystem;
 
 namespace TF2Vulkan
 {
-	std::unique_ptr<IMaterialSystem> CreateMaterialSystem();
+	IMaterialSystem* GetMaterialSystem();
 }
