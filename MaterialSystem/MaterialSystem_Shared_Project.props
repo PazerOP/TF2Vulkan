@@ -2,11 +2,20 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup>
+    <IncludePath>$(SolutionDir)/sdk2013/mp/src/public;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)\sdk2013\mp\src\lib\public;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <PostBuildEvent>
       <Command>copy /Y "$(TargetPath)" "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\bin\$(TargetFileName)"</Command>
     </PostBuildEvent>
+    <Link>
+      <AdditionalDependencies>appframework.lib;tier0.lib;tier1.lib;tier2.lib;tier3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ClCompile>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
