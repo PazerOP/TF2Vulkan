@@ -1,11 +1,15 @@
-#include "ShaderAPI.h"
-#include "IShaderAPI2.h"
 #include "FormatConversion.h"
-#include "VulkanTexture.h"
+#include "ShaderAPI.h"
+#include "ShaderDevice.h"
+#include "TF2Vulkan/TextureData.h"
 
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/Placeholders.h>
+#include <TF2Vulkan/Util/ImageManip.h>
 
+#include "vk_mem_alloc.h"
+
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <unordered_map>
@@ -14,7 +18,7 @@ using namespace TF2Vulkan;
 
 namespace
 {
-	class ShaderAPI final : public IShaderAPI2
+	class ShaderAPI final : public IShaderAPIInternal
 	{
 	public:
 		void SetViewports(int count, const ShaderViewport_t* viewports) override;
@@ -188,11 +192,15 @@ namespace
 
 		void TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat, int zOffset,
 			int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData) override;
+
 		void TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset, int zOffset,
 			int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled,
 			void* imgData) override;
 
 		void TexImageFromVTF(IVTFTexture* vtf, int ivtfFrame) override;
+
+		bool UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data,
+			size_t count) override;
 
 		bool TexLock(int level, int cubeFaceID, int xOffset, int yOffset,
 			int width, int height, CPixelWriter& writer) override;
@@ -424,8 +432,17 @@ namespace
 	private:
 		std::mutex m_ShaderLock;
 
-		ShaderAPITextureHandle_t m_NextTextureHandle = 1;
-		std::unordered_map<ShaderAPITextureHandle_t, std::unique_ptr<VulkanTexture>> m_Textures;
+		ShaderAPITextureHandle_t m_ModifyTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
+
+		std::atomic<ShaderAPITextureHandle_t> m_NextTextureHandle = 1;
+
+		struct ShaderTexture
+		{
+			std::string m_DebugName;
+			vk::ImageCreateInfo m_CreateInfo;
+			vma::AllocatedImage m_Image;
+		};
+		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
 	};
 }
 
@@ -1006,32 +1023,15 @@ bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
 	return false;
 }
 
-ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName)
+ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int depth,
+	ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags,
+	const char* dbgName, const char* texGroupName)
 {
-	if (width <= 0)
-	{
-		Warning("[TF2Vulkan] %s(): Invalid width %i\n", __FUNCTION__, width);
-		assert(false);
-		return INVALID_SHADERAPI_TEXTURE_HANDLE;
-	}
-	if (height <= 0)
-	{
-		Warning("[TF2Vulkan] %s(): Invalid height %i\n", __FUNCTION__, height);
-		assert(false);
-		return INVALID_SHADERAPI_TEXTURE_HANDLE;
-	}
-	if (depth <= 0)
-	{
-		Warning("[TF2Vulkan] %s(): Invalid depth %i\n", __FUNCTION__, depth);
-		assert(false);
-		return INVALID_SHADERAPI_TEXTURE_HANDLE;
-	}
-	if (mipLevelCount <= 0)
-	{
-		Warning("[TF2Vulkan] %s(): Invalid mipLevelCount %i\n", __FUNCTION__, depth);
-		assert(false);
-		return INVALID_SHADERAPI_TEXTURE_HANDLE;
-	}
+	LOG_FUNC();
+	ENSURE(width > 0);
+	ENSURE(height > 0);
+	ENSURE(depth > 0);
+	ENSURE(mipLevelCount > 0);
 
 	vk::ImageCreateInfo createInfo;
 
@@ -1048,15 +1048,31 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
 	createInfo.mipLevels = uint32_t(mipLevelCount);
 	createInfo.format = ConvertImageFormat(dstImgFormat);
+	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
 
-	
+	auto& vulkanDevice = g_ShaderDevice.GetVulkanDevice();
 
-	NOT_IMPLEMENTED_FUNC();
-	return ShaderAPITextureHandle_t();
+	auto created = vulkanDevice.createImageUnique(createInfo);
+	if (!created)
+	{
+		Warning("[TF2Vulkan] %s(): Failed to create texture \"%s\"\n", __FUNCTION__, dbgName ? dbgName : "<null>");
+		return INVALID_SHADERAPI_TEXTURE_HANDLE;
+	}
+
+	vma::AllocationCreateInfo allocCreateInfo;
+	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+	auto createdImg = g_ShaderDevice.GetVulkanAllocator().createImageUnique(createInfo, allocCreateInfo);
+
+	const auto handle = m_NextTextureHandle++;
+	m_Textures[handle] = { dbgName, std::move(createInfo), std::move(createdImg) };
+	return handle;
 }
 
 void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count, int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName)
 {
+	LOG_FUNC();
+
 	for (int i = 0; i < count; i++)
 	{
 		handles[i] = CreateTexture(width, height, depth, dstImgFormat,
@@ -1089,22 +1105,90 @@ ShaderAPITextureHandle_t ShaderAPI::CreateDepthTexture(ImageFormat rtFormat, int
 
 void ShaderAPI::ModifyTexture(ShaderAPITextureHandle_t tex)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_ModifyTexture = tex;
 }
 
 void ShaderAPI::TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat, int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData)
 {
-	NOT_IMPLEMENTED_FUNC();
+	if (dstFormat != srcFormat)
+		NOT_IMPLEMENTED_FUNC();
+
+	return TexSubImage2D(level, cubeFaceID, 0, 0, zOffset, width, height, srcFormat, -1, srcIsTiled, imgData);
 }
 
 void ShaderAPI::TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset, int zOffset, int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled, void* imgData)
 {
-	NOT_IMPLEMENTED_FUNC();
+	assert(!srcIsTiled); // Not valid on PC
+
+	TextureData data;
+	data.m_CubeFace = CubeMapFaceIndex_t(cubeFaceID);
+	data.m_Format = srcFormat;
+	Util::SafeConvert(level, data.m_MipLevel);
+	Util::SafeConvert(xOffset, data.m_XOffset);
+	Util::SafeConvert(yOffset, data.m_YOffset);
+	Util::SafeConvert(zOffset, data.m_ZOffset);
+	Util::SafeConvert(width, data.m_Width);
+	Util::SafeConvert(height, data.m_Height);
+	Util::SafeConvert(srcStride, data.m_Stride);
+	data.m_Data = imgData;
+
+	data.Validate();
+
+	UpdateTexture(m_ModifyTexture, &data, 1);
 }
 
-void ShaderAPI::TexImageFromVTF(IVTFTexture* vtf, int ivtfFrame)
+void ShaderAPI::TexImageFromVTF(IVTFTexture* vtf, int frameIndex)
 {
+	const auto mipCount = vtf->MipCount();
+	ENSURE(mipCount > 0);
+
+	const auto faceCount = vtf->FaceCount();
+	ENSURE(faceCount > 0);
+
+	const auto arraySize = vtf->MipCount() * vtf->FaceCount();
+	auto* texDatas = (TextureData*)stackalloc(arraySize * sizeof(TextureData));
+
+	for (int mip = 0; mip < mipCount; mip++)
+	{
+		int width, height, depth;
+		vtf->ComputeMipLevelDimensions(mip, &width, &height, &depth);
+
+		const int mipSize = vtf->ComputeMipSize(mip);
+		const int stride = vtf->RowSizeInBytes(mip);
+
+		for (int face = 0; face < faceCount; face++)
+		{
+			TextureData& texData = texDatas[mip * faceCount + face];
+			texData = {};
+			texData.m_Format = vtf->Format();
+
+			Util::SafeConvert(width, texData.m_Width);
+			Util::SafeConvert(height, texData.m_Height);
+			Util::SafeConvert(depth, texData.m_Depth);
+			texData.m_Data = vtf->ImageData(frameIndex, face, mip);
+			Util::SafeConvert(mipSize, texData.m_DataLength);
+			Util::SafeConvert(stride, texData.m_Stride);
+
+			Util::SafeConvert(mip, texData.m_MipLevel);
+			texData.m_CubeFace = CubeMapFaceIndex_t(face);
+
+			texData.Validate();
+		}
+	}
+
+	UpdateTexture(m_ModifyTexture, texDatas, arraySize);
+}
+
+bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data, size_t count)
+{
+	auto& tex = m_Textures.at(texHandle);
+
+	auto& device = g_ShaderDevice.GetVulkanDevice();
+	const auto memReqs = device.getImageMemoryRequirements(tex.m_Image.m_Image.get());
+
 	NOT_IMPLEMENTED_FUNC();
+	return false;
 }
 
 bool ShaderAPI::TexLock(int level, int cubeFaceID, int xOffset, int yOffset, int width, int height, CPixelWriter& writer)

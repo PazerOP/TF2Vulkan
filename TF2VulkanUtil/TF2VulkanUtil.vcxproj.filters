@@ -36,7 +36,13 @@
     <ClInclude Include="include\TF2Vulkan\Util\interface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\TF2Vulkan\Util\ExecutionTracking.h">
+    <ClInclude Include="include\TF2Vulkan\Util\ImageManip.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\TF2Vulkan\Util\Macros.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,7 +56,10 @@
     <ClCompile Include="src\TF2Vulkan\Util\interface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TF2Vulkan\Util\ExecutionTracking.cpp">
+    <ClCompile Include="include\TF2Vulkan\Util\ImageManip.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\Util\Macros.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

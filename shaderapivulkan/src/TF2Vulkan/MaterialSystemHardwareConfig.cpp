@@ -1,5 +1,4 @@
-#include "Globals.h"
-#include "IShaderDeviceMgrInternal.h"
+#include "ShaderDeviceMgr.h"
 #include "MaterialSystemHardwareConfig.h"
 
 #include <TF2Vulkan/Util/Placeholders.h>

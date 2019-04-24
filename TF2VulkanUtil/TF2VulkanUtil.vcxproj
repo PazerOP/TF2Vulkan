@@ -84,17 +84,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\TF2Vulkan\Util\ExecutionTracking.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\Macros.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\ImageManip.h" />
     <ClInclude Include="include\TF2Vulkan\Util\interface.h" />
     <ClInclude Include="include\TF2Vulkan\Util\KeyValues.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Placeholders.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_charconv.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
     <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\TF2Vulkan\Util\ExecutionTracking.cpp" />
+    <ClCompile Include="include\TF2Vulkan\Util\ImageManip.cpp" />
+    <ClCompile Include="src\TF2Vulkan\Util\Macros.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\interface.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\KeyValues.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\utlsymbol.cpp" />

@@ -1,6 +1,5 @@
 #include "FormatConversion.h"
-#include "Globals.h"
-#include "IShaderDeviceMgrInternal.h"
+#include "ShaderDeviceMgr.h"
 
 #include <bitmap/imageformat.h>
 

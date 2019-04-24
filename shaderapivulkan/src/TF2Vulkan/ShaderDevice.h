@@ -9,6 +9,8 @@ namespace TF2Vulkan
 	public:
 		virtual void SetVulkanDevice(vk::UniqueDevice&& device) = 0;
 		virtual vk::Device& GetVulkanDevice() = 0;
+
+		virtual vma::UniqueAllocator& GetVulkanAllocator() = 0;
 	};
 
 	extern IShaderDeviceInternal& g_ShaderDevice;

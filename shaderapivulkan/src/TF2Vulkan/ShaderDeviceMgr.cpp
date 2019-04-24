@@ -1,13 +1,11 @@
-#include "Globals.h"
-#include "IShaderDeviceMgrInternal.h"
+#include "ShaderDeviceMgr.h"
+#include "ShaderDevice.h"
 
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/Placeholders.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 
 #include <vector>
-
-#include <vulkan/vulkan.hpp>
 
 using namespace TF2Vulkan;
 
@@ -62,18 +60,31 @@ static vk::UniqueInstance CreateInstance()
 	vk::InstanceCreateInfo createInfo;
 	createInfo.pApplicationInfo = &appInfo;
 
-	return vk::createInstanceUnique(createInfo);
+	constexpr const char* VALIDATION_LAYERS[] =
+	{
+		"VK_LAYER_LUNARG_standard_validation",
+	};
+	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
+	createInfo.enabledLayerCount = std::size(VALIDATION_LAYERS);
+
+	auto retVal = vk::createInstanceUnique(createInfo);
+	if (!retVal)
+		Error("[TF2Vulkan] Failed to create vulkan instance\n");
+
+	return retVal;
+}
+
+static vk::UniqueDevice CreateDevice(vk::PhysicalDevice& physDevice)
+{
+	vk::DeviceCreateInfo createInfo;
+
+	return physDevice.createDeviceUnique(createInfo);
 }
 
 InitReturnVal_t ShaderDeviceMgr::Init()
 {
 	LOG_FUNC();
 	m_Instance = CreateInstance();
-	if (!m_Instance)
-	{
-		Warning("[TF2Vulkan] Failed to create vulkan instance!\n");
-		return InitReturnVal_t::INIT_FAILED;
-	}
 
 	auto physicalDevices = m_Instance->enumeratePhysicalDevices();
 	if (physicalDevices.size() < size_t(m_AdapterIndex))
@@ -84,6 +95,17 @@ InitReturnVal_t ShaderDeviceMgr::Init()
 	}
 
 	m_Adapter = physicalDevices[m_AdapterIndex];
+
+	if (auto device = CreateDevice(m_Adapter))
+	{
+		g_ShaderDevice.SetVulkanDevice(std::move(device));
+	}
+	else
+	{
+		assert(false);
+		Error("[TF2Vulkan] Failed to create vulkan device");
+		return InitReturnVal_t::INIT_FAILED;
+	}
 
 	m_HasBeenInit = true;
 	return InitReturnVal_t::INIT_OK;
@@ -178,11 +200,6 @@ int ShaderDeviceMgr::GetAdapterIndex() const
 
 vk::PhysicalDevice ShaderDeviceMgr::GetAdapter()
 {
-	if (!m_HasBeenInit)
-	{
-		assert(false);
-		return nullptr;
-	}
-
+	assert(m_Adapter);
 	return m_Adapter;
 }

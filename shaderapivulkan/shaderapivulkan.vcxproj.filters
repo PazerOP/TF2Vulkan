@@ -42,21 +42,15 @@
     <ClCompile Include="src\stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TF2Vulkan\ShaderUtil.cpp">
+    <ClCompile Include="include\TF2Vulkan\TextureData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\vk_mem_alloc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\TF2Vulkan\ShaderAPI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\TF2Vulkan\Globals.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\TF2Vulkan\IShaderAPI2.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\TF2Vulkan\IShaderDeviceMgrInternal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\TF2Vulkan\FormatConversion.h">
@@ -68,11 +62,23 @@
     <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\TF2Vulkan\VulkanTexture.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\TF2Vulkan\ShaderDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\TF2Vulkan\TextureData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\ShaderDeviceMgr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="src\TF2Vulkan\vk_mem_alloc.natvis" />
   </ItemGroup>
 </Project>

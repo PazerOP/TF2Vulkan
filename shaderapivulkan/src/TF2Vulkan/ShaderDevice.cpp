@@ -1,7 +1,16 @@
 #include "ShaderDevice.h"
+#include "ShaderDeviceMgr.h"
 
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/Placeholders.h>
+
+#pragma push_macro("min")
+#pragma push_macro("max")
+
+#undef min
+#undef max
+#define VMA_IMPLEMENTATION
+#include "vk_mem_alloc.h"
 
 using namespace TF2Vulkan;
 
@@ -69,8 +78,11 @@ namespace
 		void SetVulkanDevice(vk::UniqueDevice&& device) override;
 		vk::Device& GetVulkanDevice() override;
 
+		vma::UniqueAllocator& GetVulkanAllocator() override;
+
 	private:
 		vk::UniqueDevice m_Device;
+		vma::UniqueAllocator m_Allocator;
 	};
 }
 
@@ -263,12 +275,28 @@ char* ShaderDevice::GetDisplayDeviceName()
 	return nullptr;
 }
 
+static vma::UniqueAllocator CreateAllocator(vk::Device& device)
+{
+	vma::AllocatorCreateInfo info;
+	info.device = (VkDevice)device;
+	info.physicalDevice = (VkPhysicalDevice)g_ShaderDeviceMgr.GetAdapter();
+
+	return vma::createAllocatorUnique(info);
+}
+
 void ShaderDevice::SetVulkanDevice(vk::UniqueDevice&& device)
 {
 	m_Device = std::move(device);
+	m_Allocator = CreateAllocator(m_Device.get());
 }
 
 vk::Device& ShaderDevice::GetVulkanDevice()
 {
 	return m_Device.get();
+}
+
+vma::UniqueAllocator& ShaderDevice::GetVulkanAllocator()
+{
+	assert(m_Allocator);
+	return m_Allocator;
 }

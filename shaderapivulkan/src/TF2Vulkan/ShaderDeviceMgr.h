@@ -11,7 +11,6 @@ namespace TF2Vulkan
 	class IShaderDeviceMgrInternal : public IShaderDeviceMgr
 	{
 	public:
-
 		virtual int GetAdapterIndex() const = 0;
 
 		virtual bool SetAdapter(int adapter, MaterialInitFlags_t flags) = 0;
@@ -22,4 +21,6 @@ namespace TF2Vulkan
 
 		virtual vk::PhysicalDevice GetAdapter() = 0;
 	};
+
+	extern IShaderDeviceMgrInternal& g_ShaderDeviceMgr;
 }
