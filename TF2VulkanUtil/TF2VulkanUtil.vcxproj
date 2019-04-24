@@ -39,10 +39,12 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
+    <Import Project="TF2VulkanUtil_Shared_Project.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
+    <Import Project="TF2VulkanUtil_Shared_Project.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -82,6 +84,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\TF2Vulkan\Util\ExecutionTracking.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\interface.h" />
     <ClInclude Include="include\TF2Vulkan\Util\KeyValues.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Placeholders.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
@@ -90,6 +94,8 @@
     <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\TF2Vulkan\Util\ExecutionTracking.cpp" />
+    <ClCompile Include="src\TF2Vulkan\Util\interface.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\KeyValues.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\utlsymbol.cpp" />
   </ItemGroup>

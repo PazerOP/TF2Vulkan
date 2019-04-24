@@ -19,8 +19,7 @@ namespace Util{ namespace algorithm
 	}
 
 	template<typename TContainer, typename TValue, typename TFunc>
-	inline auto find_and(const TContainer& container, const TValue& value, const TFunc& func) ->
-		decltype(std::enable_if_t<std::is_same_v<void, std::invoke_result_t<TFunc, typename TContainer::const_iterator>>>{}, bool{})
+	inline bool find_and(const TContainer& container, const TValue& value, const TFunc& func)
 	{
 		if (auto found = find(container, value); found != std::end(container))
 		{

@@ -33,12 +33,24 @@
     <ClInclude Include="include\TF2Vulkan\Util\Placeholders.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\TF2Vulkan\Util\interface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\TF2Vulkan\Util\ExecutionTracking.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\TF2Vulkan\Util\KeyValues.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\TF2Vulkan\Util\utlsymbol.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\Util\interface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\Util\ExecutionTracking.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

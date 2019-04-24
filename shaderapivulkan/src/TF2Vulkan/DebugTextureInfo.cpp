@@ -1,9 +1,7 @@
-#include "TF2Vulkan/DebugTextureInfo.h"
-#include "Util/Placeholders.h"
+#include <TF2Vulkan/Util/interface.h>
+#include <TF2Vulkan/Util/Placeholders.h>
 
 #include <materialsystem/idebugtextureinfo.h>
-
-using namespace TF2Vulkan;
 
 namespace
 {
@@ -22,10 +20,7 @@ namespace
 }
 
 static DebugTextureInfo s_DebugTextureInfo;
-IDebugTextureInfo* TF2Vulkan::GetDebugTextureInfo()
-{
-	return &s_DebugTextureInfo;
-}
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(DebugTextureInfo, IDebugTextureInfo, DEBUG_TEXTURE_INFO_VERSION, s_DebugTextureInfo);
 
 void DebugTextureInfo::EnableDebugTextureList(bool enable)
 {

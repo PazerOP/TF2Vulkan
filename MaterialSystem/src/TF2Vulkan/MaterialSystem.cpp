@@ -1,9 +1,7 @@
-#include "TF2Vulkan/DebugTextureInfo.h"
 #include "TF2Vulkan/Material.h"
-#include "TF2Vulkan/MaterialSystem.h"
-#include "TF2Vulkan/MaterialSystemHardwareConfig.h"
 
 #include <TF2Vulkan/Util/KeyValues.h>
+#include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/Placeholders.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 
@@ -28,6 +26,8 @@ namespace
 	class VulkanMaterialSystem final : public IMaterialSystem
 	{
 	public:
+		VulkanMaterialSystem();
+
 		///////////////////////////////
 		// IAppSystem Implementation //
 		///////////////////////////////
@@ -268,8 +268,13 @@ namespace
 	};
 }
 
-static VulkanMaterialSystem s_MaterialSystem;
-IMaterialSystem* TF2Vulkan::GetMaterialSystem() { return &s_MaterialSystem; }
+static VulkanMaterialSystem s_VulkanMaterialSystem;
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(VulkanMaterialSystem, IMaterialSystem, MATERIAL_SYSTEM_INTERFACE_VERSION, s_VulkanMaterialSystem);
+
+VulkanMaterialSystem::VulkanMaterialSystem()
+{
+	materials = this;
+}
 
 bool VulkanMaterialSystem::Connect(CreateInterfaceFn factory)
 {
@@ -295,12 +300,11 @@ void VulkanMaterialSystem::Disconnect()
 
 void* VulkanMaterialSystem::QueryInterface(const char* interfaceName)
 {
-	if (!strcmp(interfaceName, MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION))
-		return TF2Vulkan::GetMaterialSystemHardwareConfig();
-	else if (!strcmp(interfaceName, DEBUG_TEXTURE_INFO_VERSION))
-		return TF2Vulkan::GetDebugTextureInfo();
+	auto factory = Sys_GetFactoryThis();
+	assert(factory);
+	if (factory)
+		return factory(interfaceName, nullptr);
 
-	Msg("[TF2Vulkan] " __FUNCTION__ "(): Reporting interface %s as unavailable\n", interfaceName);
 	return nullptr;
 }
 
@@ -308,8 +312,6 @@ InitReturnVal_t VulkanMaterialSystem::Init()
 {
 	if (!CommandLine()->CheckParm("-insecure"))
 		Error("The vulkan rendering backend is not officially supported by Valve. To avoid getting VAC banned, you must run with -insecure.");
-
-
 
 	return INIT_OK;
 }

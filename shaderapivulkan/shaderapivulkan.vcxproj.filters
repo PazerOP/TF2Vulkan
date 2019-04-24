@@ -18,12 +18,60 @@
     <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\ShaderAPIVulkanDLL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\ShaderDeviceMgr.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\MaterialSystemHardwareConfig.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\ShaderDevice.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\ShaderShadow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\FormatConversion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\ShaderUtil.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\TF2Vulkan\ShaderAPI.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\TF2Vulkan\IShaderAPI2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\IShaderDeviceMgrInternal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\FormatConversion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\VulkanTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\TF2Vulkan\ShaderDevice.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

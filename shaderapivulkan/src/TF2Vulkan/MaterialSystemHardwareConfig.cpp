@@ -1,12 +1,15 @@
+#include "Globals.h"
+#include "IShaderDeviceMgrInternal.h"
 #include "MaterialSystemHardwareConfig.h"
-#include "Util/Placeholders.h"
 
-#include <materialsystem/imaterialsystemhardwareconfig.h>
-#include <tier0/dbg.h>
+#include <TF2Vulkan/Util/Placeholders.h>
+#include <TF2Vulkan/Util/interface.h>
+
+using namespace TF2Vulkan;
 
 namespace
 {
-	class MaterialSystemHardwareConfig : public IMaterialSystemHardwareConfig
+	class MaterialSystemHardwareConfig : public IMaterialSystemHardwareConfigInternal
 	{
 	public:
 		bool HasDestAlphaBuffer() const override;
@@ -109,14 +112,18 @@ namespace
 
 		bool SupportsBorderColor() const override;
 		bool SupportsFetch4() const override;
+
+		const char* GetHWSpecificShaderDLLName() const override;
+
+	private:
+		static vk::PhysicalDeviceLimits GetLimits();
+		static vk::PhysicalDeviceFeatures GetFeatures();
 	};
 }
 
 static MaterialSystemHardwareConfig s_HardwareConfig;
-IMaterialSystemHardwareConfig* TF2Vulkan::GetMaterialSystemHardwareConfig()
-{
-	return &s_HardwareConfig;
-}
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(MaterialSystemHardwareConfig, IMaterialSystemHardwareConfig,
+	MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION, s_HardwareConfig);
 
 bool MaterialSystemHardwareConfig::HasDestAlphaBuffer() const
 {
@@ -150,8 +157,8 @@ bool MaterialSystemHardwareConfig::HasSetDeviceGammaRamp() const
 
 bool MaterialSystemHardwareConfig::SupportsCompressedTextures() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return GetFeatures().textureCompressionBC;
 }
 
 VertexCompressionType_t MaterialSystemHardwareConfig::SupportsCompressedVertices() const
@@ -168,50 +175,50 @@ bool MaterialSystemHardwareConfig::SupportsNormalMapCompression() const
 
 bool MaterialSystemHardwareConfig::SupportsVertexAndPixelShaders() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_1_4() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsStaticControlFlow() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_2_0() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsVertexShaders_2_0() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 int MaterialSystemHardwareConfig::MaximumAnisotropicLevel() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return GetLimits().maxSamplerAnisotropy;
 }
 
 int MaterialSystemHardwareConfig::MaxTextureWidth() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return GetLimits().maxImageDimension2D;
 }
 
 int MaterialSystemHardwareConfig::MaxTextureHeight() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return GetLimits().maxImageDimension2D;
 }
 
 int MaterialSystemHardwareConfig::TextureMemorySize() const
@@ -228,20 +235,20 @@ bool MaterialSystemHardwareConfig::SupportsOverbright() const
 
 bool MaterialSystemHardwareConfig::SupportsCubeMaps() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsMipmappedCubemaps() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsNonPow2Textures() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 int MaterialSystemHardwareConfig::GetTextureStageCount() const
@@ -288,8 +295,8 @@ int MaterialSystemHardwareConfig::MaxBlendMatrixIndices() const
 
 int MaterialSystemHardwareConfig::MaxTextureAspectRatio() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return MaxTextureWidth();
 }
 
 int MaterialSystemHardwareConfig::MaxVertexShaderBlendMatrices() const
@@ -312,6 +319,7 @@ bool MaterialSystemHardwareConfig::UseFastClipping() const
 
 int MaterialSystemHardwareConfig::GetDXSupportLevel() const
 {
+	LOG_FUNC();
 	return GetMaxDXSupportLevel();
 }
 
@@ -383,6 +391,7 @@ bool MaterialSystemHardwareConfig::PreferReducedFillrate() const
 
 int MaterialSystemHardwareConfig::GetMaxDXSupportLevel() const
 {
+	LOG_FUNC();
 	// TODO: What directx version is comparable with vulkan minimum requirements?
 	return 100;
 }
@@ -437,8 +446,8 @@ int MaterialSystemHardwareConfig::GetMaxVertexTextureDimension() const
 
 int MaterialSystemHardwareConfig::MaxTextureDepth() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return GetLimits().maxImageDimension3D;
 }
 
 HDRType_t MaterialSystemHardwareConfig::GetHDRType() const
@@ -455,8 +464,8 @@ HDRType_t MaterialSystemHardwareConfig::GetHardwareHDRType() const
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_2_b() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsStreamOffset() const
@@ -502,8 +511,8 @@ bool MaterialSystemHardwareConfig::UsesSRGBCorrectBlending() const
 
 bool MaterialSystemHardwareConfig::SupportsShaderModel_3_0() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::HasFastVertexTextures() const
@@ -551,4 +560,22 @@ bool MaterialSystemHardwareConfig::SupportsFetch4() const
 {
 	NOT_IMPLEMENTED_FUNC();
 	return false;
+}
+
+const char* MaterialSystemHardwareConfig::GetHWSpecificShaderDLLName() const
+{
+	// TODO: Do we want/need to take advantage of this?
+	//NOT_IMPLEMENTED_FUNC();
+	return nullptr;
+}
+
+vk::PhysicalDeviceLimits MaterialSystemHardwareConfig::GetLimits()
+{
+	const auto adapter = g_ShaderDeviceMgr.GetAdapter();
+	return adapter.getProperties().limits;
+}
+
+vk::PhysicalDeviceFeatures MaterialSystemHardwareConfig::GetFeatures()
+{
+	return g_ShaderDeviceMgr.GetAdapter().getFeatures();
 }

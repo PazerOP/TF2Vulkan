@@ -1,6 +1,5 @@
 #include "TF2Vulkan/Material.h"
 #include "TF2Vulkan/MaterialVar.h"
-#include "TF2Vulkan/MaterialSystem.h"
 #include <TF2Vulkan/Util/Placeholders.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 #include <TF2Vulkan/Util/std_charconv.h>
@@ -54,7 +53,7 @@ ITexture* MaterialVar::GetTextureValue()
 		return nullptr;
 	}
 
-	return GetMaterialSystem()->FindTexture(GetStringValue(), nullptr);
+	return materials->FindTexture(GetStringValue(), nullptr);
 }
 
 void MaterialVar::SetTextureValue(ITexture* texture)
@@ -79,7 +78,7 @@ IMaterial* MaterialVar::GetMaterialValue()
 		return nullptr;
 	}
 
-	return GetMaterialSystem()->FindMaterial(GetStringValue(), nullptr);
+	return materials->FindMaterial(GetStringValue(), nullptr);
 }
 
 void MaterialVar::SetMaterialValue(IMaterial* material)

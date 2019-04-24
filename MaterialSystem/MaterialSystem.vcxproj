@@ -88,23 +88,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\DLLBase.cpp" />
-    <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp" />
+    <ClCompile Include="src\MaterialSystemDLL.cpp" />
     <ClCompile Include="src\TF2Vulkan\Material.cpp" />
     <ClCompile Include="src\TF2Vulkan\MaterialSystem.cpp" />
-    <ClCompile Include="src\TF2Vulkan\MaterialSystemHardwareConfig.cpp" />
     <ClCompile Include="src\TF2Vulkan\MaterialVar.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Vulkan\VulkanCore.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\TF2Vulkan\DebugTextureInfo.h" />
     <ClInclude Include="src\TF2Vulkan\IMaterial2.h" />
     <ClInclude Include="src\TF2Vulkan\IMaterialVar2.h" />
     <ClInclude Include="src\TF2Vulkan\Material.h" />
-    <ClInclude Include="src\TF2Vulkan\MaterialSystem.h" />
-    <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h" />
     <ClInclude Include="src\TF2Vulkan\MaterialVar.h" />
-    <ClInclude Include="src\TF2Vulkan\Vulkan\VulkanCore.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

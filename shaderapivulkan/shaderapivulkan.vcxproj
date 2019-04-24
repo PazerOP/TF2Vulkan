@@ -40,11 +40,13 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
     <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
+    <Import Project="shaderapivulkan_Shared_Project.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
     <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
+    <Import Project="shaderapivulkan_Shared_Project.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -86,11 +88,30 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\stdafx.h" />
+    <ClInclude Include="src\TF2Vulkan\FormatConversion.h" />
+    <ClInclude Include="src\TF2Vulkan\Globals.h" />
     <ClInclude Include="src\TF2Vulkan\IShaderAPI2.h" />
+    <ClInclude Include="src\TF2Vulkan\IShaderDeviceMgrInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderAPI.h" />
+    <ClInclude Include="src\TF2Vulkan\ShaderDevice.h" />
+    <ClInclude Include="src\TF2Vulkan\VulkanTexture.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\ShaderAPIVulkanDLL.cpp" />
+    <ClCompile Include="src\stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp" />
+    <ClCompile Include="src\TF2Vulkan\FormatConversion.cpp" />
+    <ClCompile Include="src\TF2Vulkan\MaterialSystemHardwareConfig.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderDevice.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderDeviceMgr.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderShadow.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderUtil.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

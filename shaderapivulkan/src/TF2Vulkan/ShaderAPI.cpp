@@ -1,7 +1,14 @@
 #include "ShaderAPI.h"
 #include "IShaderAPI2.h"
+#include "FormatConversion.h"
+#include "VulkanTexture.h"
+
+#include <TF2Vulkan/Util/interface.h>
+#include <TF2Vulkan/Util/Placeholders.h>
 
 #include <cstdint>
+#include <mutex>
+#include <unordered_map>
 
 using namespace TF2Vulkan;
 
@@ -16,8 +23,6 @@ namespace
 		double CurrentTime() const override;
 
 		void GetLightmapDimensions(int* w, int* h) override;
-
-		MaterialFogMode_t GetSceneFogMode() override;
 
 		void MatrixMode(MaterialMatrixMode_t mode) override;
 		void PushMatrix() override;
@@ -62,8 +67,6 @@ namespace
 		int GetCurrentNumBones() const override;
 		int GetCurrentLightCombo() const override;
 
-		MaterialFogMode_t GetCurrentFogType() const override;
-
 		void SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected) override;
 		void DisableTextureTransform(TextureStage_t stage) override;
 		void SetBumpEnvMatrix(TextureStage_t stage, float m00, float m01, float m10, float m11) override;
@@ -75,8 +78,6 @@ namespace
 
 		int GetMaxLights() const override;
 		const LightDesc_t& GetLight(int lightNum) const override;
-
-		void SetPixelShaderFogParams(int reg) override;
 
 		void SetVertexShaderStateAmbientLightCube() override;
 		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override;
@@ -228,6 +229,9 @@ namespace
 		void SceneFogMode(MaterialFogMode_t mode) override;
 		void GetFogDistances(float* start, float* end, float* fogZ) override;
 		void FogMaxDensity(float maxDensity) override;
+		MaterialFogMode_t GetSceneFogMode() override;
+		void SetPixelShaderFogParams(int reg) override;
+		MaterialFogMode_t GetCurrentFogType() const override;
 
 		bool CanDownloadTextures() const override;
 
@@ -416,8 +420,1417 @@ namespace
 		void GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info) override;
 
 		void SetPSNearAndFarZ(int psRegister) override;
+
+	private:
+		std::mutex m_ShaderLock;
+
+		ShaderAPITextureHandle_t m_NextTextureHandle = 1;
+		std::unordered_map<ShaderAPITextureHandle_t, std::unique_ptr<VulkanTexture>> m_Textures;
 	};
 }
 
 static ShaderAPI s_ShaderAPI;
-IShaderAPI* TF2Vulkan::GetShaderAPI() { return &s_ShaderAPI; }
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderAPI, SHADERAPI_INTERFACE_VERSION, s_ShaderAPI);
+IShaderAPI* GetShaderAPI() { return &s_ShaderAPI; }
+
+void ShaderAPI::SetViewports(int count, const ShaderViewport_t* viewports)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetViewports(ShaderViewport_t* viewports, int max) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+double ShaderAPI::CurrentTime() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0;
+}
+
+void ShaderAPI::GetLightmapDimensions(int* w, int* h)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+MaterialFogMode_t ShaderAPI::GetSceneFogMode()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return MaterialFogMode_t();
+}
+
+void ShaderAPI::MatrixMode(MaterialMatrixMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PushMatrix()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PopMatrix()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::LoadMatrix(float* m)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::MultMatrix(float* m)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::MultMatrixLocal(float* m)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetMatrix(MaterialMatrixMode_t matrixMode, float* dst)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::LoadIdentity()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::LoadCameraToWorld()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Ortho(double left, double right, double bottom, double top, double zNear, double zFar)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PerspectiveX(double fovX, double aspect, double zNear, double zFar)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PerspectiveOffCenterX(double fovX, double aspect, double zNear, double zFar, double bottom, double top, double left, double right)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PickMatrix(int x, int y, int width, int height)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Rotate(float angle, float x, float y, float z)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Translate(float x, float y, float z)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Scale(float x, float y, float z)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ScaleXY(float x, float y)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color3f(float r, float g, float b)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color3fv(const float* rgb)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color4f(float r, float g, float b, float a)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color4fv(const float* rgba)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color3ub(uint8_t r, uint8_t g, uint8_t b)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color3ubv(const uint8_t* rgb)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Color4ubv(const uint8_t* rgba)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetVertexShaderConstant(int var, const float* vec, int numConst, bool force)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetPixelShaderConstant(int var, const float* vec, int numConst, bool force)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetDefaultState()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetWorldSpaceCameraPosition(float* pos) const
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetCurrentNumBones() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+int ShaderAPI::GetCurrentLightCombo() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+MaterialFogMode_t ShaderAPI::GetCurrentFogType() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return MaterialFogMode_t();
+}
+
+void ShaderAPI::SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::DisableTextureTransform(TextureStage_t stage)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetBumpEnvMatrix(TextureStage_t stage, float m00, float m01, float m10, float m11)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetVertexShaderIndex(int index)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetPixelShaderIndex(int index)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetBackBufferDimensions(int& width, int& height) const
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetMaxLights() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+const LightDesc_t& ShaderAPI::GetLight(int lightNum) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	// TODO: insert return statement here
+	static const LightDesc_t s_TempLightDesc{};
+	return s_TempLightDesc;
+}
+
+void ShaderAPI::SetPixelShaderFogParams(int reg)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetVertexShaderStateAmbientLightCube()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::CommitPixelShaderLighting(int pshReg)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+CMeshBuilder* ShaderAPI::GetVertexModifyBuilder()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return nullptr;
+}
+
+bool ShaderAPI::InFlashlightMode() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::InEditorMode() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+MorphFormat_t ShaderAPI::GetBoundMorphFormat()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return MorphFormat_t();
+}
+
+void ShaderAPI::ClearBuffersObeyStencil(bool clearColor, bool clearDepth)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearBuffersObeyStencilEx(bool clearColor, bool clearAlpha, bool clearDepth)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearColor3ub(uint8_t r, uint8_t g, uint8_t b)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindVertexShader(VertexShaderHandle_t vtxShader)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindGeometryShader(GeometryShaderHandle_t geoShader)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindPixelShader(PixelShaderHandle_t pixShader)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetRasterState(const ShaderRasterState_t& state)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::ChangeVideoMode(const ShaderDeviceInfo_t& info)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+StateSnapshot_t ShaderAPI::TakeSnapshot()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return StateSnapshot_t();
+}
+
+void ShaderAPI::TexMinFilter(ShaderTexFilterMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexMagFilter(ShaderTexFilterMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID, const Rect_t* srcRect, const Rect_t* dstRect)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t texHandle, const Rect_t* srcRect, const Rect_t* dstRect)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT, ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Bind(IMaterial* material)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::FlushBufferedPrimitives()
+{
+	// TODO
+	//NOT_IMPLEMENTED_FUNC();
+}
+
+IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount, bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return nullptr;
+}
+
+IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFormat, int hwSkinBoneCount, bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return nullptr;
+}
+
+bool ShaderAPI::IsTranslucent(StateSnapshot_t id) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::IsAlphaTested(StateSnapshot_t id) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::UsesVertexAndPixelShaders(StateSnapshot_t id) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::IsDepthWriteEnabled(StateSnapshot_t id) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+VertexFormat_t ShaderAPI::ComputeVertexFormat(int snapshotCount, StateSnapshot_t* ids) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return VertexFormat_t();
+}
+
+VertexFormat_t ShaderAPI::ComputeVertexUsage(int snapshotCount, StateSnapshot_t* ids) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return VertexFormat_t();
+}
+
+void ShaderAPI::BeginPass(StateSnapshot_t snapshot)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::RenderPass(int passID, int passCount)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BeginFrame()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EndFrame()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::FlushHardware()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ForceHardwareSync()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetNumBoneWeights(int boneCount)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetLight(int light, const LightDesc_t& desc)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetLightingOrigin(Vector lightingOrigin)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetAmbientLight(float r, float g, float b)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetAmbientLightCube(Vector4D cube[6])
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ShadeMode(ShaderShadeMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::CullMode(MaterialCullMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ForceDepthFuncEquals(bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::OverrideDepthEnable(bool enable, bool depthEnable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetHeightClipZ(float z)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetHeightClipMode(MaterialHeightClipMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetClipPlane(int index, const float* plane)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableClipPlane(int index, bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetSkinningMatrices()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+ImageFormat ShaderAPI::GetNearestSupportedFormat(ImageFormat fmt, bool filteringRequired) const
+{
+	LOG_FUNC();
+	return PromoteToHardware(fmt, FormatUsage::ImmutableTexture, filteringRequired);
+}
+
+ImageFormat ShaderAPI::GetNearestRenderTargetFormat(ImageFormat fmt) const
+{
+	LOG_FUNC();
+	return PromoteToHardware(fmt, FormatUsage::RenderTarget, true);
+}
+
+bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName)
+{
+	if (width <= 0)
+	{
+		Warning("[TF2Vulkan] %s(): Invalid width %i\n", __FUNCTION__, width);
+		assert(false);
+		return INVALID_SHADERAPI_TEXTURE_HANDLE;
+	}
+	if (height <= 0)
+	{
+		Warning("[TF2Vulkan] %s(): Invalid height %i\n", __FUNCTION__, height);
+		assert(false);
+		return INVALID_SHADERAPI_TEXTURE_HANDLE;
+	}
+	if (depth <= 0)
+	{
+		Warning("[TF2Vulkan] %s(): Invalid depth %i\n", __FUNCTION__, depth);
+		assert(false);
+		return INVALID_SHADERAPI_TEXTURE_HANDLE;
+	}
+	if (mipLevelCount <= 0)
+	{
+		Warning("[TF2Vulkan] %s(): Invalid mipLevelCount %i\n", __FUNCTION__, depth);
+		assert(false);
+		return INVALID_SHADERAPI_TEXTURE_HANDLE;
+	}
+
+	vk::ImageCreateInfo createInfo;
+
+	if (height == 1 && depth == 1)
+		createInfo.imageType = vk::ImageType::e1D;
+	else if (depth == 1)
+		createInfo.imageType = vk::ImageType::e2D;
+	else
+		createInfo.imageType = vk::ImageType::e3D;
+
+	createInfo.extent.width = uint32_t(width);
+	createInfo.extent.height = uint32_t(height);
+	createInfo.extent.depth = uint32_t(depth);
+	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
+	createInfo.mipLevels = uint32_t(mipLevelCount);
+	createInfo.format = ConvertImageFormat(dstImgFormat);
+
+	
+
+	NOT_IMPLEMENTED_FUNC();
+	return ShaderAPITextureHandle_t();
+}
+
+void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count, int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName)
+{
+	for (int i = 0; i < count; i++)
+	{
+		handles[i] = CreateTexture(width, height, depth, dstImgFormat,
+			mipLevelCount, copyCount, flags, dbgName, texGroupName);
+	}
+}
+
+void ShaderAPI::DeleteTexture(ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::IsTexture(ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::IsTextureResident(ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+ShaderAPITextureHandle_t ShaderAPI::CreateDepthTexture(ImageFormat rtFormat, int width, int height, const char* dbgName, bool texture)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return ShaderAPITextureHandle_t();
+}
+
+void ShaderAPI::ModifyTexture(ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat, int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset, int zOffset, int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled, void* imgData)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexImageFromVTF(IVTFTexture* vtf, int ivtfFrame)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::TexLock(int level, int cubeFaceID, int xOffset, int yOffset, int width, int height, CPixelWriter& writer)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::TexUnlock()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexSetPriority(int priority)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetRenderTarget(ShaderAPITextureHandle_t colTexHandle, ShaderAPITextureHandle_t depthTexHandle)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ReadPixels(int x, int y, int width, int height, unsigned char* data, ImageFormat dstFormat)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ReadPixels(Rect_t* srcRect, Rect_t* dstRect, unsigned char* data, ImageFormat dstFormat, int dstStride)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::SelectionMode(bool selectionMode)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+void ShaderAPI::SelectionBuffer(unsigned int* buf, int size)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearSelectionNames()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::LoadSelectionName(int name)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PushSelectionName(int name)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PopSelectionName()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearSnapshots()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::FogStart(float start)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::FogEnd(float end)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetFogZ(float fogZ)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetSceneFogColor(unsigned char* rgb)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SceneFogMode(MaterialFogMode_t mode)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetFogDistances(float* start, float* end, float* fogZ)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::FogMaxDensity(float maxDensity)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::CanDownloadTextures() const
+{
+	LOG_FUNC();
+	return true;
+}
+
+void ShaderAPI::ResetRenderState(bool fullReset)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetCurrentDynamicVBSize()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+void ShaderAPI::DestroyVertexBuffers(bool exitingLevel)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EvictManagedResources()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetAnisotropicLevel(int anisoLevel)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SyncToken(const char* token)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStandardVertexShaderConstants(float overbright)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+ShaderAPIOcclusionQuery_t ShaderAPI::CreateOcclusionQueryObject()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return ShaderAPIOcclusionQuery_t();
+}
+
+void ShaderAPI::DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+const FlashlightState_t& ShaderAPI::GetFlashlightState(VMatrix& worldToTexture) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	// TODO: insert return statement here
+	static const FlashlightState_t s_TempFlashlightState{};
+	return s_TempFlashlightState;
+}
+
+const FlashlightState_t& ShaderAPI::GetFlashlightStateEx(VMatrix& worldToTexture, ITexture** flashlightDepthTex) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	// TODO: insert return statement here
+	static const FlashlightState_t s_TempFlashlightState{};
+	return s_TempFlashlightState;
+}
+
+void ShaderAPI::SetFlashlightState(const FlashlightState_t& state, const VMatrix& worldToTexture)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetFlashlightStateEx(const FlashlightState_t& state, const VMatrix& worldToTexture, ITexture* flashlightDepthTex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearVertexAndPixelShaderRefCounts()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PurgeUnusedVertexAndPixelShaders()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::DXSupportLevelChanged()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableUserClipTransformOverride(bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::UserClipTransform(const VMatrix& worldToView)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+MorphFormat_t ShaderAPI::ComputeMorphFormat(int snapshots, StateSnapshot_t* ids) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return MorphFormat_t();
+}
+
+void ShaderAPI::HandleDeviceLost()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableLinearColorSpaceFrameBuffer(bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetFloatRenderingParameter(RenderParamFloat_t param, float value)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetIntRenderingParameter(RenderParamInt_t param, int value)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetVectorRenderingParameter(RenderParamVector_t param, const Vector& value)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+float ShaderAPI::GetFloatRenderingParameter(RenderParamFloat_t param) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0f;
+}
+
+int ShaderAPI::GetIntRenderingParameter(RenderParamInt_t param) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+Vector ShaderAPI::GetVectorRenderingParameter(RenderParamVector_t param) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return Vector();
+}
+
+void ShaderAPI::SetFastClipPlane(const float* plane)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableFastClip(bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetMaxToRender(IMesh* mesh, bool maxUntilFlush, int* maxVerts, int* maxIndices)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetMaxVerticesToRender(IMaterial* material)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+int ShaderAPI::GetMaxIndicesToRender()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+void ShaderAPI::SetStencilEnable(bool enabled)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilFailOperation(StencilOperation_t op)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilZFailOperation(StencilOperation_t op)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilPassOperation(StencilOperation_t op)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilCompareFunction(StencilComparisonFunction_t fn)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilReferenceValue(int ref)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilTestMask(uint32 mask)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStencilWriteMask(uint32 mask)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::DisableAllLocalLights()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+IMesh* ShaderAPI::GetFlexMesh()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return nullptr;
+}
+
+bool ShaderAPI::SupportsMSAAMode(int msaaMode)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::OwnGPUResources(bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::BeginPIXEvent(unsigned long color, const char* szName)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EndPIXEvent()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetPIXMarker(unsigned long color, const char* szName)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableAlphaToCoverage()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::DisableAlphaToCoverage()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::SupportsShadowDepthTextures()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::SetDisallowAccess(bool disallowed)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableShaderShaderMutex(bool enabled)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ShaderLock()
+{
+	LOG_FUNC();
+	m_ShaderLock.lock();
+}
+
+void ShaderAPI::ShaderUnlock()
+{
+	LOG_FUNC();
+	m_ShaderLock.unlock();
+}
+
+ImageFormat ShaderAPI::GetShadowDepthTextureFormat()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return ImageFormat();
+}
+
+bool ShaderAPI::SupportsFetch4()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::SetShadowDepthBiasFactors(float slopeScaleDepthBias, float shadowDepthBias)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindVertexBuffer(int streamID, IVertexBuffer* vtxBuf, int byteOffset, int firstVertex, int vtxCount, VertexFormat_t fmt, int repetitions)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindIndexBuffer(IIndexBuffer* indexBuf, int offsetInBytes)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Draw(MaterialPrimitiveType_t type, int firstIndex, int indexCount)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PerformFullScreenStencilOperation()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetScissorRect(const int left, const int top, const int right, const int bottom, const bool enableScissor)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::SupportsCSAAMode(int numSamples, int qualityLevel)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::InvalidateDelayedShaderConstants()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+float ShaderAPI::GammaToLinear_HardwareSpecific(float gamma) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0f;
+}
+
+float ShaderAPI::LinearToGamma_HardwareSpecific(float linear) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0f;
+}
+
+void ShaderAPI::SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgbWriteEnabledTex, ShaderAPITextureHandle_t identityTex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+ImageFormat ShaderAPI::GetNullTextureFormat()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return ImageFormat();
+}
+
+void ShaderAPI::BindVertexTexture(VertexTextureSampler_t sampler, ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::EnableHWMorphing(bool enabled)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetFlexWeights(int firstWeight, int count, const MorphWeight_t* weights)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::AcquireThreadOwnership()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ReleaseThreadOwnership()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::SupportsNormalMapCompression() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::EnableBuffer2FramesAhead(bool enable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PrintfVA(char* fmt, va_list vargs)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::Printf(PRINTF_FORMAT_STRING const char* fmt, ...)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+float ShaderAPI::Knob(char* knobName, float* setValue)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0f;
+}
+
+void ShaderAPI::OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::LockRect(void** outBits, int* outPitch, ShaderAPITextureHandle_t tex, int mipLevel, int x, int y, int w, int h, bool write, bool read)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindStandardTexture(Sampler_t sampler, StandardTextureId_t id)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+ITexture* ShaderAPI::GetRenderTargetEx(int renderTargetID)
+{
+	NOT_IMPLEMENTED_FUNC();
+	return nullptr;
+}
+
+void ShaderAPI::SetToneMappingScaleLinear(const Vector& scale)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+const Vector& ShaderAPI::GetToneMappingScaleLinear() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	// TODO: insert return statement here
+	return vec3_origin;
+}
+
+float ShaderAPI::GetLightMapScaleFactor() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0f;
+}
+
+void ShaderAPI::LoadBoneMatrix(int boneIndex, const float* m)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+float ShaderAPI::GetAmbientLightCubeLuminance()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0.0f;
+}
+
+void ShaderAPI::GetDX9LightState(LightState_t* state) const
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetPixelFogCombo()
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+bool ShaderAPI::IsHWMorphingEnabled() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::ShouldWriteDepthToDestAlpha() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+void ShaderAPI::PushDeformation(const DeformationBase_t* deformation)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::PopDeformation()
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+int ShaderAPI::GetNumActiveDeformations() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+int ShaderAPI::GetPackedDeformationInformation(int maxOfUnderstoodDeformations, float* constantValuesOut, int bufSize, int maxDeformations, int* numDefsOut) const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return 0;
+}
+
+void ShaderAPI::MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::SetPSNearAndFarZ(int psRegister)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
