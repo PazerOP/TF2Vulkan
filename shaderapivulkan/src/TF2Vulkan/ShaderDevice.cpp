@@ -2,7 +2,6 @@
 #include "ShaderDeviceMgr.h"
 
 #include <TF2Vulkan/Util/interface.h>
-#include <TF2Vulkan/Util/Placeholders.h>
 
 #pragma push_macro("min")
 #pragma push_macro("max")
@@ -16,6 +15,15 @@ using namespace TF2Vulkan;
 
 namespace
 {
+	struct VulkanQueue : public IVulkanQueue
+	{
+		const vk::Queue& GetQueue() const override { return m_Queue; }
+		const vk::CommandPool& GetCmdPool() const override { return m_CommandPool.get(); }
+
+		vk::Queue m_Queue;
+		vk::UniqueCommandPool m_CommandPool;
+	};
+
 	class ShaderDevice final : public IShaderDeviceInternal
 	{
 	public:
@@ -75,14 +83,27 @@ namespace
 
 		char* GetDisplayDeviceName() override;
 
-		void SetVulkanDevice(vk::UniqueDevice&& device) override;
-		vk::Device& GetVulkanDevice() override;
+		void VulkanInit(VulkanInitData&& device) override;
+		const vk::Device& GetVulkanDevice() override;
 
 		vma::UniqueAllocator& GetVulkanAllocator() override;
 
+		const IVulkanQueue& GetGraphicsQueue() override;
+		Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() override;
+
 	private:
-		vk::UniqueDevice m_Device;
-		vma::UniqueAllocator m_Allocator;
+		// In a struct so we can easily reset all the vulkan-related stuff on shutdown
+		struct VulkanData : VulkanInitData
+		{
+			VulkanData() = default;
+			VulkanData(VulkanInitData&& base) : VulkanInitData(std::move(base)) {}
+
+			vma::UniqueAllocator m_Allocator;
+
+			VulkanQueue m_GraphicsQueue;
+			std::optional<VulkanQueue> m_TransferQueue;
+
+		} m_Data;
 	};
 }
 
@@ -113,8 +134,8 @@ void ShaderDevice::GetBackBufferDimensions(int& width, int& height) const
 
 int ShaderDevice::GetCurrentAdapter() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return Util::SafeConvert<int>(m_Data.m_DeviceIndex);
 }
 
 bool ShaderDevice::IsUsingGraphics() const
@@ -284,19 +305,65 @@ static vma::UniqueAllocator CreateAllocator(vk::Device& device)
 	return vma::createAllocatorUnique(info);
 }
 
-void ShaderDevice::SetVulkanDevice(vk::UniqueDevice&& device)
+static vk::UniqueCommandPool CreateCommandPool(const vk::Device& device, uint32_t queueFamily)
 {
-	m_Device = std::move(device);
-	m_Allocator = CreateAllocator(m_Device.get());
+	vk::CommandPoolCreateInfo createInfo({}, queueFamily);
+
+	auto result = device.createCommandPoolUnique(createInfo);
+	if (!result)
+		Error(TF2VULKAN_PREFIX "Failed to create command pool for queue %u\n", queueFamily);
+
+	return result;
 }
 
-vk::Device& ShaderDevice::GetVulkanDevice()
+static VulkanQueue CreateQueueWrapper(const vk::Device& device, uint32_t queueFamily)
 {
-	return m_Device.get();
+	VulkanQueue retVal;
+
+	retVal.m_Queue = device.getQueue(queueFamily, 0);
+	if (!retVal.m_Queue)
+		Error(TF2VULKAN_PREFIX "Failed to retrieve queue from index %u\n", queueFamily);
+
+	retVal.m_CommandPool = CreateCommandPool(device, queueFamily);
+
+	return retVal;
+}
+
+void ShaderDevice::VulkanInit(VulkanInitData&& inData)
+{
+	m_Data = std::move(inData);
+
+	auto& device = m_Data.m_Device;
+	m_Data.m_Allocator = CreateAllocator(device.get());
+
+	m_Data.m_GraphicsQueue = CreateQueueWrapper(device.get(), m_Data.m_GraphicsQueueIndex);
+
+	if (m_Data.m_TransferQueueIndex)
+		m_Data.m_TransferQueue = CreateQueueWrapper(device.get(), m_Data.m_TransferQueueIndex.value());
+}
+
+const vk::Device& ShaderDevice::GetVulkanDevice()
+{
+	assert(m_Data.m_Device);
+	return m_Data.m_Device.get();
 }
 
 vma::UniqueAllocator& ShaderDevice::GetVulkanAllocator()
 {
-	assert(m_Allocator);
-	return m_Allocator;
+	assert(m_Data.m_Allocator);
+	return m_Data.m_Allocator;
+}
+
+const IVulkanQueue& ShaderDevice::GetGraphicsQueue()
+{
+	assert(m_Data.m_GraphicsQueue.m_Queue);
+	assert(m_Data.m_GraphicsQueue.m_CommandPool);
+	return m_Data.m_GraphicsQueue;
+}
+
+Util::CheckedPtr<const IVulkanQueue> ShaderDevice::GetTransferQueue()
+{
+	assert(m_Data.m_Device);
+	auto& queue = m_Data.m_TransferQueue;
+	return queue ? &*queue : nullptr;
 }

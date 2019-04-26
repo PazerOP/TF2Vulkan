@@ -11,3 +11,8 @@ void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const
 	assert(false);
 	Error("[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n", condition, fnSig, file, line);
 }
+
+void Util::FunctionNotImplemented(const char* fnSig, const char* file, int line)
+{
+	Warning("[TF2Vulkan] %s in %s:%i not implemented\n", fnSig, file, line);
+}

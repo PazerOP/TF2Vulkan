@@ -1,5 +1,4 @@
 #include <TF2Vulkan/Util/interface.h>
-#include <TF2Vulkan/Util/Placeholders.h>
 
 #include <materialsystem/idebugtextureinfo.h>
 

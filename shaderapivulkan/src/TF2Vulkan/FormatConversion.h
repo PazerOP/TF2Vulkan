@@ -11,6 +11,8 @@ namespace TF2Vulkan
 	{
 		ImmutableTexture,
 		RenderTarget,
+
+		COUNT,
 	};
 
 	bool HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering);

@@ -1,11 +1,16 @@
 #include "FormatConversion.h"
 #include "ShaderAPI.h"
 #include "ShaderDevice.h"
+#include "ShadowStateManager.h"
 #include "TF2Vulkan/TextureData.h"
+#include "VulkanMesh.h"
 
+#include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/interface.h>
-#include <TF2Vulkan/Util/Placeholders.h>
 #include <TF2Vulkan/Util/ImageManip.h>
+#include <TF2Vulkan/Util/std_utility.h>
+
+#include <materialsystem/imesh.h>
 
 #include "vk_mem_alloc.h"
 
@@ -15,6 +20,47 @@
 #include <unordered_map>
 
 using namespace TF2Vulkan;
+
+namespace
+{
+	union SamplerSettingsDynamic
+	{
+		constexpr SamplerSettingsDynamic() :
+			m_MinFilter(SHADER_TEXFILTERMODE_LINEAR_MIPMAP_LINEAR),
+			m_MagFilter(SHADER_TEXFILTERMODE_LINEAR_MIPMAP_LINEAR),
+
+			m_WrapS(SHADER_TEXWRAPMODE_REPEAT),
+			m_WrapT(SHADER_TEXWRAPMODE_REPEAT),
+			m_WrapU(SHADER_TEXWRAPMODE_REPEAT)
+		{
+		}
+
+		constexpr bool operator==(const SamplerSettingsDynamic& s) const
+		{
+			return m_BackingValue == s.m_BackingValue;
+		}
+
+		struct
+		{
+			ShaderTexFilterMode_t m_MinFilter : 3;
+			ShaderTexFilterMode_t m_MagFilter : 3;
+
+			ShaderTexWrapMode_t m_WrapS : 2;
+			ShaderTexWrapMode_t m_WrapT : 2;
+			ShaderTexWrapMode_t m_WrapU : 2;
+		};
+		int m_BackingValue;
+	};
+	static_assert(sizeof(SamplerSettingsDynamic::m_BackingValue) == sizeof(SamplerSettingsDynamic));
+}
+
+template<> struct ::std::hash<SamplerSettingsDynamic>
+{
+	size_t operator()(const SamplerSettingsDynamic& s) const
+	{
+		return Util::hash_value(s.m_BackingValue);
+	}
+};
 
 namespace
 {
@@ -111,9 +157,9 @@ namespace
 
 		StateSnapshot_t TakeSnapshot() override;
 
-		void TexMinFilter(ShaderTexFilterMode_t mode) override;
-		void TexMagFilter(ShaderTexFilterMode_t mode) override;
-		void TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode) override;
+		void TexMinFilter(ShaderAPITextureHandle_t tex, ShaderTexFilterMode_t mode) override;
+		void TexMagFilter(ShaderAPITextureHandle_t tex, ShaderTexFilterMode_t mode) override;
+		void TexWrap(ShaderAPITextureHandle_t tex, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode) override;
 
 		void CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle) override;
 		void CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID,
@@ -188,16 +234,7 @@ namespace
 		ShaderAPITextureHandle_t CreateDepthTexture(
 			ImageFormat rtFormat, int width, int height, const char* dbgName, bool texture) override;
 
-		void ModifyTexture(ShaderAPITextureHandle_t tex) override;
-
-		void TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat, int zOffset,
-			int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData) override;
-
-		void TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset, int zOffset,
-			int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled,
-			void* imgData) override;
-
-		void TexImageFromVTF(IVTFTexture* vtf, int ivtfFrame) override;
+		void TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int ivtfFrame) override;
 
 		bool UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data,
 			size_t count) override;
@@ -429,20 +466,40 @@ namespace
 
 		void SetPSNearAndFarZ(int psRegister) override;
 
-	private:
-		std::mutex m_ShaderLock;
+		void TexLodClamp(int something) override;
+		void TexLodBias(float bias) override;
 
-		ShaderAPITextureHandle_t m_ModifyTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
+		void CopyTextureToTexture(int something1, int something2) override { NOT_IMPLEMENTED_FUNC(); }
+
+	private:
+		std::recursive_mutex m_ShaderLock;
 
 		std::atomic<ShaderAPITextureHandle_t> m_NextTextureHandle = 1;
+
+		struct ShaderSampler
+		{
+		};
+		std::unordered_map<SamplerSettingsDynamic, ShaderSampler> m_ShaderSamplers;
+
+		struct DynamicState
+		{
+			IMaterial* m_BoundMaterial = nullptr;
+			int m_BoneCount = 0;
+
+		} m_DynamicState;
+		bool m_DynamicStateDirty = true;
 
 		struct ShaderTexture
 		{
 			std::string m_DebugName;
 			vk::ImageCreateInfo m_CreateInfo;
 			vma::AllocatedImage m_Image;
+
+			SamplerSettingsDynamic m_SamplerSettings;
 		};
 		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
+
+		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
 	};
 }
 
@@ -635,7 +692,9 @@ void ShaderAPI::SetIntegerPixelShaderConstant(int var, const int* vec, int numIn
 
 void ShaderAPI::SetDefaultState()
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_DynamicState = {};
+	m_DynamicStateDirty = true;
 }
 
 void ShaderAPI::GetWorldSpaceCameraPosition(float* pos) const
@@ -645,8 +704,8 @@ void ShaderAPI::GetWorldSpaceCameraPosition(float* pos) const
 
 int ShaderAPI::GetCurrentNumBones() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return m_DynamicState.m_BoneCount;
 }
 
 int ShaderAPI::GetCurrentLightCombo() const
@@ -807,23 +866,47 @@ void ShaderAPI::ChangeVideoMode(const ShaderDeviceInfo_t& info)
 
 StateSnapshot_t ShaderAPI::TakeSnapshot()
 {
-	NOT_IMPLEMENTED_FUNC();
-	return StateSnapshot_t();
+	LOG_FUNC();
+
+	auto snapshot = g_ShadowStateManager.TakeSnapshot();
+	return Util::SafeConvert<StateSnapshot_t>(snapshot);
 }
 
-void ShaderAPI::TexMinFilter(ShaderTexFilterMode_t mode)
+void ShaderAPI::TexMinFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	auto& tex = m_Textures.at(texHandle);
+	tex.m_SamplerSettings.m_MinFilter = mode;
 }
 
-void ShaderAPI::TexMagFilter(ShaderTexFilterMode_t mode)
+void ShaderAPI::TexMagFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	auto& tex = m_Textures.at(texHandle);
+	tex.m_SamplerSettings.m_MagFilter = mode;
 }
 
-void ShaderAPI::TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
+void ShaderAPI::TexWrap(ShaderAPITextureHandle_t texHandle, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	auto& tex = m_Textures.at(texHandle);
+
+	auto& ss = tex.m_SamplerSettings;
+	switch (coord)
+	{
+	case SHADER_TEXCOORD_S:
+		ss.m_WrapS = wrapMode;
+		break;
+	case SHADER_TEXCOORD_T:
+		ss.m_WrapT = wrapMode;
+		break;
+	case SHADER_TEXCOORD_U:
+		ss.m_WrapU = wrapMode;
+		break;
+
+	default:
+		Warning(TF2VULKAN_PREFIX "Invalid wrapMode %i\n", int(wrapMode));
+	}
 }
 
 void ShaderAPI::CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle)
@@ -848,61 +931,137 @@ void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
 
 void ShaderAPI::Bind(IMaterial* material)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	Util::SetDirtyVar(m_DynamicState.m_BoundMaterial, material, m_DynamicStateDirty);
 }
 
 void ShaderAPI::FlushBufferedPrimitives()
 {
+	LOG_FUNC();
 	// TODO
 	//NOT_IMPLEMENTED_FUNC();
 }
 
-IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount, bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
+IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount,
+	bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	LOG_FUNC();
+	return GetDynamicMeshEx(material, material->GetVertexFormat(), hwSkinBoneCount, buffered, vertexOverride, indexOverride);
+	const VertexFormat fmt(material->GetVertexFormat());
 }
 
-IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFormat, int hwSkinBoneCount, bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
+IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFormat,
+	int hwSkinBoneCount, bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	LOG_FUNC();
+
+	const VertexFormat fmt(vertexFormat);
+
+	if (auto found = m_DynamicMeshes.find(fmt); found != m_DynamicMeshes.end())
+		return &found->second;
+
+	return &m_DynamicMeshes.emplace(fmt, VulkanMesh(fmt)).first->second;
 }
 
 bool ShaderAPI::IsTranslucent(StateSnapshot_t id) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return g_ShadowStateManager.IsTranslucent(id);
 }
 
 bool ShaderAPI::IsAlphaTested(StateSnapshot_t id) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return g_ShadowStateManager.IsAlphaTested(id);
 }
 
 bool ShaderAPI::UsesVertexAndPixelShaders(StateSnapshot_t id) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return g_ShadowStateManager.UsesVertexAndPixelShaders(id);
 }
 
 bool ShaderAPI::IsDepthWriteEnabled(StateSnapshot_t id) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return g_ShadowStateManager.IsDepthWriteEnabled(id);
 }
 
 VertexFormat_t ShaderAPI::ComputeVertexFormat(int snapshotCount, StateSnapshot_t* ids) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return VertexFormat_t();
+	LOG_FUNC();
+
+	assert(snapshotCount > 0);
+	assert(ids);
+	if (snapshotCount <= 0 || !ids)
+		return VERTEX_FORMAT_UNKNOWN;
+
+	const auto& vtxFmt0 = g_ShadowStateManager.GetState(ids[0]).m_VertexShader.m_VertexFormat;
+	VertexCompressionType_t compression = CompressionType(vtxFmt0);
+	uint_fast8_t userDataSize = UserDataSize(vtxFmt0);
+	uint_fast8_t boneCount = NumBoneWeights(vtxFmt0);
+	VertexFormatFlags flags = VertexFormatFlags(VertexFlags(vtxFmt0));
+	uint_fast8_t texCoordSize[VERTEX_MAX_TEXTURE_COORDINATES];
+	for (size_t i = 0; i < std::size(texCoordSize); i++)
+		texCoordSize[i] = TexCoordSize(i, vtxFmt0);
+
+	for (int i = 1; i < snapshotCount; i++)
+	{
+		const auto& fmt = g_ShadowStateManager.GetState(*ids).m_VertexShader.m_VertexFormat;
+
+		if (auto thisComp = CompressionType(fmt); thisComp != compression)
+		{
+			Warning(TF2VULKAN_PREFIX "Encountered a material with two passes that specify different vertex compression types!\n");
+			assert(false);
+			compression = VERTEX_COMPRESSION_NONE;
+		}
+
+		if (auto thisBoneCount = NumBoneWeights(fmt); thisBoneCount != boneCount)
+		{
+			Warning(TF2VULKAN_PREFIX "Encountered a material with two passes that use different numbers of bones!\n");
+			assert(false);
+		}
+
+		if (auto thisUserDataSize = UserDataSize(fmt); thisUserDataSize != userDataSize)
+		{
+			Warning(TF2VULKAN_PREFIX "Encountered a material with two passes that use different user data sizes!\n");
+			assert(false);
+		}
+
+		for (size_t t = 0; t < std::size(texCoordSize); t++)
+		{
+			auto& oldTCD = texCoordSize[t];
+			if (auto thisTexCoordDim = TexCoordSize(t, fmt); thisTexCoordDim != oldTCD)
+			{
+				if (oldTCD != 0)
+					Warning(TF2VULKAN_PREFIX "Encountered a material with two passes that use different texture coord sizes!\n");
+				//assert(false);
+
+				if (thisTexCoordDim > oldTCD)
+					oldTCD = thisTexCoordDim;
+			}
+		}
+	}
+
+	// Untested;
+	assert(boneCount == 0);
+	assert(userDataSize == 0);
+
+	VertexFormat_t retVal =
+		VertexFormat_t(flags) |
+		VERTEX_BONEWEIGHT(boneCount) |
+		VERTEX_USERDATA_SIZE(userDataSize);
+
+	for (size_t i = 0; i < std::size(texCoordSize); i++)
+		retVal |= VERTEX_TEXCOORD_SIZE(i, texCoordSize[i]);
+
+	return retVal;
 }
 
 VertexFormat_t ShaderAPI::ComputeVertexUsage(int snapshotCount, StateSnapshot_t* ids) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return VertexFormat_t();
+	LOG_FUNC();
+	return ComputeVertexFormat(snapshotCount, ids);
 }
 
 void ShaderAPI::BeginPass(StateSnapshot_t snapshot)
@@ -1082,13 +1241,22 @@ void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count, int
 
 void ShaderAPI::DeleteTexture(ShaderAPITextureHandle_t tex)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+
+#ifdef _DEBUG
+	[[maybe_unused]] auto realTex = m_Textures.find(tex);
+#endif
+
+	m_Textures.erase(tex);
 }
 
 bool ShaderAPI::IsTexture(ShaderAPITextureHandle_t tex)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+
+	bool found = m_Textures.find(tex) != m_Textures.end();
+	assert(found);
+	return found;
 }
 
 bool ShaderAPI::IsTextureResident(ShaderAPITextureHandle_t tex)
@@ -1103,43 +1271,10 @@ ShaderAPITextureHandle_t ShaderAPI::CreateDepthTexture(ImageFormat rtFormat, int
 	return ShaderAPITextureHandle_t();
 }
 
-void ShaderAPI::ModifyTexture(ShaderAPITextureHandle_t tex)
+void ShaderAPI::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int frameIndex)
 {
 	LOG_FUNC();
-	m_ModifyTexture = tex;
-}
 
-void ShaderAPI::TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat, int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData)
-{
-	if (dstFormat != srcFormat)
-		NOT_IMPLEMENTED_FUNC();
-
-	return TexSubImage2D(level, cubeFaceID, 0, 0, zOffset, width, height, srcFormat, -1, srcIsTiled, imgData);
-}
-
-void ShaderAPI::TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset, int zOffset, int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled, void* imgData)
-{
-	assert(!srcIsTiled); // Not valid on PC
-
-	TextureData data;
-	data.m_CubeFace = CubeMapFaceIndex_t(cubeFaceID);
-	data.m_Format = srcFormat;
-	Util::SafeConvert(level, data.m_MipLevel);
-	Util::SafeConvert(xOffset, data.m_XOffset);
-	Util::SafeConvert(yOffset, data.m_YOffset);
-	Util::SafeConvert(zOffset, data.m_ZOffset);
-	Util::SafeConvert(width, data.m_Width);
-	Util::SafeConvert(height, data.m_Height);
-	Util::SafeConvert(srcStride, data.m_Stride);
-	data.m_Data = imgData;
-
-	data.Validate();
-
-	UpdateTexture(m_ModifyTexture, &data, 1);
-}
-
-void ShaderAPI::TexImageFromVTF(IVTFTexture* vtf, int frameIndex)
-{
 	const auto mipCount = vtf->MipCount();
 	ENSURE(mipCount > 0);
 
@@ -1177,18 +1312,147 @@ void ShaderAPI::TexImageFromVTF(IVTFTexture* vtf, int frameIndex)
 		}
 	}
 
-	UpdateTexture(m_ModifyTexture, texDatas, arraySize);
+	UpdateTexture(texHandle, texDatas, arraySize);
+}
+
+static void TransitionImageLayout(const vk::Image& image, const vk::Format& format,
+	const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout,
+	vk::CommandBuffer cmdBuf, uint32_t mipLevel)
+{
+	vk::ImageMemoryBarrier barrier;
+	barrier.oldLayout = oldLayout;
+	barrier.newLayout = newLayout;
+	barrier.image = image;
+
+	auto& srr = barrier.subresourceRange;
+	srr.aspectMask = vk::ImageAspectFlagBits::eColor;
+	srr.baseMipLevel = mipLevel;
+	srr.levelCount = 1;
+	srr.baseArrayLayer = 0;
+	srr.layerCount = 1;
+
+	vk::PipelineStageFlags srcStageMask;
+	vk::PipelineStageFlags dstStageMask;
+
+	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	{
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+		srcStageMask = vk::PipelineStageFlagBits::eTopOfPipe;
+		dstStageMask = vk::PipelineStageFlagBits::eTransfer;
+	}
+	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+		srcStageMask = vk::PipelineStageFlagBits::eTransfer;
+		dstStageMask = vk::PipelineStageFlagBits::eFragmentShader;
+	}
+	else
+	{
+		throw VulkanException("Unsupported layout transition", EXCEPTION_DATA());
+	}
+
+	cmdBuf.pipelineBarrier(
+		srcStageMask,
+		dstStageMask,
+		vk::DependencyFlags{}, {}, {}, barrier);
+}
+
+static void CopyBufferToImage(const vk::Buffer& buf, const vk::Image& img, uint32_t width, uint32_t height,
+	vk::CommandBuffer cmdBuf)
+{
+	vk::BufferImageCopy copy;
+
+	copy.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+	copy.imageSubresource.layerCount = 1;
+	copy.imageExtent = { width, height, 1 };
+
+	cmdBuf.copyBufferToImage(buf, img, vk::ImageLayout::eTransferDstOptimal, copy);
 }
 
 bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data, size_t count)
 {
+	LOG_FUNC();
 	auto& tex = m_Textures.at(texHandle);
 
 	auto& device = g_ShaderDevice.GetVulkanDevice();
-	const auto memReqs = device.getImageMemoryRequirements(tex.m_Image.m_Image.get());
+	auto& alloc = g_ShaderDevice.GetVulkanAllocator();
+	auto& queue = g_ShaderDevice.GetGraphicsQueue();
+	//const auto memReqs = device.getImageMemoryRequirements(tex.m_Image.m_Image.get());
 
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	// Prepare the staging buffer
+	vma::AllocatedBuffer stagingBuf;
+	{
+		size_t totalSize = 0;
+		for (size_t i = 0; i < count; i++)
+		{
+			totalSize += data[i].m_DataLength;
+		}
+
+		// Allocate staging buffer
+		{
+			vk::BufferCreateInfo stagingBufCreateInfo;
+			stagingBufCreateInfo.usage = vk::BufferUsageFlagBits::eTransferSrc;
+			stagingBufCreateInfo.size = totalSize;
+
+			vma::AllocationCreateInfo transferBufAllocInfo;
+			transferBufAllocInfo.requiredFlags = VkMemoryPropertyFlags(
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+			stagingBuf = alloc.createBufferUnique(stagingBufCreateInfo, transferBufAllocInfo);
+		}
+
+		// Copy the data into the staging buffer
+		size_t currentOffset = 0;
+		for (size_t i = 0; i < count; i++)
+		{
+			stagingBuf.m_Allocation.map().Write(data[i].m_Data, data[i].m_DataLength, currentOffset);
+			currentOffset += data[i].m_DataLength;
+		}
+	}
+
+	// Copy staging buffer into destination texture
+	{
+		vk::CommandBufferAllocateInfo cmdAllocInfo;
+		cmdAllocInfo.level = vk::CommandBufferLevel::ePrimary;
+		cmdAllocInfo.commandPool = queue.GetCmdPool();
+		cmdAllocInfo.commandBufferCount = 1;
+
+		auto cmdBuffer = std::move(device.allocateCommandBuffersUnique(cmdAllocInfo).front());
+		if (!cmdBuffer)
+			throw VulkanException("Failed to create temporary command buffer", EXCEPTION_DATA());
+
+		vk::CommandBufferBeginInfo beginInfo;
+		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+
+		cmdBuffer->begin(beginInfo);
+
+		TransitionImageLayout(tex.m_Image.m_Image, tex.m_CreateInfo.format,
+			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, cmdBuffer.get(), 0);
+
+		CopyBufferToImage(stagingBuf.m_Buffer, tex.m_Image.m_Image, tex.m_CreateInfo.extent.width,
+			tex.m_CreateInfo.extent.height, cmdBuffer.get());
+
+		TransitionImageLayout(tex.m_Image.m_Image, tex.m_CreateInfo.format,
+			vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, cmdBuffer.get(), 0);
+
+		cmdBuffer->end();
+
+		// Submit the command buffer and wait for it to finish
+		{
+			vk::SubmitInfo submit;
+			submit.commandBufferCount = 1;
+			submit.pCommandBuffers = &cmdBuffer.get();
+
+			auto& vQueue = queue.GetQueue();
+			vQueue.submit(submit, nullptr);
+			vQueue.waitIdle();
+		}
+	}
+
+	return true;
 }
 
 bool ShaderAPI::TexLock(int level, int cubeFaceID, int xOffset, int yOffset, int width, int height, CPixelWriter& writer)
@@ -1265,7 +1529,10 @@ void ShaderAPI::PopSelectionName()
 
 void ShaderAPI::ClearSnapshots()
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	// We never want to clear "snapshots" (graphics pipelines) on vulkan
+
+	FlushBufferedPrimitives(); // This is a side effect of this function
 }
 
 void ShaderAPI::FogStart(float start)
@@ -1332,7 +1599,8 @@ void ShaderAPI::DestroyVertexBuffers(bool exitingLevel)
 
 void ShaderAPI::EvictManagedResources()
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	// Nothing to do here (for now...)
 }
 
 void ShaderAPI::SetAnisotropicLevel(int anisoLevel)
@@ -1415,7 +1683,8 @@ void ShaderAPI::PurgeUnusedVertexAndPixelShaders()
 
 void ShaderAPI::DXSupportLevelChanged()
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	// We don't care
 }
 
 void ShaderAPI::EnableUserClipTransformOverride(bool enable)
@@ -1430,8 +1699,12 @@ void ShaderAPI::UserClipTransform(const VMatrix& worldToView)
 
 MorphFormat_t ShaderAPI::ComputeMorphFormat(int snapshots, StateSnapshot_t* ids) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return MorphFormat_t();
+	MorphFormat_t fmt = {};
+
+	for (int i = 0; i < snapshots; i++)
+		fmt |= g_ShadowStateManager.GetState(ids[i]).m_VertexShader.m_MorphFormat;
+
+	return fmt;
 }
 
 void ShaderAPI::HandleDeviceLost()
@@ -1917,4 +2190,20 @@ void ShaderAPI::GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info)
 void ShaderAPI::SetPSNearAndFarZ(int psRegister)
 {
 	NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexLodClamp(int something)
+{
+	LOG_FUNC();
+
+	if (something != 0)
+		NOT_IMPLEMENTED_FUNC();
+}
+
+void ShaderAPI::TexLodBias(float bias)
+{
+	LOG_FUNC();
+
+	if (bias != 0)
+		NOT_IMPLEMENTED_FUNC();
 }

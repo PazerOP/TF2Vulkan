@@ -1,7 +1,6 @@
 #include "ShaderDeviceMgr.h"
 #include "MaterialSystemHardwareConfig.h"
 
-#include <TF2Vulkan/Util/Placeholders.h>
 #include <TF2Vulkan/Util/interface.h>
 
 using namespace TF2Vulkan;
@@ -94,7 +93,7 @@ namespace
 
 		int GetShadowFilterMode() const override;
 
-		int NeedsShaderSRGBConversion() const override;
+		bool NeedsShaderSRGBConversionImpl() const override;
 
 		bool UsesSRGBCorrectBlending() const override;
 
@@ -112,9 +111,18 @@ namespace
 		bool SupportsBorderColor() const override;
 		bool SupportsFetch4() const override;
 
+		bool CanStretchRectFromTextures() const override;
+
 		const char* GetHWSpecificShaderDLLName() const override;
 
+		int NumBooleanVertexShaderConstants() const override;
+		int NumIntegerVertexShaderConstants() const override;
+		int NumBooleanPixelShaderConstants() const override;
+		int NumIntegerPixelShaderConstants() const override;
+
 	private:
+		HDRType_t m_HDRType = HDRType_t::HDR_TYPE_FLOAT;
+
 		static vk::PhysicalDeviceLimits GetLimits();
 		static vk::PhysicalDeviceFeatures GetFeatures();
 	};
@@ -392,7 +400,10 @@ int MaterialSystemHardwareConfig::GetMaxDXSupportLevel() const
 {
 	LOG_FUNC();
 	// TODO: What directx version is comparable with vulkan minimum requirements?
-	return 100;
+
+	// NOTE: Don't say anything over 99 otherwise the material system will try
+	// to load stdshader_dx10.dll
+	return 99;
 }
 
 bool MaterialSystemHardwareConfig::SpecifiesFogColorInLinearSpace() const
@@ -451,8 +462,8 @@ int MaterialSystemHardwareConfig::MaxTextureDepth() const
 
 HDRType_t MaterialSystemHardwareConfig::GetHDRType() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return HDRType_t{};
+	LOG_FUNC();
+	return m_HDRType;
 }
 
 HDRType_t MaterialSystemHardwareConfig::GetHardwareHDRType() const
@@ -496,16 +507,16 @@ int MaterialSystemHardwareConfig::GetShadowFilterMode() const
 	return -1;
 }
 
-int MaterialSystemHardwareConfig::NeedsShaderSRGBConversion() const
+bool MaterialSystemHardwareConfig::NeedsShaderSRGBConversionImpl() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return -1;
+	LOG_FUNC();
+	return false;
 }
 
 bool MaterialSystemHardwareConfig::UsesSRGBCorrectBlending() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsShaderModel_3_0() const
@@ -516,8 +527,8 @@ bool MaterialSystemHardwareConfig::SupportsShaderModel_3_0() const
 
 bool MaterialSystemHardwareConfig::HasFastVertexTextures() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 int MaterialSystemHardwareConfig::MaxHWMorphBatchCount() const
@@ -528,8 +539,8 @@ int MaterialSystemHardwareConfig::MaxHWMorphBatchCount() const
 
 bool MaterialSystemHardwareConfig::ActuallySupportsPixelShaders_2_b() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsHDRMode(HDRType_t mode) const
@@ -540,8 +551,8 @@ bool MaterialSystemHardwareConfig::SupportsHDRMode(HDRType_t mode) const
 
 bool MaterialSystemHardwareConfig::GetHDREnabled() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return GetHDRType() != HDRType_t::HDR_TYPE_NONE;
 }
 
 void MaterialSystemHardwareConfig::SetHDREnabled(bool enabled)
@@ -551,8 +562,8 @@ void MaterialSystemHardwareConfig::SetHDREnabled(bool enabled)
 
 bool MaterialSystemHardwareConfig::SupportsBorderColor() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return false; // Not unless you happen to want one of the few predefined ones
 }
 
 bool MaterialSystemHardwareConfig::SupportsFetch4() const
@@ -561,8 +572,15 @@ bool MaterialSystemHardwareConfig::SupportsFetch4() const
 	return false;
 }
 
+bool MaterialSystemHardwareConfig::CanStretchRectFromTextures() const
+{
+	LOG_FUNC();
+	return true; // I mean, probably
+}
+
 const char* MaterialSystemHardwareConfig::GetHWSpecificShaderDLLName() const
 {
+	LOG_FUNC();
 	// TODO: Do we want/need to take advantage of this?
 	//NOT_IMPLEMENTED_FUNC();
 	return nullptr;
@@ -577,4 +595,36 @@ vk::PhysicalDeviceLimits MaterialSystemHardwareConfig::GetLimits()
 vk::PhysicalDeviceFeatures MaterialSystemHardwareConfig::GetFeatures()
 {
 	return g_ShaderDeviceMgr.GetAdapter().getFeatures();
+}
+
+int MaterialSystemHardwareConfig::NumBooleanVertexShaderConstants() const
+{
+	LOG_FUNC();
+	// Since we're really using constant buffers... "max constants" doesn't
+	// really mean anything anymore
+	return INT_MAX;
+}
+
+int MaterialSystemHardwareConfig::NumIntegerVertexShaderConstants() const
+{
+	LOG_FUNC();
+	// Since we're really using constant buffers... "max constants" doesn't
+	// really mean anything anymore
+	return INT_MAX;
+}
+
+int MaterialSystemHardwareConfig::NumBooleanPixelShaderConstants() const
+{
+	LOG_FUNC();
+	// Since we're really using constant buffers... "max constants" doesn't
+	// really mean anything anymore
+	return INT_MAX;
+}
+
+int MaterialSystemHardwareConfig::NumIntegerPixelShaderConstants() const
+{
+	LOG_FUNC();
+	// Since we're really using constant buffers... "max constants" doesn't
+	// really mean anything anymore
+	return INT_MAX;
 }

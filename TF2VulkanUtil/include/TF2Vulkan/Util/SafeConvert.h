@@ -15,8 +15,9 @@ namespace Util
 	template<typename To, typename From>
 	inline constexpr To SafeConvert(const From& f)
 	{
-		if constexpr (std::is_floating_point_v<To> || std::is_floating_point_v<From> ||
-			std::is_same_v<To, From> || sizeof(To) > sizeof(From))
+		if constexpr (std::is_floating_point_v<To> ||
+			std::is_floating_point_v<From> ||
+			std::is_same_v<To, From>)
 		{
 			return To(f);
 		}

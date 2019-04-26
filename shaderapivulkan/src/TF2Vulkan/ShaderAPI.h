@@ -1,8 +1,7 @@
 #pragma once
 
+#include "TF2Vulkan/IShaderAPI_DSA.h"
 #include <TF2Vulkan/Util/ImageManip.h>
-
-#include <shaderapi/ishaderapi.h>
 
 enum RenderParamFloat_t;
 enum RenderParamInt_t;
@@ -12,7 +11,7 @@ namespace TF2Vulkan
 {
 	struct TextureData;
 
-	class IShaderAPIInternal : public IShaderAPI
+	class IShaderAPIInternal : public IShaderAPI_DSA
 	{
 	public:
 		virtual void CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID,
@@ -76,15 +75,6 @@ namespace TF2Vulkan
 		{
 			return CopyRenderTargetToScratchTexture(srcRT, dstTex,
 				const_cast<const Rect_t*>(srcRect), const_cast<const Rect_t*>(dstRect));
-		}
-
-		virtual bool UpdateTexture(ShaderAPITextureHandle_t texHandle,
-			const TextureData* data, size_t count) = 0;
-
-		template<size_t size> bool UpdateTexture(ShaderAPITextureHandle_t texHandle,
-			const TextureData(&data)[size])
-		{
-			return UpdateTexture(texHandle, data, size);
 		}
 	};
 }

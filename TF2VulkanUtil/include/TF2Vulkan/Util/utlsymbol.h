@@ -8,16 +8,19 @@ namespace TF2Vulkan
 	class CUtlSymbolDbgWrapper : public TBase
 	{
 	public:
+		constexpr CUtlSymbolDbgWrapper() = default;
+
 		template<typename... TArgs>
 		CUtlSymbolDbgWrapper(TArgs&& ... args) : TBase(std::forward<TArgs>(args)...)
 		{
+#ifdef _DEBUG
 			m_DbgString = TBase::String();
+#endif
 		}
 
 	private:
 #ifdef _DEBUG
-		const char* m_DbgString;
-		const CUtlSymbolTableMT* m_pSymbolTable = TBase::s_pSymbolTable;
+		const char* m_DbgString = nullptr;
 #endif
 	};
 }
