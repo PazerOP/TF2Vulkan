@@ -49,10 +49,20 @@ namespace TF2Vulkan
 
 		constexpr operator VertexFormat_t() const { return m_BaseFmt; }
 
-		uint_fast8_t GetTexCoordSize(uint_fast8_t index) const
+		size_t GetVertexSize() const;
+		uint_fast8_t GetTexCoordSize(uint_fast8_t index) const;
+		VertexCompressionType_t GetCompressionType() const;
+
+		void SetCompressionEnabled(bool enabled);
+
+		struct Element
 		{
-			return TexCoordSize(index, m_BaseFmt);
-		}
+			VertexElement_t m_Type = VERTEX_ELEMENT_NONE;
+			uint_fast8_t m_Size = 0;
+			uint_fast8_t m_Offset = 0;
+		};
+
+		uint_fast8_t GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize = nullptr) const;
 
 		VertexFormat_t m_BaseFmt;
 		struct

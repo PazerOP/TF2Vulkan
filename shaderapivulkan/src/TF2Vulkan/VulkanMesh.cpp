@@ -341,22 +341,6 @@ int VulkanVertexBuffer::GetRoomRemaining() const
 }
 
 static std::aligned_storage_t<256> s_FallbackMeshData;
-template<typename T> void VulkanVertexBuffer::LockStream(VertexFormatFlags flag,
-	std::vector<T>& vec, int& descCount, T*& descPtr, int count)
-{
-	if (m_Format.m_Flags & flag)
-	{
-		vec.resize(Util::SafeConvert<size_t>(count));
-		descCount = count;
-		descPtr = vec.data();
-	}
-	else
-	{
-		descCount = 0;
-		descPtr = reinterpret_cast<T*>(&s_FallbackMeshData);
-	}
-}
-
 bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 {
 	LOG_FUNC();
@@ -366,49 +350,61 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 	desc = {};
 
-	LockStream(VertexFormatFlags::Position, m_Position,
-		desc.m_VertexSize_Position, desc.m_pPosition, vertexCount);
+	// Set default dummy pointers
+	desc.m_pPosition = reinterpret_cast<float*>(&s_FallbackMeshData);
+	desc.m_pBoneWeight = reinterpret_cast<float*>(&s_FallbackMeshData);
+	desc.m_pBoneMatrixIndex = reinterpret_cast<unsigned char*>(&s_FallbackMeshData);
+	desc.m_pNormal = reinterpret_cast<float*>(&s_FallbackMeshData);
+	desc.m_pColor = reinterpret_cast<unsigned char*>(&s_FallbackMeshData);
+	desc.m_pSpecular = reinterpret_cast<unsigned char*>(&s_FallbackMeshData);
+	desc.m_pTangentS = reinterpret_cast<float*>(&s_FallbackMeshData);
+	desc.m_pTangentT = reinterpret_cast<float*>(&s_FallbackMeshData);
+	desc.m_pWrinkle = reinterpret_cast<float*>(&s_FallbackMeshData);
+	desc.m_pUserData = reinterpret_cast<float*>(&s_FallbackMeshData);
+	for (auto& tc : desc.m_pTexCoord)
+		tc = reinterpret_cast<float*>(&s_FallbackMeshData);
 
-	LockStream(VertexFormatFlags::Color, m_Color,
-		desc.m_VertexSize_Color, desc.m_pColor, vertexCount);
+	VertexFormat::Element vtxElems[VERTEX_ELEMENT_NUMELEMENTS];
+	size_t totalVtxSize;
 
-	LockStream(VertexFormatFlags::Normal, m_Normal,
-		desc.m_VertexSize_Normal, desc.m_pNormal, vertexCount);
+	auto uncompressedFormat = m_Format;
+	uncompressedFormat.SetCompressionEnabled(false);
 
-	LockStream(VertexFormatFlags::Specular, m_Specular,
-		desc.m_VertexSize_Specular, desc.m_pSpecular, vertexCount);
+	const auto vtxElemsCount = uncompressedFormat.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
-	LockStream(VertexFormatFlags::TangentS, m_TangentS,
-		desc.m_VertexSize_TangentS, desc.m_pTangentS, vertexCount);
-	LockStream(VertexFormatFlags::TangentT, m_TangentT,
-		desc.m_VertexSize_TangentT, desc.m_pTangentT, vertexCount);
+	m_DataBuffer.resize(totalVtxSize * vertexCount);
 
-	LockStream(VertexFormatFlags::Wrinkle, m_Wrinkle,
-		desc.m_VertexSize_Wrinkle, desc.m_pWrinkle, vertexCount);
+	Util::SafeConvert(totalVtxSize, desc.m_ActualVertexSize);
+	desc.m_CompressionType = uncompressedFormat.GetCompressionType();
 
-	for (int i = 0; i < VERTEX_MAX_TEXTURE_COORDINATES; i++)
+	for (uint_fast8_t i = 0; i < vtxElemsCount; i++)
 	{
-		auto count = m_Format.GetTexCoordSize(i);
-		if (count <= 0)
+		const auto& vtxElem = vtxElems[i];
+		switch (vtxElem.m_Type)
 		{
-			desc.m_pTexCoord[i] = reinterpret_cast<float*>(&s_FallbackMeshData);
-			continue;
+		default:
+			if (vtxElem.m_Type >= VERTEX_ELEMENT_TEXCOORD1D_0 && vtxElem.m_Type < VERTEX_ELEMENT_NUMELEMENTS)
+			{
+				const auto texCoordIdx = (vtxElem.m_Type - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_MAX_TEXTURE_COORDINATES;
+				desc.m_VertexSize_TexCoord[texCoordIdx] = totalVtxSize;
+				desc.m_pTexCoord[texCoordIdx] = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+
+				break;
+			}
+
+			assert(!"Unknown vertex element type");
+		case VERTEX_ELEMENT_NONE:
+			break;
+
+		case VERTEX_ELEMENT_POSITION:
+			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Position);
+			desc.m_pPosition = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			break;
+		case VERTEX_ELEMENT_NORMAL:
+			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Normal);
+			desc.m_pNormal = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			break;
 		}
-
-		m_TexCoords[i].resize(count * vertexCount);
-		desc.m_pTexCoord[i] = m_TexCoords[i].data();
-		desc.m_VertexSize_TexCoord[i] = vertexCount;
-	}
-
-	if (m_Format.m_UserDataSize)
-	{
-		m_UserData.resize(m_Format.m_UserDataSize);
-		desc.m_VertexSize_UserData = m_Format.m_UserDataSize;
-		desc.m_pUserData = m_UserData.data();
-	}
-	else
-	{
-		desc.m_pUserData = reinterpret_cast<float*>(&s_FallbackMeshData);
 	}
 
 	return true;
@@ -417,7 +413,6 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
 	LOG_FUNC();
-	assert(Util::SafeConvert<size_t>(vertexCount) <= m_Position.size());
 	// TODO: Send data to GPU
 }
 

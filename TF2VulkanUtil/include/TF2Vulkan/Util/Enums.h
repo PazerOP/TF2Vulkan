@@ -7,7 +7,8 @@ namespace Util
 	template<typename T>
 	constexpr auto UValue(const T& val)
 	{
-		return std::underlying_type_t<T>{}(val);
+#pragma warning(suppress : 4353)
+		return std::underlying_type_t<T>(val);
 	}
 
 	namespace detail
@@ -48,31 +49,42 @@ namespace Util
 #define EFW ::Util::detail::EnumFlagsWrapper
 
 template<typename T>
-constexpr auto operator&(const T& lhs, const EFW<T>& rhs) -> decltype(EFW<T>{lhs})
+constexpr EFW<T> operator&(const T& lhs, const EFW<T>& rhs)
 {
 	return EFW{ lhs } &rhs;
 }
 template<typename T>
-constexpr auto operator&(const T& lhs, const T& rhs) -> decltype(EFW<T>{lhs})
+constexpr EFW<T> operator&(const T& lhs, const T& rhs)
 {
 	return EFW{ lhs } &EFW{ rhs };
 }
 
 template<typename T>
-constexpr auto operator|(const T& lhs, const EFW<T>& rhs) -> decltype(EFW<T>{lhs})
+constexpr EFW<T> operator|(const T& lhs, const EFW<T>& rhs)
 {
 	return EFW{ lhs } | EFW{ rhs };
 }
 template<typename T>
-constexpr auto operator|(const T& lhs, const T& rhs) -> decltype(EFW<T>{lhs})
+constexpr EFW<T> operator|(const T& lhs, const T& rhs)
 {
 	return EFW{ lhs } | EFW{ rhs };
 }
 
 template<typename T>
-constexpr auto operator~(const T& v) -> decltype(EFW<T>{v})
+constexpr T& operator|=(T& lhs, const EFW<T>& rhs)
 {
-	return EFW{ T(~::Util::UValue(v)) };
+	return lhs = (EFW{ lhs } | EFW{ rhs });
+}
+template<typename T>
+constexpr T& operator|=(T& lhs, const T& rhs)
+{
+	return lhs = (EFW{ lhs } | EFW{ rhs });
+}
+
+template<typename T>
+constexpr EFW<T> operator~(const T& v)
+{
+	return EFW<T>{ T(~(::Util::UValue(v))) };
 }
 
 #pragma pop_macro("EFW")

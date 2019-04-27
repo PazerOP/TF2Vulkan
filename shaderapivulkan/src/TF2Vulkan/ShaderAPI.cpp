@@ -504,6 +504,8 @@ namespace
 		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
 
 		std::array<ShaderAPITextureHandle_t, TEXTURE_MAX_STD_TEXTURES> m_StdTextures;
+		ShaderAPITextureHandle_t m_L2GConvTex_SRGBWriteEnabled = INVALID_SHADERAPI_TEXTURE_HANDLE;
+		ShaderAPITextureHandle_t m_L2GConvTex_Identity = INVALID_SHADERAPI_TEXTURE_HANDLE;
 	};
 }
 
@@ -1987,7 +1989,9 @@ float ShaderAPI::LinearToGamma_HardwareSpecific(float linear) const
 
 void ShaderAPI::SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgbWriteEnabledTex, ShaderAPITextureHandle_t identityTex)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_L2GConvTex_SRGBWriteEnabled = srgbWriteEnabledTex;
+	m_L2GConvTex_Identity = identityTex;
 }
 
 ImageFormat ShaderAPI::GetNullTextureFormat()

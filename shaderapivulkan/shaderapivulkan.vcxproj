@@ -122,6 +122,7 @@
     <ClCompile Include="src\TF2Vulkan\ShaderDeviceMgr.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderShadow.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShadowStateManager.cpp" />
+    <ClCompile Include="src\TF2Vulkan\VertexFormat.cpp" />
     <ClCompile Include="src\TF2Vulkan\vk_mem_alloc.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanMesh.cpp" />
   </ItemGroup>

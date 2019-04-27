@@ -13,9 +13,9 @@ namespace Util
 	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
 }
 
-#define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread());
+#define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread())
 
-#define LOG_FUNC() ::Util::LogFunctionCall(__FUNCSIG__, __FILE__, __LINE__)
+#define LOG_FUNC() { ASSERT_MAIN_THREAD(); ::Util::LogFunctionCall(__FUNCSIG__, __FILE__, __LINE__); }
 
 #define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }
 

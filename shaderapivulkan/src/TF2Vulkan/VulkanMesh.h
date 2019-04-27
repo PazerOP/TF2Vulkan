@@ -39,20 +39,7 @@ namespace TF2Vulkan
 	private:
 		VertexFormat m_Format;
 
-		template<typename T> void LockStream(VertexFormatFlags flag,
-			std::vector<T>& vec, int& descCount, T*& descPtr, int count);
-
-		std::vector<float> m_Position;
-		std::vector<float> m_BoneWeight;
-		std::vector<unsigned char> m_BoneMatrixIndex;
-		std::vector<float> m_Normal;
-		std::vector<unsigned char> m_Color;
-		std::vector<unsigned char> m_Specular;
-		std::vector<float> m_TangentS;
-		std::vector<float> m_TangentT;
-		std::vector<float> m_Wrinkle;
-		std::vector<float> m_UserData;
-		std::vector<float> m_TexCoords[VERTEX_MAX_TEXTURE_COORDINATES];
+		std::vector<std::byte> m_DataBuffer;
 	};
 
 	class VulkanIndexBuffer final : public IIndexBuffer
