@@ -99,10 +99,12 @@
     <ClInclude Include="include\TF2Vulkan\Util\std_charconv.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Templates.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />
     <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\TF2Vulkan\Util\ImageManip.cpp" />
+    <ClCompile Include="include\TF2Vulkan\Util\Threads.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\Macros.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\interface.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\KeyValues.cpp" />

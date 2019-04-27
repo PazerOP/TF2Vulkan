@@ -1,21 +1,29 @@
 #pragma once
 
+#include "Threads.h"
+
 #include <tier0/dbg.h>
+
+#include <string_view>
 
 namespace Util
 {
-	void LogFunctionCall(const char* fnName, const char* fnSig, const char* file, int line);
+	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line);
 	[[noreturn]] void EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line);
 	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
 }
 
-#define LOG_FUNC() ::Util::LogFunctionCall(__FUNCTION__, __FUNCSIG__, __FILE__, __LINE__)
+#define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread());
+
+#define LOG_FUNC() ::Util::LogFunctionCall(__FUNCSIG__, __FILE__, __LINE__)
 
 #define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }
 
 #define TF2VULKAN_PREFIX "[TF2Vulkan] " __FUNCSIG__ ": "
 
 #define NOT_IMPLEMENTED_FUNC_NOBREAK() ::Util::FunctionNotImplemented(__FUNCSIG__, __FILE__, __LINE__)
+
+#define PRINTF_SV(stringView) Util::SafeConvert<int>((stringView).size()), (stringView).data()
 
 #ifdef MATT_HAYNIE
 #define NOT_IMPLEMENTED_FUNC() \

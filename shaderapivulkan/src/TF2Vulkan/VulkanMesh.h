@@ -4,6 +4,7 @@
 
 #include <materialsystem/imesh.h>
 
+#include <atomic>
 #include <vector>
 
 namespace Util
@@ -39,8 +40,7 @@ namespace TF2Vulkan
 		VertexFormat m_Format;
 
 		template<typename T> void LockStream(VertexFormatFlags flag,
-			std::vector<T>& vec, int& descCount, T*& descPtr, int count,
-			const Util::FourCC& fallbackPtr);
+			std::vector<T>& vec, int& descCount, T*& descPtr, int count);
 
 		std::vector<float> m_Position;
 		std::vector<float> m_BoneWeight;

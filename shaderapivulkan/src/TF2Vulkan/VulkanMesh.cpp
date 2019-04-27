@@ -17,7 +17,8 @@ void VulkanMesh::SetPrimitiveType(MaterialPrimitiveType_t type)
 
 void VulkanMesh::Draw(int firstIndex, int indexCount)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	// TODO
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
@@ -65,7 +66,9 @@ void VulkanMesh::ModifyEnd(MeshDesc_t& desc)
 
 void VulkanMesh::UnlockMesh(int vertexCount, int indexCount, MeshDesc_t& desc)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_VertexBuffer.Unlock(vertexCount, desc);
+	m_IndexBuffer.Unlock(indexCount, desc);
 }
 
 void VulkanMesh::ModifyBeginEx(bool readOnly, int firstVertex, int vertexCount, int firstIndex, int indexCount, MeshDesc_t& desc)
@@ -90,6 +93,7 @@ void VulkanMesh::MarkAsDrawn()
 
 unsigned VulkanMesh::ComputeMemoryUsed()
 {
+	NOT_IMPLEMENTED_FUNC();
 	return 0;
 }
 
@@ -272,7 +276,9 @@ bool VulkanIndexBuffer::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 
 void VulkanIndexBuffer::Unlock(int writtenIndexCount, IndexDesc_t& desc)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	assert(Util::SafeConvert<size_t>(writtenIndexCount) <= (m_Indices.size() * sizeof(m_Indices[0])));
+	// TODO: Send data to GPU
 }
 
 void VulkanIndexBuffer::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
@@ -334,9 +340,9 @@ int VulkanVertexBuffer::GetRoomRemaining() const
 	return 0;
 }
 
+static std::aligned_storage_t<256> s_FallbackMeshData;
 template<typename T> void VulkanVertexBuffer::LockStream(VertexFormatFlags flag,
-	std::vector<T>& vec, int& descCount, T*& descPtr, int count,
-	const Util::FourCC& fallbackPtr)
+	std::vector<T>& vec, int& descCount, T*& descPtr, int count)
 {
 	if (m_Format.m_Flags & flag)
 	{
@@ -347,7 +353,7 @@ template<typename T> void VulkanVertexBuffer::LockStream(VertexFormatFlags flag,
 	else
 	{
 		descCount = 0;
-		descPtr = reinterpret_cast<T*>(fallbackPtr.m_Int);
+		descPtr = reinterpret_cast<T*>(&s_FallbackMeshData);
 	}
 }
 
@@ -360,52 +366,32 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 	desc = {};
 
-	static constexpr Util::FourCC POSITION("POSN");
-	static constexpr Util::FourCC COLOR("COLR");
-	static constexpr Util::FourCC NORMAL("NRML");
-	static constexpr Util::FourCC SPECULAR("SPEC");
-	static constexpr Util::FourCC TANGENTS("TANS");
-	static constexpr Util::FourCC TANGENTT("TANT");
-	static constexpr Util::FourCC WRINKLE("WRNK");
-	static constexpr Util::FourCC USERDATA("USER");
-	static constexpr Util::FourCC TEXCOORD[VERTEX_MAX_TEXTURE_COORDINATES] =
-	{
-		"TEX0",
-		"TEX1",
-		"TEX2",
-		"TEX3",
-		"TEX4",
-		"TEX5",
-		"TEX6",
-		"TEX7",
-	};
-
 	LockStream(VertexFormatFlags::Position, m_Position,
-		desc.m_VertexSize_Position, desc.m_pPosition, vertexCount, POSITION);
+		desc.m_VertexSize_Position, desc.m_pPosition, vertexCount);
 
 	LockStream(VertexFormatFlags::Color, m_Color,
-		desc.m_VertexSize_Color, desc.m_pColor, vertexCount, COLOR);
+		desc.m_VertexSize_Color, desc.m_pColor, vertexCount);
 
 	LockStream(VertexFormatFlags::Normal, m_Normal,
-		desc.m_VertexSize_Normal, desc.m_pNormal, vertexCount, NORMAL);
+		desc.m_VertexSize_Normal, desc.m_pNormal, vertexCount);
 
 	LockStream(VertexFormatFlags::Specular, m_Specular,
-		desc.m_VertexSize_Specular, desc.m_pSpecular, vertexCount, SPECULAR);
+		desc.m_VertexSize_Specular, desc.m_pSpecular, vertexCount);
 
 	LockStream(VertexFormatFlags::TangentS, m_TangentS,
-		desc.m_VertexSize_TangentS, desc.m_pTangentS, vertexCount, TANGENTS);
+		desc.m_VertexSize_TangentS, desc.m_pTangentS, vertexCount);
 	LockStream(VertexFormatFlags::TangentT, m_TangentT,
-		desc.m_VertexSize_TangentT, desc.m_pTangentT, vertexCount, TANGENTT);
+		desc.m_VertexSize_TangentT, desc.m_pTangentT, vertexCount);
 
 	LockStream(VertexFormatFlags::Wrinkle, m_Wrinkle,
-		desc.m_VertexSize_Wrinkle, desc.m_pWrinkle, vertexCount, WRINKLE);
+		desc.m_VertexSize_Wrinkle, desc.m_pWrinkle, vertexCount);
 
 	for (int i = 0; i < VERTEX_MAX_TEXTURE_COORDINATES; i++)
 	{
 		auto count = m_Format.GetTexCoordSize(i);
 		if (count <= 0)
 		{
-			desc.m_pTexCoord[i] = reinterpret_cast<float*>(TEXCOORD[i].m_Int);
+			desc.m_pTexCoord[i] = reinterpret_cast<float*>(&s_FallbackMeshData);
 			continue;
 		}
 
@@ -422,7 +408,7 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	}
 	else
 	{
-		desc.m_pUserData = reinterpret_cast<float*>(USERDATA.m_Int);
+		desc.m_pUserData = reinterpret_cast<float*>(&s_FallbackMeshData);
 	}
 
 	return true;
@@ -430,7 +416,9 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	assert(Util::SafeConvert<size_t>(vertexCount) <= m_Position.size());
+	// TODO: Send data to GPU
 }
 
 void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)

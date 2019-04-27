@@ -2,6 +2,7 @@
 
 #include <TF2Vulkan/TextureData.h>
 
+#include <bitmap/imageformat.h>
 #include <shaderapi/ishaderapi.h>
 
 namespace TF2Vulkan
@@ -45,7 +46,7 @@ namespace TF2Vulkan
 				0, 0, zOffset,
 				width, height,
 				srcFormat,
-				-1,
+				ImageLoader::GetMemRequired(width, 1, 1, srcFormat, false), // Assume tightly packed
 				srcIsTiled,
 				imgData);
 		}
@@ -69,6 +70,7 @@ namespace TF2Vulkan
 			Util::SafeConvert(width, data.m_Width);
 			Util::SafeConvert(height, data.m_Height);
 			Util::SafeConvert(srcStride, data.m_Stride);
+			Util::SafeConvert(srcStride * height, data.m_DataLength);
 			data.m_Data = imgData;
 
 			data.Validate();

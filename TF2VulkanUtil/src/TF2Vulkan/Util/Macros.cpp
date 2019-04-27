@@ -1,8 +1,46 @@
 #include "TF2Vulkan/Util/Macros.h"
+#include "TF2Vulkan/Util/SafeConvert.h"
 
-void Util::LogFunctionCall(const char* fnName, const char* fnSig, const char* file, int line)
+#include <cctype>
+
+namespace
 {
-	Msg("[TF2Vulkan] %s\n", fnSig);
+	class FnSigComponents
+	{
+	public:
+		FnSigComponents(const std::string_view& fnSig)
+		{
+			size_t offset = 0;
+
+			// Return type
+			{
+				size_t returnTypeBegin = offset;
+				size_t returnTypeEnd = 0;
+				while (offset < fnSig.size())
+				{
+					if (isspace(fnSig[offset]))
+						break;
+
+					returnTypeEnd++;
+					offset++;
+				}
+
+				if (returnTypeEnd > returnTypeBegin)
+					m_ReturnType = fnSig.substr(returnTypeBegin, returnTypeEnd - returnTypeBegin);
+			}
+
+			// TODO
+		}
+
+		std::string_view m_ReturnType;
+		std::string_view m_Arguments;
+	};
+}
+
+void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line)
+{
+	const FnSigComponents comps(fnSig);
+	Msg("[TF2Vulkan] %.*s\n", PRINTF_SV(fnSig));
 }
 
 void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line)

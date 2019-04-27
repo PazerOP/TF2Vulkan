@@ -485,6 +485,8 @@ namespace
 		{
 			IMaterial* m_BoundMaterial = nullptr;
 			int m_BoneCount = 0;
+			ShaderAPITextureHandle_t m_FullScreenTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
+			uint_fast8_t m_AnisotropicLevel = 0;
 
 		} m_DynamicState;
 		bool m_DynamicStateDirty = true;
@@ -500,6 +502,8 @@ namespace
 		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
 
 		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
+
+		std::array<ShaderAPITextureHandle_t, TEXTURE_MAX_STD_TEXTURES> m_StdTextures;
 	};
 }
 
@@ -1605,7 +1609,8 @@ void ShaderAPI::EvictManagedResources()
 
 void ShaderAPI::SetAnisotropicLevel(int anisoLevel)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	Util::SetDirtyVar(m_DynamicState.m_AnisotropicLevel, anisoLevel, m_DynamicStateDirty);
 }
 
 void ShaderAPI::SyncToken(const char* token)
@@ -1719,7 +1724,8 @@ void ShaderAPI::EnableLinearColorSpaceFrameBuffer(bool enable)
 
 void ShaderAPI::SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	Util::SetDirtyVar(m_DynamicState.m_FullScreenTexture, tex, m_DynamicStateDirty);
 }
 
 void ShaderAPI::SetFloatRenderingParameter(RenderParamFloat_t param, float value)
@@ -1969,14 +1975,14 @@ void ShaderAPI::InvalidateDelayedShaderConstants()
 
 float ShaderAPI::GammaToLinear_HardwareSpecific(float gamma) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0f;
+	LOG_FUNC();
+	return std::pow(gamma, 2.2f);
 }
 
 float ShaderAPI::LinearToGamma_HardwareSpecific(float linear) const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0f;
+	LOG_FUNC();
+	return std::pow(linear, 1.0f / 2.2f);
 }
 
 void ShaderAPI::SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgbWriteEnabledTex, ShaderAPITextureHandle_t identityTex)
@@ -2179,7 +2185,8 @@ void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
 
 void ShaderAPI::SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_StdTextures.at(id) = tex;
 }
 
 void ShaderAPI::GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info)
