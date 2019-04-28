@@ -48,4 +48,18 @@ inline CreateInterfaceFn Sys_GetFactoryThis()
 	return &CreateInterface;
 }
 
+namespace TF2Vulkan
+{
+	CreateInterfaceFn Sys_GetFactoryCustom(CSysModule* pModule);
+	CreateInterfaceFn Sys_GetFactoryCustom(const char* moduleName);
+}
+inline CreateInterfaceFn Sys_GetFactory(const char* moduleName)
+{
+	return TF2Vulkan::Sys_GetFactoryCustom(moduleName);
+}
+inline CreateInterfaceFn Sys_GetFactory(CSysModule* pModule)
+{
+	return TF2Vulkan::Sys_GetFactoryCustom(pModule);
+}
+
 #endif

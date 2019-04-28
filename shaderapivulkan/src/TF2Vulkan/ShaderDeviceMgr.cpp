@@ -15,6 +15,7 @@ namespace
 	{
 	public:
 		InitReturnVal_t Init() override;
+		bool Connect(CreateInterfaceFn factory) override;
 		void* QueryInterface(const char* interfaceName) override;
 
 		int GetAdapterCount() const override;
@@ -71,6 +72,76 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderDeviceMgr, IShaderDeviceMgr, SHADER_DEVI
 
 IShaderDeviceMgrInternal& TF2Vulkan::g_ShaderDeviceMgr = s_DeviceMgr;
 
+static inline auto tie(const ShaderDisplayMode_t& v)
+{
+	return std::tie(
+		v.m_nVersion,
+		v.m_nWidth,
+		v.m_nHeight,
+		v.m_Format,
+		v.m_nRefreshRateNumerator,
+		v.m_nRefreshRateDenominator);
+}
+
+static inline bool operator==(const ShaderDisplayMode_t& lhs, const ShaderDisplayMode_t& rhs)
+{
+	return tie(lhs) == tie(rhs);
+}
+
+static inline bool operator<(const ShaderDisplayMode_t& lhs, const ShaderDisplayMode_t& rhs)
+{
+	return tie(lhs) < tie(rhs);
+}
+
+static void ToDisplayMode(ShaderDisplayMode_t& output, const DEVMODEA& input)
+{
+	output.m_Format = IMAGE_FORMAT_UNKNOWN;
+	Util::SafeConvert(input.dmPelsWidth, output.m_nWidth);
+	Util::SafeConvert(input.dmPelsHeight, output.m_nHeight);
+	Util::SafeConvert(input.dmDisplayFrequency, output.m_nRefreshRateNumerator);
+	output.m_nRefreshRateDenominator = 1;
+}
+
+static std::vector<DISPLAY_DEVICEA> GetDisplayDevices()
+{
+	std::vector<DISPLAY_DEVICEA> retVal;
+
+	DISPLAY_DEVICEA device;
+	device.cb = sizeof(device);
+	for (DWORD i = 0; EnumDisplayDevicesA(nullptr, i, &device, 0); i++)
+		retVal.push_back(device);
+
+	return retVal;
+}
+
+static std::vector<ShaderDisplayMode_t> GetDisplayModes(size_t adapterIndex)
+{
+	std::vector<ShaderDisplayMode_t> retVal;
+
+	auto adapter = GetDisplayDevices().at(adapterIndex);
+
+	DEVMODEA mode{};
+	for (DWORD i = 0; EnumDisplaySettingsA(adapter.DeviceName, i, &mode); i++)
+		ToDisplayMode(retVal.emplace_back(), mode);
+
+	std::sort(retVal.begin(), retVal.end());
+	retVal.erase(std::unique(retVal.begin(), retVal.end()), retVal.end());
+
+	return retVal;
+}
+
+static ShaderDisplayMode_t GetCurrentDisplayMode(size_t adapterIndex)
+{
+	auto adapter = GetDisplayDevices().at(adapterIndex);
+
+	ShaderDisplayMode_t retVal;
+
+	if (DEVMODEA mode; EnumDisplaySettingsA(adapter.DeviceName, ENUM_CURRENT_SETTINGS, &mode))
+		ToDisplayMode(retVal, mode);
+
+	return retVal;
+}
+
 static vk::UniqueInstance CreateInstance()
 {
 	vk::ApplicationInfo appInfo(
@@ -89,8 +160,8 @@ static vk::UniqueInstance CreateInstance()
 
 	constexpr const char* INSTANCE_EXTENSIONS[] =
 	{
-		"VK_KHR_surface",
-		"VK_KHR_win32_surface"
+		VK_KHR_SURFACE_EXTENSION_NAME,
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 	};
 	createInfo.ppEnabledExtensionNames = INSTANCE_EXTENSIONS;
 	createInfo.enabledExtensionCount = std::size(INSTANCE_EXTENSIONS);
@@ -187,6 +258,12 @@ vk::PhysicalDevice ShaderDeviceMgr::GetAdapterByIndex(size_t index) const
 	return allAdapters[index];
 }
 
+bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
+{
+	LOG_FUNC();
+	return true;
+}
+
 InitReturnVal_t ShaderDeviceMgr::Init()
 {
 	LOG_FUNC();
@@ -263,19 +340,40 @@ bool ShaderDeviceMgr::GetRecommendedConfigurationInfo(int adapter, int dxLevel, 
 int ShaderDeviceMgr::GetModeCount(int adapterIndexSigned) const
 {
 	LOG_FUNC();
-	// TODO
-	//NOT_IMPLEMENTED_FUNC();
-	return 0;
+
+	return Util::SafeConvert<int>(GetDisplayModes(Util::SafeConvert<size_t>(adapterIndexSigned)).size());
+
+	// Vulkan doesn't really support exclusive fullscreen. Best we can do is borderless
+	// windowed. In that case, just ask windows what the primary display's supported
+	// modes are.
+
+#if false
+	auto adapter = GetAdapterByIndex(Util::SafeConvert<size_t>(adapterIndexSigned));
+	if (!adapter)
+		return 0;
+
+	auto mainWindow = GetMainWindow();
+
+	vk::SurfaceKHR surface = nullptr;
+	auto surfaceCaps = adapter.getSurfaceCapabilitiesKHR(surface);
+	auto surfaceFormats = adapter.getSurfaceFormatsKHR(surface);
+	auto surfaceModes = adapter.getSurfacePresentModesKHR(surface);
+
+	return Util::SafeConvert<int>(surfaceModes.size());
+#endif
 }
 
 void ShaderDeviceMgr::GetModeInfo(ShaderDisplayMode_t* info, int adapter, int mode) const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+
+	*info = GetDisplayModes(Util::SafeConvert<size_t>(adapter)).at(Util::SafeConvert<size_t>(mode));
 }
 
 void ShaderDeviceMgr::GetCurrentModeInfo(ShaderDisplayMode_t* info, int adapter) const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	*info = GetCurrentDisplayMode(Util::SafeConvert<size_t>(adapter));
 }
 
 bool ShaderDeviceMgr::SetAdapter(int adapter, MaterialInitFlags_t flags)

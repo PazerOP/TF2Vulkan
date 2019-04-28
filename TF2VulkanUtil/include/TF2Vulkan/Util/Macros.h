@@ -15,7 +15,13 @@ namespace Util
 
 #define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread())
 
+#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+
+#ifdef TF2VULKAN_ENABLE_FUNCTION_LOGGING
 #define LOG_FUNC() { ASSERT_MAIN_THREAD(); ::Util::LogFunctionCall(__FUNCSIG__, __FILE__, __LINE__); }
+#else
+#define LOG_FUNC()
+#endif
 
 #define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }
 

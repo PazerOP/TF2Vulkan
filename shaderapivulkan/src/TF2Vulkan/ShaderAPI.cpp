@@ -481,12 +481,23 @@ namespace
 		};
 		std::unordered_map<SamplerSettingsDynamic, ShaderSampler> m_ShaderSamplers;
 
+		struct StdVtxShaderConstants
+		{
+			constexpr StdVtxShaderConstants() = default;
+
+			float m_Overbright = 1.0f;
+		};
+
 		struct DynamicState
 		{
+			constexpr DynamicState() = default;
+
 			IMaterial* m_BoundMaterial = nullptr;
 			int m_BoneCount = 0;
 			ShaderAPITextureHandle_t m_FullScreenTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
 			uint_fast8_t m_AnisotropicLevel = 0;
+
+			StdVtxShaderConstants m_VtxShaderConstants;
 
 		} m_DynamicState;
 		bool m_DynamicStateDirty = true;
@@ -867,7 +878,8 @@ bool ShaderAPI::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
 
 void ShaderAPI::ChangeVideoMode(const ShaderDeviceInfo_t& info)
 {
-	NOT_IMPLEMENTED_FUNC();
+	// TODO
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 StateSnapshot_t ShaderAPI::TakeSnapshot()
@@ -1584,12 +1596,12 @@ void ShaderAPI::FogMaxDensity(float maxDensity)
 bool ShaderAPI::CanDownloadTextures() const
 {
 	LOG_FUNC();
-	return true;
+	return true; // Why wouldn't we be able to?
 }
 
 void ShaderAPI::ResetRenderState(bool fullReset)
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 int ShaderAPI::GetCurrentDynamicVBSize()
@@ -1622,7 +1634,8 @@ void ShaderAPI::SyncToken(const char* token)
 
 void ShaderAPI::SetStandardVertexShaderConstants(float overbright)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	Util::SetDirtyVar(m_DynamicState.m_VtxShaderConstants.m_Overbright, overbright, m_DynamicStateDirty);
 }
 
 ShaderAPIOcclusionQuery_t ShaderAPI::CreateOcclusionQueryObject()
