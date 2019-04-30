@@ -24,7 +24,7 @@ void IStateManagerDynamic::SetAnisotropicLevel(int anisoLevel)
 
 void IStateManagerDynamic::SetOverbright(float overbright)
 {
-	Util::SetDirtyVar(m_State.m_VtxShaderConstants.m_Overbright, overbright, m_Dirty);
+	Util::SetDirtyVar(m_State.m_SCOverbright, overbright, m_Dirty);
 }
 
 void IStateManagerDynamic::SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex)

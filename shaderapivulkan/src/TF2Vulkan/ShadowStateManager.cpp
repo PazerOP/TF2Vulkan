@@ -1,21 +1,19 @@
 #include "ShadowStateManager.h"
+#include "IStateManagerDynamic.h"
+#include "IStateManagerVulkan.h"
 #include <TF2Vulkan/Util/DirtyVar.h>
 
 using namespace TF2Vulkan;
 using namespace Util;
 
-void ShadowStateManager::ApplyState(ShadowStateID id, const vk::CommandBuffer& buf)
+void ShadowStateManager::ApplyState(LogicalShadowStateID id, const vk::CommandBuffer& buf)
 {
 	LOG_FUNC();
-
-	if (m_IDsToPipelines.size() <= size_t(id))
-		m_IDsToPipelines.resize(size_t(id) + 1);
-
-	auto& pl = m_IDsToPipelines[size_t(id)];
-	if (!pl)
-		pl = CreatePipeline(*m_IDsToStates[size_t(id)]);
-
-	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, pl.get());
+	if (m_Dirty)
+	{
+		g_StateManagerVulkan.ApplyState(
+			id, GetState(id), g_StateManagerDynamic.GetDynamicState());
+	}
 }
 
 void ShadowStateManager::ApplyCurrentState(const vk::CommandBuffer& buf)
@@ -28,34 +26,32 @@ void ShadowStateManager::SetDefaultState()
 {
 	LOG_FUNC();
 
-	m_Settings = {};
-
-	m_PipelineDirty = true;
-	m_FogDirty = true;
+	m_State = {};
+	m_Dirty = true;
 }
 
 void ShadowStateManager::DepthFunc(ShaderDepthFunc_t func)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_DepthStencil.m_Depth.m_CompareFunc, func, m_PipelineDirty);
+	SetDirtyVar(m_State.m_DepthCompareFunc, func, m_Dirty);
 }
 
 void ShadowStateManager::EnableDepthWrites(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_DepthStencil.m_Depth.m_DepthWrite, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_DepthWrite, enable, m_Dirty);
 }
 
 void ShadowStateManager::EnableDepthTest(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_DepthStencil.m_Depth.m_DepthTest, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_DepthTest, enable, m_Dirty);
 }
 
 void ShadowStateManager::EnablePolyOffset(PolygonOffsetMode_t mode)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Rasterizer.m_OffsetMode, mode, m_PipelineDirty);
+	SetDirtyVar(m_State.m_RSPolyOffsetMode, mode, m_Dirty);
 }
 
 void ShadowStateManager::EnableStencil(bool enable)
@@ -101,54 +97,54 @@ void ShadowStateManager::StencilWriteMask(int mask)
 void ShadowStateManager::EnableColorWrites(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_ColorWrite, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMColorWrite, enable, m_Dirty);
 }
 
 void ShadowStateManager::EnableAlphaWrites(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_AlphaWrite, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMAlphaWrite, enable, m_Dirty);
 }
 
 void ShadowStateManager::EnableBlending(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_AlphaBlending, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMAlphaBlending, enable, m_Dirty);
 }
 
 void ShadowStateManager::BlendFunc(ShaderBlendFactor_t srcFactor, ShaderBlendFactor_t dstFactor)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_SrcFactor, srcFactor, m_PipelineDirty);
-	SetDirtyVar(m_Settings.m_Blend.m_DstFactor, dstFactor, m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMSrcFactor, srcFactor, m_Dirty);
+	SetDirtyVar(m_State.m_OMDstFactor, dstFactor, m_Dirty);
 }
 
 void ShadowStateManager::EnableAlphaTest(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_AlphaTest, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMAlphaTest, enable, m_Dirty);
 }
 
 void ShadowStateManager::AlphaFunc(ShaderAlphaFunc_t alphaFunc, float alphaRef)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_AlphaTestFunc, alphaFunc, m_PipelineDirty);
-	SetDirtyVar(m_Settings.m_Blend.m_AlphaTestRef, int(alphaRef * 255), m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMAlphaTestFunc, alphaFunc, m_Dirty);
+	SetDirtyVar(m_State.m_OMAlphaTestRef, int(alphaRef * 255), m_Dirty);
 }
 
 void ShadowStateManager::PolyMode(ShaderPolyModeFace_t face, ShaderPolyMode_t mode)
 {
 	LOG_FUNC();
 	if (face == SHADER_POLYMODEFACE_FRONT || face == SHADER_POLYMODEFACE_FRONT_AND_BACK)
-		SetDirtyVar(m_Settings.m_Rasterizer.m_FrontFace.m_PolyMode, mode, m_PipelineDirty);
+		SetDirtyVar(m_State.m_RSFrontFacePolyMode, mode, m_Dirty);
 	if (face == SHADER_POLYMODEFACE_BACK || face == SHADER_POLYMODEFACE_FRONT_AND_BACK)
-		SetDirtyVar(m_Settings.m_Rasterizer.m_BackFace.m_PolyMode, mode, m_PipelineDirty);
+		SetDirtyVar(m_State.m_RSBackFacePolyMode, mode, m_Dirty);
 }
 
 void ShadowStateManager::EnableCulling(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Rasterizer.m_BackfaceCulling, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_RSBackFaceCulling, enable, m_Dirty);
 }
 
 void ShadowStateManager::EnableConstantColor(bool enable)
@@ -173,25 +169,25 @@ void ShadowStateManager::VertexShaderVertexFormat(uint flags,
 		Warning(TF2VULKAN_PREFIX "texCoordDimensions was nullptr, but texCoordCount was %i\n", texCoordCount);
 	}
 
-	auto& oldFmt = m_Settings.m_VertexShader.m_VertexFormat;
+	auto& oldFmt = m_State.m_VSVertexFormat;
 	assert(oldFmt == VERTEX_FORMAT_UNKNOWN || oldFmt == fmt); // TODO: Are we supposed to merge flags/texcoord dimensions?
-	SetDirtyVar(oldFmt, fmt, m_PipelineDirty);
+	SetDirtyVar(oldFmt, fmt, m_Dirty);
 }
 
 void ShadowStateManager::SetVertexShader(const char* filename, int staticIndex)
 {
 	LOG_FUNC();
 
-	SetDirtyVar(m_Settings.m_VertexShader.m_Name, filename, m_PipelineDirty);
-	SetDirtyVar(m_Settings.m_VertexShader.m_StaticIndex, staticIndex, m_PipelineDirty);
+	SetDirtyVar(m_State.m_VSName, filename, m_Dirty);
+	SetDirtyVar(m_State.m_VSStaticIndex, staticIndex, m_Dirty);
 }
 
 void ShadowStateManager::SetPixelShader(const char* filename, int staticIndex)
 {
 	LOG_FUNC();
 
-	SetDirtyVar(m_Settings.m_PixelShader.m_Name, filename, m_PipelineDirty);
-	SetDirtyVar(m_Settings.m_PixelShader.m_StaticIndex, staticIndex, m_PipelineDirty);
+	SetDirtyVar(m_State.m_PSName, filename, m_Dirty);
+	SetDirtyVar(m_State.m_PSStaticIndex, staticIndex, m_Dirty);
 }
 
 void ShadowStateManager::EnableLighting(bool enable)
@@ -207,17 +203,18 @@ void ShadowStateManager::EnableSpecular(bool enable)
 void ShadowStateManager::EnableSRGBWrite(bool enable)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Blend.m_SRGBWrite, enable, m_PipelineDirty);
+	SetDirtyVar(m_State.m_OMSRGBWrite, enable, m_Dirty);
 }
 
 void ShadowStateManager::EnableSRGBRead(Sampler_t sampler, bool enable)
 {
 	LOG_FUNC();
-	auto& s = m_Settings.m_PixelShader.m_Samplers.at(sampler);
+	ENSURE(sampler >= Sampler_t(0) && sampler < Sampler_t(std::size(m_State.m_PSSamplers)));
+	auto& s = m_State.m_PSSamplers[sampler];
 	if (s.m_SRGBRead != enable)
 	{
 		s.m_SRGBRead = enable;
-		m_PipelineDirty = true;
+		m_Dirty = true;
 	}
 }
 
@@ -234,11 +231,12 @@ void ShadowStateManager::OverbrightValue(TextureStage_t stage, float value)
 void ShadowStateManager::EnableTexture(Sampler_t sampler, bool enable)
 {
 	LOG_FUNC();
-	auto& s = m_Settings.m_PixelShader.m_Samplers.at(sampler);
+	ENSURE(sampler >= Sampler_t(0) && sampler < Sampler_t(std::size(m_State.m_PSSamplers)));
+	auto & s = m_State.m_PSSamplers[sampler];
 	if (s.m_Enabled != enable)
 	{
 		s.m_Enabled = enable;
-		m_PipelineDirty = true;
+		m_Dirty = true;
 	}
 }
 
@@ -305,7 +303,7 @@ void ShadowStateManager::BlendFuncSeparateAlpha(ShaderBlendFactor_t srcFactor, S
 void ShadowStateManager::FogMode(ShaderFogMode_t fogMode)
 {
 	LOG_FUNC();
-	SetDirtyVar(m_Settings.m_Fog.m_Mode, fogMode, m_FogDirty);
+	SetDirtyVar(m_State.m_FogMode, fogMode, m_Dirty);
 }
 
 void ShadowStateManager::SetDiffuseMaterialSource(ShaderMaterialSource_t materialSource)
@@ -343,14 +341,14 @@ void ShadowStateManager::BlendOpSeparateAlpha(ShaderBlendOp_t op)
 	NOT_IMPLEMENTED_FUNC();
 }
 
-ShadowStateID ShadowStateManager::TakeSnapshot()
+LogicalShadowStateID ShadowStateManager::TakeSnapshot()
 {
-	if (auto found = m_StatesToIDs.find(m_Settings); found != m_StatesToIDs.end())
+	if (auto found = m_StatesToIDs.find(m_State); found != m_StatesToIDs.end())
 		return found->second;
 
 	// Couldn't find it, add it now
-	ShadowStateID nextID = ShadowStateID(m_IDsToStates.size());
-	auto emplaced = m_StatesToIDs.emplace(m_Settings, nextID);
+	LogicalShadowStateID nextID = LogicalShadowStateID(m_IDsToStates.size());
+	auto emplaced = m_StatesToIDs.emplace(m_State, nextID);
 	m_IDsToStates.push_back(&emplaced.first->first);
 
 	return nextID;
@@ -359,55 +357,43 @@ ShadowStateID ShadowStateManager::TakeSnapshot()
 bool ShadowStateManager::IsTranslucent(StateSnapshot_t id) const
 {
 	// TODO: How is "is translucent" actually computed?
-	return GetState(id).m_Blend.m_AlphaBlending;
+	return GetState(id).m_OMAlphaBlending;
 }
 
 bool ShadowStateManager::IsAlphaTested(StateSnapshot_t id) const
 {
-	return GetState(id).m_Blend.m_AlphaTest;
+	return GetState(id).m_OMAlphaTest;
 }
 
 bool ShadowStateManager::UsesVertexAndPixelShaders(StateSnapshot_t id) const
 {
 	const auto& state = GetState(id);
 
-	assert(!state.m_VertexShader.m_Name == !state.m_PixelShader.m_Name);
-	return !!state.m_VertexShader.m_Name;
+	assert(!state.m_VSName == !state.m_PSName);
+	return !!state.m_VSName;
 }
 
 bool ShadowStateManager::IsDepthWriteEnabled(StateSnapshot_t id) const
 {
-	return GetState(id).m_DepthStencil.m_Depth.m_DepthWrite;
+	return GetState(id).m_DepthWrite;
 }
 
 void ShadowStateManager::SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex)
 {
-	Util::SetDirtyVar(m_Settings.m_RenderPass.m_RenderTargetColors, rtID, colTex, m_PipelineDirty);
-	Util::SetDirtyVar(m_Settings.m_RenderPass.m_RenderTargetDepth, depthTex, m_PipelineDirty);
+	Util::SetDirtyVar(m_State.m_OMColorRTs, rtID, colTex, m_Dirty);
+	Util::SetDirtyVar(m_State.m_OMDepthRT, depthTex, m_Dirty);
 }
 
 bool ShadowStateManager::HasStateChanged() const
 {
-	return m_PipelineDirty;
+	return m_Dirty;
 }
 
-auto ShadowStateManager::GetState(StateSnapshot_t id) const -> const ShadowState &
+auto ShadowStateManager::GetState(StateSnapshot_t id) const -> const LogicalShadowState &
+{
+	return GetState(Util::SafeConvert<LogicalShadowStateID>(id));
+}
+auto ShadowStateManager::GetState(LogicalShadowStateID id) const -> const LogicalShadowState &
 {
 	return *m_IDsToStates.at(Util::SafeConvert<size_t>(id));
-}
-
-size_t ShadowStateManager::ShadowStateHasher::operator()(const FogParams& s) const
-{
-	return Util::hash_multi(
-		s.m_Mode
-	);
-}
-
-size_t ShadowStateManager::ShadowStateHasher::operator()(const ShadowState& s) const
-{
-	return Util::hash_combine(
-		{
-			Util::hash_value(static_cast<const PipelineSettings&>(s)),
-			operator()(s.m_Fog)
-		});
 }

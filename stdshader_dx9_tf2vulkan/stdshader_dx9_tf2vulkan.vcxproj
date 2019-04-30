@@ -101,6 +101,13 @@
   <ItemGroup>
     <ClCompile Include="src\ShaderBlobs.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\HLSL\vertexlit_and_unlit_generic.frag.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

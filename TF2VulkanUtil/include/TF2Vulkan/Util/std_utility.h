@@ -40,12 +40,6 @@ namespace Util
 		return ::Util::hash_combine_range(hashes.begin(), hashes.end());
 	}
 
-	template<typename... T>
-	[[nodiscard]] inline size_t hash_multi(const T&... args)
-	{
-		return ::Util::hash_combine({ ::Util::hash_value(args)... });
-	}
-
 	template<typename TIter>
 	[[nodiscard]] inline size_t hash_range(TIter begin, const TIter& end)
 	{
@@ -55,6 +49,18 @@ namespace Util
 			retVal = hash_combine(retVal, hash_value(*begin));
 
 		return retVal;
+	}
+
+	template<typename T, size_t size>
+	[[nodiscard]] inline size_t hash_value(const T(&value)[size])
+	{
+		return ::Util::hash_range(std::begin(value), std::end(value));
+	}
+
+	template<typename... T>
+	[[nodiscard]] inline size_t hash_multi(const T& ... args)
+	{
+		return ::Util::hash_combine({ ::Util::hash_value(args)... });
 	}
 }
 

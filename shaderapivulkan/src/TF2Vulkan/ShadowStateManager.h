@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GraphicsPipeline.h"
+#include "LogicalState.h"
 #include "VertexFormat.h"
 
 #include <TF2Vulkan/Util/Templates.h>
@@ -17,13 +17,10 @@ namespace TF2Vulkan
 	public:
 	};
 
-	enum class ShadowStateID : size_t;
-	static constexpr ShadowStateID INVALID_SHADOW_STATE_ID = ShadowStateID(-1);
-
 	class ShadowStateManager : public IShaderShadowInternal
 	{
 	public:
-		void ApplyState(ShadowStateID id, const vk::CommandBuffer& buf);
+		void ApplyState(LogicalShadowStateID id, const vk::CommandBuffer& buf);
 		void ApplyCurrentState(const vk::CommandBuffer& buf);
 		void SetDefaultState() override final;
 
@@ -106,7 +103,7 @@ namespace TF2Vulkan
 		void BlendOp(ShaderBlendOp_t op) override final;
 		void BlendOpSeparateAlpha(ShaderBlendOp_t op) override final;
 
-		ShadowStateID TakeSnapshot();
+		LogicalShadowStateID TakeSnapshot();
 		bool IsTranslucent(StateSnapshot_t id) const;
 		bool IsAlphaTested(StateSnapshot_t id) const;
 		bool UsesVertexAndPixelShaders(StateSnapshot_t id) const;
@@ -114,44 +111,18 @@ namespace TF2Vulkan
 
 		void SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex);
 
-		struct FogParams final
-		{
-			constexpr FogParams() = default;
-			DEFAULT_STRONG_EQUALITY_OPERATOR(FogParams);
-
-			ShaderFogMode_t m_Mode = SHADER_FOGMODE_DISABLED;
-		};
-
-		struct ShadowState : PipelineSettings
-		{
-			constexpr ShadowState() = default;
-			DEFAULT_STRONG_EQUALITY_OPERATOR(ShadowState);
-
-			FogParams m_Fog;
-		};
-
-		const ShadowState& GetState(StateSnapshot_t id) const;
+		const LogicalShadowState& GetState(StateSnapshot_t id) const;
+		const LogicalShadowState& GetState(LogicalShadowStateID id) const;
 
 	protected:
 		bool HasStateChanged() const;
 
-		struct ShadowStateHasher final
-		{
-			size_t operator()(const FogParams& s) const;
-			size_t operator()(const ShadowState& s) const;
-		};
-
-		virtual vk::UniquePipeline CreatePipeline(const ShadowState& state) const = 0;
-
 	private:
-		bool m_PipelineDirty = true;
-		bool m_FogDirty = true;
-		ShadowState m_Settings;
+		bool m_Dirty = true;
+		LogicalShadowState m_State;
 
-		std::unordered_map<ShadowState, ShadowStateID, ShadowStateHasher> m_StatesToIDs;
-		std::vector<const ShadowState*> m_IDsToStates;
-
-		std::vector<vk::UniquePipeline> m_IDsToPipelines;
+		std::unordered_map<LogicalShadowState, LogicalShadowStateID> m_StatesToIDs;
+		std::vector<const LogicalShadowState*> m_IDsToStates;
 	};
 
 	extern ShadowStateManager& g_ShadowStateManager;

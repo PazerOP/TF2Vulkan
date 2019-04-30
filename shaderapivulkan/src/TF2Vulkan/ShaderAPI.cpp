@@ -984,7 +984,7 @@ VertexFormat_t ShaderAPI::ComputeVertexFormat(int snapshotCount, StateSnapshot_t
 	if (snapshotCount <= 0 || !ids)
 		return VERTEX_FORMAT_UNKNOWN;
 
-	const auto& vtxFmt0 = g_ShadowStateManager.GetState(ids[0]).m_VertexShader.m_VertexFormat;
+	const auto& vtxFmt0 = g_ShadowStateManager.GetState(ids[0]).m_VSVertexFormat;
 	VertexCompressionType_t compression = CompressionType(vtxFmt0);
 	uint_fast8_t userDataSize = UserDataSize(vtxFmt0);
 	uint_fast8_t boneCount = NumBoneWeights(vtxFmt0);
@@ -995,7 +995,7 @@ VertexFormat_t ShaderAPI::ComputeVertexFormat(int snapshotCount, StateSnapshot_t
 
 	for (int i = 1; i < snapshotCount; i++)
 	{
-		const auto& fmt = g_ShadowStateManager.GetState(*ids).m_VertexShader.m_VertexFormat;
+		const auto& fmt = g_ShadowStateManager.GetState(*ids).m_VSVertexFormat;
 
 		if (auto thisComp = CompressionType(fmt); thisComp != compression)
 		{
@@ -1656,7 +1656,7 @@ MorphFormat_t ShaderAPI::ComputeMorphFormat(int snapshots, StateSnapshot_t* ids)
 	MorphFormat_t fmt = {};
 
 	for (int i = 0; i < snapshots; i++)
-		fmt |= g_ShadowStateManager.GetState(ids[i]).m_VertexShader.m_MorphFormat;
+		fmt |= g_ShadowStateManager.GetState(ids[i]).m_VSMorphFormat;
 
 	return fmt;
 }

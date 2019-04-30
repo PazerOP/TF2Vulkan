@@ -5,12 +5,70 @@
 
 using namespace TF2Vulkan;
 
+static const std::array<VertexFormat::ElementType, VERTEX_ELEMENT_NUMELEMENTS> s_ElementTypes = []
+{
+	std::array<VertexFormat::ElementType, VERTEX_ELEMENT_NUMELEMENTS> retVal;
+
+	for (int i = 0; i < VERTEX_ELEMENT_NUMELEMENTS; i++)
+	{
+		auto& e = retVal[i];
+		e.m_Type = VertexElement_t(i);
+
+		// Data format
+		switch (i)
+		{
+		case VERTEX_ELEMENT_COLOR:
+		case VERTEX_ELEMENT_SPECULAR:
+			e.m_Format = DataFormat::UNorm;
+			break;
+
+		case VERTEX_ELEMENT_NORMAL:
+			e.m_Format = DataFormat::UInt;
+			break;
+
+		case VERTEX_ELEMENT_BONEWEIGHTS1:
+		case VERTEX_ELEMENT_BONEWEIGHTS2:
+			e.m_Format = DataFormat::SInt;
+			break;
+
+		case VERTEX_ELEMENT_BONEWEIGHTS3:
+		case VERTEX_ELEMENT_BONEWEIGHTS4:
+			e.m_Format = DataFormat::SFloat;
+			break;
+		}
+		assert(e.m_Format != DataFormat::Invalid);
+
+		// Component count
+		switch (i)
+		{
+		case VERTEX_ELEMENT_WRINKLE:
+			e.m_Components = 1;
+			break;
+
+		case VERTEX_ELEMENT_POSITION:
+		case VERTEX_ELEMENT_NORMAL:
+		case VERTEX_ELEMENT_TANGENT_S:
+		case VERTEX_ELEMENT_TANGENT_T:
+			e.m_Components = 3;
+			break;
+
+		case VERTEX_ELEMENT_COLOR:
+		case VERTEX_ELEMENT_SPECULAR:
+			e.m_Components = 4;
+			break;
+		}
+		assert(e.m_Components > 0);
+	}
+
+	return retVal;
+}();
+
 size_t VertexFormat::GetVertexSize() const
 {
 	using VFF = VertexFormatFlags;
 	size_t size = 0;
 
-
+	NOT_IMPLEMENTED_FUNC();
 
 	return size;
 }
@@ -38,6 +96,8 @@ void VertexFormat::SetCompressionEnabled(bool enabled)
 
 uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize) const
 {
+	assert(maxElements >= VERTEX_ELEMENT_NUMELEMENTS);
+
 	using VFF = VertexFormatFlags;
 	size_t totalSizeTemp = 0;
 	uint_fast8_t elemCount = 0;
@@ -46,14 +106,14 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 
 	const auto StoreElement = [&](VertexElement_t elemType)
 	{
+		assert(elemType < VERTEX_ELEMENT_NUMELEMENTS);
 		if (elemCount >= maxElements)
 			return;
 
-		assert(elemType < VERTEX_ELEMENT_NUMELEMENTS);
 #ifdef _DEBUG
 		if (elemCount > 0)
 		{
-			auto prev = elements[elemCount - 1].m_Type;
+			auto prev = elements[elemCount - 1].m_Type->m_Type;
 			if (prev >= VERTEX_ELEMENT_TEXCOORD1D_0)
 			{
 				auto prevIdx = (prev - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_ELEMENT_NUMELEMENTS;
@@ -70,6 +130,20 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 		Element& e = elements[elemCount++];
 		e.m_Type = elemType;
 		e.m_Size = GetVertexElementSize(elemType, compression);
+
+		switch (e.m_Type)
+		{
+		case VERTEX_ELEMENT_NORMAL:
+			e.m_Format = vk::Format::eR8G8B8A8Uint;
+			break;
+		case VERTEX_ELEMENT_COLOR:
+			e.m_Format = vk::Format::eR8G8B8A8Unorm;
+			break;
+
+		default:
+			e.m_Format =
+		}
+
 		e.m_Offset = totalSizeTemp;
 		totalSizeTemp += e.m_Size;
 	};

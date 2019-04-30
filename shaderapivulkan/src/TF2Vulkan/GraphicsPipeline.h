@@ -10,6 +10,7 @@
 #include <materialsystem/imaterial.h>
 #include <shaderapi/ishaderdynamic.h>
 #include <shaderapi/ishadershadow.h>
+#include <shaderapi/shareddefs.h>
 
 #include <compare>
 
@@ -18,7 +19,6 @@ namespace TF2Vulkan
 	struct SamplerSettings
 	{
 		constexpr SamplerSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(SamplerSettings);
 
 		bool m_Enabled = false;
@@ -28,7 +28,6 @@ namespace TF2Vulkan
 	struct ShaderStageSettings
 	{
 		constexpr ShaderStageSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(ShaderStageSettings);
 
 		CUtlSymbolDbg m_Name;
@@ -38,7 +37,6 @@ namespace TF2Vulkan
 	struct VertexShaderStageSettings final : ShaderStageSettings
 	{
 		constexpr VertexShaderStageSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(VertexShaderStageSettings);
 
 		VertexFormat m_VertexFormat;
@@ -48,7 +46,6 @@ namespace TF2Vulkan
 	struct PixelShaderStageSettings final : ShaderStageSettings
 	{
 		constexpr PixelShaderStageSettings() = default;
-
 		bool operator==(const PixelShaderStageSettings& other) const noexcept;
 
 		std::array<SamplerSettings, 16> m_Samplers;
@@ -57,7 +54,6 @@ namespace TF2Vulkan
 	struct DepthSettings
 	{
 		constexpr DepthSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(DepthSettings);
 
 		ShaderDepthFunc_t m_CompareFunc = SHADER_DEPTHFUNC_NEARER;
@@ -68,7 +64,6 @@ namespace TF2Vulkan
 	struct StencilSettings
 	{
 		constexpr StencilSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(StencilSettings);
 
 		ShaderStencilFunc_t m_Func = SHADER_STENCILFUNC_ALWAYS;
@@ -80,7 +75,6 @@ namespace TF2Vulkan
 	struct DepthStencilSettings
 	{
 		constexpr DepthStencilSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(DepthStencilSettings);
 
 		DepthSettings m_Depth;
@@ -90,7 +84,6 @@ namespace TF2Vulkan
 	struct RasterizerFaceSettings
 	{
 		constexpr RasterizerFaceSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(RasterizerFaceSettings);
 
 		ShaderPolyMode_t m_PolyMode = SHADER_POLYMODE_FILL;
@@ -99,7 +92,6 @@ namespace TF2Vulkan
 	struct RasterizerSettings
 	{
 		constexpr RasterizerSettings() = default;
-
 		DEFAULT_STRONG_EQUALITY_OPERATOR(RasterizerSettings);
 
 		bool m_BackfaceCulling = true;

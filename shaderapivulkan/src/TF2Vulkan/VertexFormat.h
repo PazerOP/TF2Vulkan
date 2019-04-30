@@ -1,5 +1,7 @@
 #pragma once
 
+#include "FormatConversion.h"
+
 #include <materialsystem/imaterial.h>
 
 #include <TF2Vulkan/Util/Enums.h>
@@ -55,10 +57,19 @@ namespace TF2Vulkan
 
 		void SetCompressionEnabled(bool enabled);
 
-		struct Element
+		struct ElementType final
 		{
 			VertexElement_t m_Type = VERTEX_ELEMENT_NONE;
-			uint_fast8_t m_Size = 0;
+			DataFormat m_Format = DataFormat::Invalid;
+			uint_fast8_t m_Components = 0;
+			uint_fast8_t m_ByteSize = 0;
+
+			vk::Format GetVKFormat() const;
+		};
+
+		struct Element
+		{
+			const ElementType* m_Type = nullptr;
 			uint_fast8_t m_Offset = 0;
 		};
 

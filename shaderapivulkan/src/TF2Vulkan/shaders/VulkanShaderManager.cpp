@@ -40,6 +40,7 @@ IVulkanShaderManager& TF2Vulkan::g_ShaderManager = s_ShaderManager;
 static const std::unordered_map<std::string_view, ShaderBlob> s_ShaderBlobMapping =
 {
 	{ "vertexlit_and_unlit_generic_vs30", ShaderBlob::VertexLitAndUnlitGeneric_VS },
+	{ "vertexlit_and_unlit_generic_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
 };
 
 vk::ShaderModule VulkanShaderManager::FindOrCreateShader(const ShaderID& id)

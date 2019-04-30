@@ -98,6 +98,8 @@
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_array.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_charconv.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\std_compare.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\std_type_traits.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Templates.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />

@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <limits>
-#include <type_traits>
+#include "std_type_traits.h"
 
 #pragma push_macro("min")
 #pragma push_macro("max")
@@ -23,17 +23,19 @@ namespace Util
 		}
 		else
 		{
-			constexpr auto TO_MIN = intmax_t(std::numeric_limits<To>::min());
-			constexpr auto TO_MAX = uintmax_t(std::numeric_limits<To>::max());
-			constexpr auto FROM_MIN = intmax_t(std::numeric_limits<From>::min());
-			constexpr auto FROM_MAX = uintmax_t(std::numeric_limits<From>::max());
+			using RealTo = Util::type_traits::safe_underlying_type_t<To>;
+			using RealFrom = Util::type_traits::safe_underlying_type_t<From>;
+			constexpr auto TO_MIN = intmax_t(std::numeric_limits<RealTo>::min());
+			constexpr auto TO_MAX = uintmax_t(std::numeric_limits<RealTo>::max());
+			constexpr auto FROM_MIN = intmax_t(std::numeric_limits<RealFrom>::min());
+			constexpr auto FROM_MAX = uintmax_t(std::numeric_limits<RealFrom>::max());
 
 			constexpr bool NEEDS_MIN_CHECK = TO_MIN > FROM_MIN;
 			constexpr bool NEEDS_MAX_CHECK = TO_MAX < FROM_MAX;
 
 			if constexpr (NEEDS_MIN_CHECK)
 			{
-				if (f < 0 && intmax_t(f) < TO_MIN)
+				if (RealFrom(f) < 0 && intmax_t(f) < TO_MIN)
 				{
 					assert(!"Truncating!");
 					return To(TO_MIN);
@@ -42,7 +44,7 @@ namespace Util
 
 			if constexpr (NEEDS_MAX_CHECK)
 			{
-				if (f > 0 && uintmax_t(f) > TO_MAX)
+				if (RealFrom(f) > 0 && uintmax_t(f) > TO_MAX)
 				{
 					assert(!"Truncating!");
 					return To(TO_MAX);

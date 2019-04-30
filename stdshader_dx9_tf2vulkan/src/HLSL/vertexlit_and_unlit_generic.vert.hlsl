@@ -13,6 +13,8 @@ cbuffer VertexShaderCustomConstants
 SamplerState morphSampler;
 Texture2D morphTexture;
 
+#define SEAMLESS_SCALE (cSeamlessScale.x)
+
 #define g_bDecalOffset (MORPHING && DECAL)
 #define g_bSkinning (SKINNING)
 
@@ -55,7 +57,7 @@ struct VS_OUTPUT
 	float3 SeamlessWeights      : COLOR0;
 };
 
-VS_OUTPUT main( const VS_INPUT v )
+VS_OUTPUT main(const VS_INPUT v)
 {
 	VS_OUTPUT o;
 
@@ -118,54 +120,55 @@ VS_OUTPUT main( const VS_INPUT v )
 	if (CUBEMAP)
 		o.worldVertToEyeVector.xyz = cEyePos - worldPos;
 
-
-#if FLASHLIGHT
-	o.color = float4(0.0f, 0.0f, 0.0f, 0.0f);
-#else
-	if (VERTEXCOLOR)
+	if (FLASHLIGHT)
 	{
-		// Assume that this is unlitgeneric if you are using vertex color.
-		o.color.rgb = (DONT_GAMMA_CONVERT_VERTEX_COLOR) ? v.vColor.rgb : GammaToLinear(v.vColor.rgb);
-		o.color.a = v.vColor.a;
+		o.color = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 	else
 	{
-		o.color.xyz = DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT);
+		if (VERTEXCOLOR)
+		{
+			// Assume that this is unlitgeneric if you are using vertex color.
+			o.color.rgb = (DONT_GAMMA_CONVERT_VERTEX_COLOR) ? v.vColor.rgb : GammaToLinear(v.vColor.rgb);
+			o.color.a = v.vColor.a;
+		}
+		else
+		{
+			o.color.xyz = DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT);
+		}
 	}
-#endif
 
+	if (SEAMLESS_BASE)
+		o.baseTexCoord.xyz = SEAMLESS_SCALE * v.vPos.xyz;
+	else
+	{
+		// Base texture coordinates
+		o.baseTexCoord.x = dot(v.vTexCoord0, cBaseTexCoordTransform[0]);
+		o.baseTexCoord.y = dot(v.vTexCoord0, cBaseTexCoordTransform[1]);
+	}
 
-#if SEAMLESS_BASE
-	o.SeamlessTexCoord.xyz = SEAMLESS_SCALE * v.vPos.xyz;
-#else
-	// Base texture coordinates
-	o.baseTexCoord.x = dot(v.vTexCoord0, cBaseTexCoordTransform[0]);
-	o.baseTexCoord.y = dot(v.vTexCoord0, cBaseTexCoordTransform[1]);
-#endif
+	if (SEAMLESS_DETAIL)
+	{
+		// FIXME: detail texcoord as a 2d xform doesn't make much sense here, so I just do enough so
+		// that scale works. More smartness could allow 3d xform.
+		o.detailTexCoord.xyz = (SEAMLESS_SCALE * cDetailTexCoordTransform[0].x) * v.vPos.xyz;
+	}
+	else
+	{
+		// Detail texture coordinates
+		// FIXME: This shouldn't have to be computed all the time.
+		o.detailTexCoord.x = dot(v.vTexCoord0, cDetailTexCoordTransform[0]);
+		o.detailTexCoord.y = dot(v.vTexCoord0, cDetailTexCoordTransform[1]);
+	}
 
-#if SEAMLESS_DETAIL
-	// FIXME: detail texcoord as a 2d xform doesn't make much sense here, so I just do enough so
-	// that scale works. More smartness could allow 3d xform.
-	o.SeamlessDetailTexCoord.xyz = (SEAMLESS_SCALE * cDetailTexCoordTransform[0].x) * v.vPos.xyz;
-#else
-	// Detail texture coordinates
-	// FIXME: This shouldn't have to be computed all the time.
-	o.detailTexCoord.x = dot(v.vTexCoord0, cDetailTexCoordTransform[0]);
-	o.detailTexCoord.y = dot(v.vTexCoord0, cDetailTexCoordTransform[1]);
-#endif
+	if (SEPARATE_DETAIL_UVS)
+		o.detailTexCoord.xy = v.vTexCoord1.xy;
 
-#if SEPARATE_DETAIL_UVS
-	o.detailTexCoord.xy = v.vTexCoord1.xy;
-#endif
-
-#if LIGHTING_PREVIEW
-	float dot = 0.5 + 0.5 * worldNormal * float3(0.7071, 0.7071, 0);
-	o.color.xyz = float3(dot, dot, dot);
-#endif
-
-#if defined ( _X360 ) && FLASHLIGHT
-	o.flashlightSpacePos = mul(float4(worldPos, 1.0f), g_FlashlightWorldToTexture);
-#endif
+	if (LIGHTING_PREVIEW)
+	{
+		float dot = 0.5 + 0.5 * worldNormal * float3(0.7071, 0.7071, 0);
+		o.color.xyz = float3(dot, dot, dot);
+	}
 
 	return o;
 }

@@ -4,7 +4,6 @@
 
 #include <tier0/dbg.h>
 
-#include <compare>
 #include <string_view>
 
 namespace Util
@@ -37,18 +36,4 @@ namespace Util
 	{ NOT_IMPLEMENTED_FUNC_NOBREAK(); __debugbreak(); }
 #else
 #define NOT_IMPLEMENTED_FUNC() NOT_IMPLEMENTED_FUNC_NOBREAK()
-#endif
-
-#if defined(_MSC_VER) && defined(__INTELLISENSE__)
-#define INTELLISENSE_PLACEHOLDER_EQUALITY_OPERATORS(type) \
-	bool operator==(const type&) const noexcept { __debugbreak(); return false; } \
-	bool operator!=(const type&) const noexcept { __debugbreak(); return true; }
-
-#define DEFAULT_STRONG_EQUALITY_OPERATOR(type) INTELLISENSE_PLACEHOLDER_EQUALITY_OPERATORS(type)
-#define DEFAULT_WEAK_EQUALITY_OPERATOR(type) INTELLISENSE_PLACEHOLDER_EQUALITY_OPERATORS(type)
-
-#else
-#define DEFAULT_STRONG_EQUALITY_OPERATOR(type) \
-	std::strong_equality operator<=>(const type&) const noexcept = default;
-
 #endif

@@ -7,7 +7,7 @@
 [[vk::constant_id(4)]] const bool FLASHLIGHT = false;
 [[vk::constant_id(5)]] const bool SEAMLESS_BASE = false;
 [[vk::constant_id(6)]] const bool SEAMLESS_DETAIL = false;
-[[vk::constant_id(7)]] const bool SEAMLESS_DETAIL_UVS = false;
+[[vk::constant_id(7)]] const bool SEPARATE_DETAIL_UVS = false;
 [[vk::constant_id(8)]] const bool DECAL = false;
 [[vk::constant_id(9)]] const bool DONT_GAMMA_CONVERT_VERTEX_COLOR = false;
 

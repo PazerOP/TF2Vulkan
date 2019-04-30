@@ -1,5 +1,6 @@
 #pragma once
 
+#include "LogicalState.h"
 #include "interface/internal/IShaderAPIInternal.h"
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
@@ -29,31 +30,10 @@ namespace TF2Vulkan
 		// Helpers
 		void SetOverbright(float overbright);
 
-		struct StdVtxShaderConstants
-		{
-			constexpr StdVtxShaderConstants() = default;
-
-			float m_Overbright = 1.0f;
-		};
-
-		struct DynamicState
-		{
-			constexpr DynamicState() = default;
-
-			IMaterial* m_BoundMaterial = nullptr;
-			int m_BoneCount = 0;
-			ShaderAPITextureHandle_t m_FullScreenTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
-			uint_fast8_t m_AnisotropicLevel = 0;
-			Util::InPlaceVector<ShaderViewport_t, 4> m_Viewports;
-			float m_ClearColor[4] = {};
-
-			StdVtxShaderConstants m_VtxShaderConstants;
-		};
-
-		const DynamicState& GetDynamicState() const { return m_State; }
+		const LogicalDynamicState& GetDynamicState() const { return m_State; }
 
 	private:
-		DynamicState m_State;
+		LogicalDynamicState m_State;
 		bool m_Dirty = true;
 	};
 
