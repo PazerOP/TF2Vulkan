@@ -12,9 +12,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{BCAA3EF6-6521-4314-A301-BF1D2FB740C5}</ProjectGuid>
+    <ProjectGuid>{41ED1D80-2EB6-487C-B63F-45DF53B72BA5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>TF2VulkanUtil</RootNamespace>
+    <RootNamespace>stdshaderdx9tf2vulkan</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -22,14 +22,14 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -38,13 +38,13 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="stdshader_dx9_tf2vulkan_Shared_Project.props" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
-    <Import Project="TF2VulkanUtil_Shared_Project.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="stdshader_dx9_tf2vulkan_Shared_Project.props" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
-    <Import Project="TF2VulkanUtil_Shared_Project.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -84,33 +84,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\ClassPrefabs.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\Enums.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\FourCC.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\InPlaceVector.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\Macros.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\ImageManip.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\interface.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\KeyValues.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\std_array.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\std_charconv.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\Templates.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
+    <None Include="src\HLSL\common_fxc.hlsli" />
+    <None Include="src\HLSL\common_ps_fxc.hlsli" />
+    <None Include="src\HLSL\common_vs_fxc.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="include\TF2Vulkan\Util\ImageManip.cpp" />
-    <ClCompile Include="include\TF2Vulkan\Util\Threads.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Util\Macros.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Util\interface.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Util\KeyValues.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Util\std_utility.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Util\utlsymbol.cpp" />
+    <CustomBuild Include="src\HLSL\vertexlit_and_unlit_generic.vert.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderBlobs.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ShaderBlobs.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -76,5 +76,8 @@ namespace TF2Vulkan
 			return CopyRenderTargetToScratchTexture(srcRT, dstTex,
 				const_cast<const Rect_t*>(srcRect), const_cast<const Rect_t*>(dstRect));
 		}
+
+		virtual bool IsInFrame() const = 0;
+		virtual bool IsInPass() const = 0;
 	};
 }

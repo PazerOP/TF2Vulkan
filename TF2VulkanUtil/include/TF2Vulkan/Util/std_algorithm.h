@@ -47,4 +47,10 @@ namespace Util{ namespace algorithm
 	{
 		return find_and<TContainer, TValue>(container, value, [&](auto found) { container.erase(found); });
 	}
+
+	template<typename T, size_t size>
+	inline void copy(const T(&src)[size], T(&dest)[size])
+	{
+		std::copy(std::begin(src), std::end(src), dest);
+	}
 } }

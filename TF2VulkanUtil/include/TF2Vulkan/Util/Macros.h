@@ -4,6 +4,7 @@
 
 #include <tier0/dbg.h>
 
+#include <compare>
 #include <string_view>
 
 namespace Util

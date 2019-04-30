@@ -85,6 +85,27 @@ ImageFormat TF2Vulkan::ConvertImageFormat(vk::Format format)
 	default: assert(!"Unknown format");
 	case vk::Format::eUndefined:            return IMAGE_FORMAT_UNKNOWN;
 
+		// R
+	case vk::Format::eR32Sfloat:            return IMAGE_FORMAT_R32F;
+
+		// RG
+
+		// RGB
+
+		// BGR
+
+		// RGBA
+
+		// ABGR
+
+		// BGRA
+	case vk::Format::eB8G8R8A8Unorm:        return IMAGE_FORMAT_BGRA8888;
+
+		// DXT1
+
+		// DXT3
+
+		// DXT5
 	case vk::Format::eR8G8B8A8Unorm:        return IMAGE_FORMAT_RGBA8888;
 	case vk::Format::eA8B8G8R8UnormPack32:  return IMAGE_FORMAT_ABGR8888;
 	}

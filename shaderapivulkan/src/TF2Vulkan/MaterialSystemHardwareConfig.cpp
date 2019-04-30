@@ -468,8 +468,8 @@ HDRType_t MaterialSystemHardwareConfig::GetHDRType() const
 
 HDRType_t MaterialSystemHardwareConfig::GetHardwareHDRType() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return HDRType_t{};
+	LOG_FUNC();
+	return HDRType_t::HDR_TYPE_FLOAT;
 }
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_2_b() const

@@ -9,6 +9,8 @@
 
 namespace TF2Vulkan
 {
+	class IShaderShadowInternal;
+
 	class IShaderDeviceInternal : public IShaderDevice
 	{
 	public:
@@ -28,6 +30,8 @@ namespace TF2Vulkan
 		virtual const IVulkanQueue& GetGraphicsQueue() = 0;
 
 		virtual Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() = 0;
+
+		virtual bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) = 0;
 	};
 
 	extern IShaderDeviceInternal& g_ShaderDevice;

@@ -338,3 +338,5 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+stdshader_dx9_tf2vulkan/src/Generated/
+*.vcxproj.filters

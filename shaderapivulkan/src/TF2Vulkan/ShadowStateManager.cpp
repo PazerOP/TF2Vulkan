@@ -4,6 +4,26 @@
 using namespace TF2Vulkan;
 using namespace Util;
 
+void ShadowStateManager::ApplyState(ShadowStateID id, const vk::CommandBuffer& buf)
+{
+	LOG_FUNC();
+
+	if (m_IDsToPipelines.size() <= size_t(id))
+		m_IDsToPipelines.resize(size_t(id) + 1);
+
+	auto& pl = m_IDsToPipelines[size_t(id)];
+	if (!pl)
+		pl = CreatePipeline(*m_IDsToStates[size_t(id)]);
+
+	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, pl.get());
+}
+
+void ShadowStateManager::ApplyCurrentState(const vk::CommandBuffer& buf)
+{
+	LOG_FUNC();
+	ApplyState(TakeSnapshot(), buf);
+}
+
 void ShadowStateManager::SetDefaultState()
 {
 	LOG_FUNC();
@@ -358,6 +378,12 @@ bool ShadowStateManager::UsesVertexAndPixelShaders(StateSnapshot_t id) const
 bool ShadowStateManager::IsDepthWriteEnabled(StateSnapshot_t id) const
 {
 	return GetState(id).m_DepthStencil.m_Depth.m_DepthWrite;
+}
+
+void ShadowStateManager::SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex)
+{
+	Util::SetDirtyVar(m_Settings.m_RenderPass.m_RenderTargetColors, rtID, colTex, m_PipelineDirty);
+	Util::SetDirtyVar(m_Settings.m_RenderPass.m_RenderTargetDepth, depthTex, m_PipelineDirty);
 }
 
 bool ShadowStateManager::HasStateChanged() const

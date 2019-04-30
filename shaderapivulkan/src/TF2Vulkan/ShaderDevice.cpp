@@ -1,3 +1,4 @@
+#include "FormatConversion.h"
 #include "ShaderDevice.h"
 #include "ShaderDeviceMgr.h"
 
@@ -19,9 +20,18 @@ namespace
 	{
 		const vk::Queue& GetQueue() const override { return m_Queue; }
 		const vk::CommandPool& GetCmdPool() const override { return m_CommandPool.get(); }
+		const vk::Device& GetDevice() const override;
 
 		vk::Queue m_Queue;
 		vk::UniqueCommandPool m_CommandPool;
+	};
+
+	struct VulkanSwapChain
+	{
+		void* m_HWND = nullptr;
+		vk::UniqueSurfaceKHR m_Surface;
+		vk::SwapchainCreateInfoKHR m_SwapChainCreateInfo;
+		vk::UniqueSwapchainKHR m_SwapChain;
 	};
 
 	class ShaderDevice final : public IShaderDeviceInternal
@@ -91,6 +101,8 @@ namespace
 		const IVulkanQueue& GetGraphicsQueue() override;
 		Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() override;
 
+		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
+
 	private:
 		// In a struct so we can easily reset all the vulkan-related stuff on shutdown
 		struct VulkanData : VulkanInitData
@@ -102,6 +114,7 @@ namespace
 
 			VulkanQueue m_GraphicsQueue;
 			std::optional<VulkanQueue> m_TransferQueue;
+			VulkanSwapChain m_SwapChain;
 
 		} m_Data;
 	};
@@ -123,13 +136,17 @@ void ShaderDevice::ReacquireResources()
 
 ImageFormat ShaderDevice::GetBackBufferFormat() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return ImageFormat();
+	LOG_FUNC();
+	return TF2Vulkan::ConvertImageFormat(m_Data.m_SwapChain.m_SwapChainCreateInfo.imageFormat);
 }
 
 void ShaderDevice::GetBackBufferDimensions(int& width, int& height) const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	auto& swapChainExtent = m_Data.m_SwapChain.m_SwapChainCreateInfo.imageExtent;
+
+	Util::SafeConvert(swapChainExtent.width, width);
+	Util::SafeConvert(swapChainExtent.height, height);
 }
 
 int ShaderDevice::GetCurrentAdapter() const
@@ -366,4 +383,56 @@ Util::CheckedPtr<const IVulkanQueue> ShaderDevice::GetTransferQueue()
 	assert(m_Data.m_Device);
 	auto& queue = m_Data.m_TransferQueue;
 	return queue ? &*queue : nullptr;
+}
+
+bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
+{
+	LOG_FUNC();
+
+	VulkanSwapChain newSwapChain;
+	newSwapChain.m_HWND = hwnd;
+
+	// Window surface
+	{
+		vk::Win32SurfaceCreateInfoKHR surfCreateInfo;
+		surfCreateInfo.hwnd = HWND(hwnd);
+		surfCreateInfo.hinstance = HINSTANCE(GetWindowLong(surfCreateInfo.hwnd, GWL_HINSTANCE));
+
+		newSwapChain.m_Surface = g_ShaderDeviceMgr.GetInstance().createWin32SurfaceKHRUnique(surfCreateInfo);
+		if (!newSwapChain.m_Surface)
+			throw VulkanException("Failed to create window surface", EXCEPTION_DATA());
+	}
+
+	// Swapchain
+	{
+		auto& scCreateInfo = newSwapChain.m_SwapChainCreateInfo;
+
+		const auto adapter = g_ShaderDeviceMgr.GetAdapter();
+		const auto surfCaps = adapter.getSurfaceCapabilitiesKHR(newSwapChain.m_Surface.get());
+		const auto surfFmts = adapter.getSurfaceFormatsKHR(newSwapChain.m_Surface.get());
+		const auto presentModes = adapter.getSurfacePresentModesKHR(newSwapChain.m_Surface.get());
+
+		bool supported = adapter.getSurfaceSupportKHR(m_Data.m_GraphicsQueueIndex, newSwapChain.m_Surface.get());
+
+		scCreateInfo.surface = newSwapChain.m_Surface.get();
+		scCreateInfo.minImageCount = surfCaps.minImageCount;
+		scCreateInfo.imageFormat = surfFmts.at(0).format;
+		scCreateInfo.imageColorSpace = surfFmts.at(0).colorSpace;
+		scCreateInfo.imageExtent = surfCaps.currentExtent;
+		scCreateInfo.imageArrayLayers = 1;
+		scCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+		scCreateInfo.queueFamilyIndexCount = 1;
+		scCreateInfo.pQueueFamilyIndices = &m_Data.m_GraphicsQueueIndex;
+		scCreateInfo.presentMode = presentModes.at(0);
+
+		newSwapChain.m_SwapChain = m_Data.m_Device->createSwapchainKHRUnique(scCreateInfo);
+	}
+
+	m_Data.m_SwapChain = std::move(newSwapChain);
+	return true;
+}
+
+const vk::Device& VulkanQueue::GetDevice() const
+{
+	return s_Device.GetVulkanDevice();
 }

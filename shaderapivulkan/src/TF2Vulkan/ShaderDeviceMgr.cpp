@@ -35,10 +35,21 @@ namespace
 		int GetAdapterIndex() const override;
 		vk::PhysicalDevice GetAdapter() override;
 
+		vk::Instance GetInstance() override;
+
 	private:
 		vk::PhysicalDevice GetAdapterByIndex(uint32_t index) const;
 
 		std::vector<ShaderModeChangeCallbackFunc_t> m_ModeChangeCallbacks;
+
+		struct DisplayAdapter
+		{
+			DISPLAY_DEVICEA m_WindowsInfo;
+			std::vector<ShaderDisplayMode_t> m_Modes;
+			ShaderDisplayMode_t GetCurrentMode() const;
+		};
+		std::vector<DisplayAdapter> m_Adapters;
+		static std::vector<DisplayAdapter> LoadDisplayAdapters();
 
 		vk::UniqueInstance m_Instance;
 		vk::PhysicalDevice m_Adapter;
@@ -102,41 +113,38 @@ static void ToDisplayMode(ShaderDisplayMode_t& output, const DEVMODEA& input)
 	output.m_nRefreshRateDenominator = 1;
 }
 
-static std::vector<DISPLAY_DEVICEA> GetDisplayDevices()
+auto ShaderDeviceMgr::LoadDisplayAdapters() -> std::vector<DisplayAdapter>
 {
-	std::vector<DISPLAY_DEVICEA> retVal;
+	std::vector<DisplayAdapter> retVal;
 
-	DISPLAY_DEVICEA device;
-	device.cb = sizeof(device);
-	for (DWORD i = 0; EnumDisplayDevicesA(nullptr, i, &device, 0); i++)
-		retVal.push_back(device);
+	DISPLAY_DEVICEA inAdapter{};
+	inAdapter.cb = sizeof(inAdapter);
+	for (DWORD adapterIndex = 0; EnumDisplayDevicesA(nullptr, adapterIndex, &inAdapter, 0); adapterIndex++)
+	{
+		auto& newDispAdapter = retVal.emplace_back();
+		newDispAdapter.m_WindowsInfo = inAdapter;
+
+		// Load supported modes
+		{
+			auto& modes = newDispAdapter.m_Modes;
+
+			DEVMODEA modeIn{};
+			for (DWORD i = 0; EnumDisplaySettingsA(inAdapter.DeviceName, i, &modeIn); i++)
+				ToDisplayMode(modes.emplace_back(), modeIn);
+
+			std::sort(modes.begin(), modes.end());
+			modes.erase(std::unique(modes.begin(), modes.end()), modes.end());
+		}
+	}
 
 	return retVal;
 }
 
-static std::vector<ShaderDisplayMode_t> GetDisplayModes(size_t adapterIndex)
+ShaderDisplayMode_t ShaderDeviceMgr::DisplayAdapter::GetCurrentMode() const
 {
-	std::vector<ShaderDisplayMode_t> retVal;
-
-	auto adapter = GetDisplayDevices().at(adapterIndex);
-
-	DEVMODEA mode{};
-	for (DWORD i = 0; EnumDisplaySettingsA(adapter.DeviceName, i, &mode); i++)
-		ToDisplayMode(retVal.emplace_back(), mode);
-
-	std::sort(retVal.begin(), retVal.end());
-	retVal.erase(std::unique(retVal.begin(), retVal.end()), retVal.end());
-
-	return retVal;
-}
-
-static ShaderDisplayMode_t GetCurrentDisplayMode(size_t adapterIndex)
-{
-	auto adapter = GetDisplayDevices().at(adapterIndex);
-
 	ShaderDisplayMode_t retVal;
 
-	if (DEVMODEA mode; EnumDisplaySettingsA(adapter.DeviceName, ENUM_CURRENT_SETTINGS, &mode))
+	if (DEVMODEA mode; EnumDisplaySettingsA(m_WindowsInfo.DeviceName, ENUM_CURRENT_SETTINGS, &mode))
 		ToDisplayMode(retVal, mode);
 
 	return retVal;
@@ -243,6 +251,13 @@ static vk::UniqueDevice CreateDevice(vk::PhysicalDevice& adapter, QueueFamilies&
 	createInfo.pQueueCreateInfos = queueCreateInfos.data();
 	createInfo.queueCreateInfoCount = queueCreateInfos.size();
 
+	constexpr const char* DEVICE_EXTENSIONS[] =
+	{
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	};
+	createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
+	createInfo.enabledExtensionCount = std::size(DEVICE_EXTENSIONS);
+
 	return adapter.createDeviceUnique(createInfo);
 }
 
@@ -297,6 +312,9 @@ InitReturnVal_t ShaderDeviceMgr::Init()
 		throw VulkanException("Failed to create vulkan device", EXCEPTION_DATA());
 	}
 
+	// Cache display modes
+	m_Adapters = LoadDisplayAdapters();
+
 	m_HasBeenInit = true;
 	return InitReturnVal_t::INIT_OK;
 }
@@ -341,39 +359,23 @@ int ShaderDeviceMgr::GetModeCount(int adapterIndexSigned) const
 {
 	LOG_FUNC();
 
-	return Util::SafeConvert<int>(GetDisplayModes(Util::SafeConvert<size_t>(adapterIndexSigned)).size());
-
 	// Vulkan doesn't really support exclusive fullscreen. Best we can do is borderless
 	// windowed. In that case, just ask windows what the primary display's supported
 	// modes are.
-
-#if false
-	auto adapter = GetAdapterByIndex(Util::SafeConvert<size_t>(adapterIndexSigned));
-	if (!adapter)
-		return 0;
-
-	auto mainWindow = GetMainWindow();
-
-	vk::SurfaceKHR surface = nullptr;
-	auto surfaceCaps = adapter.getSurfaceCapabilitiesKHR(surface);
-	auto surfaceFormats = adapter.getSurfaceFormatsKHR(surface);
-	auto surfaceModes = adapter.getSurfacePresentModesKHR(surface);
-
-	return Util::SafeConvert<int>(surfaceModes.size());
-#endif
+	return Util::SafeConvert<int>(m_Adapters.at(Util::SafeConvert<size_t>(adapterIndexSigned)).m_Modes.size());
 }
 
 void ShaderDeviceMgr::GetModeInfo(ShaderDisplayMode_t* info, int adapter, int mode) const
 {
 	LOG_FUNC();
 
-	*info = GetDisplayModes(Util::SafeConvert<size_t>(adapter)).at(Util::SafeConvert<size_t>(mode));
+	*info = m_Adapters.at(Util::SafeConvert<size_t>(adapter)).m_Modes.at(Util::SafeConvert<size_t>(mode));
 }
 
 void ShaderDeviceMgr::GetCurrentModeInfo(ShaderDisplayMode_t* info, int adapter) const
 {
 	LOG_FUNC();
-	*info = GetCurrentDisplayMode(Util::SafeConvert<size_t>(adapter));
+	*info = m_Adapters.at(Util::SafeConvert<size_t>(adapter)).GetCurrentMode();
 }
 
 bool ShaderDeviceMgr::SetAdapter(int adapter, MaterialInitFlags_t flags)
@@ -428,4 +430,10 @@ vk::PhysicalDevice ShaderDeviceMgr::GetAdapter()
 {
 	assert(m_Adapter);
 	return m_Adapter;
+}
+
+vk::Instance ShaderDeviceMgr::GetInstance()
+{
+	assert(m_Instance);
+	return m_Instance.get();
 }

@@ -2,8 +2,6 @@
 
 #include <shaderapi/IShaderDevice.h>
 
-#include <vulkan/vulkan.hpp>
-
 enum MaterialInitFlags_t;
 
 namespace TF2Vulkan
@@ -20,6 +18,8 @@ namespace TF2Vulkan
 		}
 
 		virtual vk::PhysicalDevice GetAdapter() = 0;
+
+		virtual vk::Instance GetInstance() = 0;
 	};
 
 	extern IShaderDeviceMgrInternal& g_ShaderDeviceMgr;

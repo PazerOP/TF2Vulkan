@@ -7,5 +7,5 @@ namespace Util
 		using type = T;
 	};
 
-	template<typename T> using make_dependent_t = typename make_dependent::type;
+	template<typename T> using make_dependent_t = typename make_dependent<T>::type;
 }

@@ -1,5 +1,5 @@
 #include "FormatConversion.h"
-#include "ShaderAPI.h"
+#include "IStateManagerDynamic.h"
 #include "ShaderDevice.h"
 #include "ShadowStateManager.h"
 #include "TF2Vulkan/TextureData.h"
@@ -8,11 +8,11 @@
 #include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/ImageManip.h>
+#include <TF2Vulkan/Util/std_algorithm.h>
 #include <TF2Vulkan/Util/std_utility.h>
 
+#include <Color.h>
 #include <materialsystem/imesh.h>
-
-#include "vk_mem_alloc.h"
 
 #include <atomic>
 #include <cstdint>
@@ -64,10 +64,9 @@ template<> struct ::std::hash<SamplerSettingsDynamic>
 
 namespace
 {
-	class ShaderAPI final : public IShaderAPIInternal
+	class ShaderAPI final : public IStateManagerDynamic
 	{
 	public:
-		void SetViewports(int count, const ShaderViewport_t* viewports) override;
 		int GetViewports(ShaderViewport_t* viewports, int max) const override;
 
 		double CurrentTime() const override;
@@ -110,11 +109,8 @@ namespace
 		void SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force) override;
 		void SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force) override;
 
-		void SetDefaultState() override;
-
 		void GetWorldSpaceCameraPosition(float* pos) const override;
 
-		int GetCurrentNumBones() const override;
 		int GetCurrentLightCombo() const override;
 
 		void SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected) override;
@@ -142,8 +138,6 @@ namespace
 		void ClearBuffersObeyStencil(bool clearColor, bool clearDepth) override;
 		void ClearBuffersObeyStencilEx(bool clearColor, bool clearAlpha, bool clearDepth) override;
 		void ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight) override;
-		void ClearColor3ub(uint8_t r, uint8_t g, uint8_t b) override;
-		void ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override;
 
 		void BindVertexShader(VertexShaderHandle_t vtxShader) override;
 		void BindGeometryShader(GeometryShaderHandle_t geoShader) override;
@@ -169,8 +163,6 @@ namespace
 		void CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
 			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override;
 
-		void Bind(IMaterial* material) override;
-
 		void FlushBufferedPrimitives() override;
 
 		IMesh* GetDynamicMesh(IMaterial* material, int hwSkinBoneCount, bool buffered,
@@ -188,7 +180,9 @@ namespace
 
 		void BeginPass(StateSnapshot_t snapshot) override;
 		void RenderPass(int passID, int passCount) override;
+		bool IsInPass() const override;
 		void BeginFrame() override;
+		bool IsInFrame() const override;
 		void EndFrame() override;
 
 		void FlushHardware() override;
@@ -287,8 +281,6 @@ namespace
 
 		void EvictManagedResources() override;
 
-		void SetAnisotropicLevel(int anisoLevel) override;
-
 		void SyncToken(const char* token) override;
 
 		void SetStandardVertexShaderConstants(float overbright) override;
@@ -319,8 +311,6 @@ namespace
 		void HandleDeviceLost() override;
 
 		void EnableLinearColorSpaceFrameBuffer(bool enable) override;
-
-		void SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex) override;
 
 		void SetFloatRenderingParameter(RenderParamFloat_t param, float value) override;
 		void SetIntRenderingParameter(RenderParamInt_t param, int value) override;
@@ -481,27 +471,6 @@ namespace
 		};
 		std::unordered_map<SamplerSettingsDynamic, ShaderSampler> m_ShaderSamplers;
 
-		struct StdVtxShaderConstants
-		{
-			constexpr StdVtxShaderConstants() = default;
-
-			float m_Overbright = 1.0f;
-		};
-
-		struct DynamicState
-		{
-			constexpr DynamicState() = default;
-
-			IMaterial* m_BoundMaterial = nullptr;
-			int m_BoneCount = 0;
-			ShaderAPITextureHandle_t m_FullScreenTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
-			uint_fast8_t m_AnisotropicLevel = 0;
-
-			StdVtxShaderConstants m_VtxShaderConstants;
-
-		} m_DynamicState;
-		bool m_DynamicStateDirty = true;
-
 		struct ShaderTexture
 		{
 			std::string m_DebugName;
@@ -522,12 +491,8 @@ namespace
 
 static ShaderAPI s_ShaderAPI;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderAPI, SHADERAPI_INTERFACE_VERSION, s_ShaderAPI);
-IShaderAPI* GetShaderAPI() { return &s_ShaderAPI; }
 
-void ShaderAPI::SetViewports(int count, const ShaderViewport_t* viewports)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
+IStateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
 
 int ShaderAPI::GetViewports(ShaderViewport_t* viewports, int max) const
 {
@@ -707,22 +672,9 @@ void ShaderAPI::SetIntegerPixelShaderConstant(int var, const int* vec, int numIn
 	NOT_IMPLEMENTED_FUNC();
 }
 
-void ShaderAPI::SetDefaultState()
-{
-	LOG_FUNC();
-	m_DynamicState = {};
-	m_DynamicStateDirty = true;
-}
-
 void ShaderAPI::GetWorldSpaceCameraPosition(float* pos) const
 {
 	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::GetCurrentNumBones() const
-{
-	LOG_FUNC();
-	return m_DynamicState.m_BoneCount;
 }
 
 int ShaderAPI::GetCurrentLightCombo() const
@@ -837,16 +789,40 @@ void ShaderAPI::ClearBuffersObeyStencilEx(bool clearColor, bool clearAlpha, bool
 
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
-	NOT_IMPLEMENTED_FUNC();
-}
+	LOG_FUNC();
 
-void ShaderAPI::ClearColor3ub(uint8_t r, uint8_t g, uint8_t b)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
+	auto& queue = g_ShaderDevice.GetGraphicsQueue();
+	auto cmdBuf = queue.CreateCmdBufferAndBegin();
+	vk::ClearAttachment att;
 
-void ShaderAPI::ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-{
+	if (clearColor)
+	{
+		att.aspectMask |= vk::ImageAspectFlagBits::eColor;
+		Util::algorithm::copy(GetDynamicState().m_ClearColor, att.clearValue.color.float32);
+		att.colorAttachment = 0;
+	}
+
+	if (clearDepth)
+	{
+		att.aspectMask |= vk::ImageAspectFlagBits::eDepth;
+		att.clearValue.depthStencil.depth = 0;
+	}
+
+	if (clearStencil)
+	{
+		att.aspectMask |= vk::ImageAspectFlagBits::eStencil;
+		att.clearValue.depthStencil.stencil = 0;
+	}
+
+	vk::ClearRect rect;
+	Util::SafeConvert(rtWidth, rect.rect.extent.width);
+	Util::SafeConvert(rtHeight, rect.rect.extent.height);
+
+	g_ShadowStateManager.ApplyCurrentState(*cmdBuf);
+	cmdBuf->clearAttachments(att, rect);
+
+	queue.EndAndSubmit(cmdBuf.get());
+
 	NOT_IMPLEMENTED_FUNC();
 }
 
@@ -872,8 +848,8 @@ void ShaderAPI::SetRasterState(const ShaderRasterState_t& state)
 
 bool ShaderAPI::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return g_ShaderDevice.SetMode(hwnd, adapter, info);
 }
 
 void ShaderAPI::ChangeVideoMode(const ShaderDeviceInfo_t& info)
@@ -945,12 +921,6 @@ void ShaderAPI::CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITexture
 void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT, ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect)
 {
 	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Bind(IMaterial* material)
-{
-	LOG_FUNC();
-	Util::SetDirtyVar(m_DynamicState.m_BoundMaterial, material, m_DynamicStateDirty);
 }
 
 void ShaderAPI::FlushBufferedPrimitives()
@@ -1196,7 +1166,7 @@ ImageFormat ShaderAPI::GetNearestRenderTargetFormat(ImageFormat fmt) const
 
 bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
 	return false;
 }
 
@@ -1226,15 +1196,6 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 	createInfo.mipLevels = uint32_t(mipLevelCount);
 	createInfo.format = ConvertImageFormat(dstImgFormat);
 	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-
-	auto& vulkanDevice = g_ShaderDevice.GetVulkanDevice();
-
-	auto created = vulkanDevice.createImageUnique(createInfo);
-	if (!created)
-	{
-		Warning("[TF2Vulkan] %s(): Failed to create texture \"%s\"\n", __FUNCTION__, dbgName ? dbgName : "<null>");
-		return INVALID_SHADERAPI_TEXTURE_HANDLE;
-	}
 
 	vma::AllocationCreateInfo allocCreateInfo;
 	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -1433,19 +1394,7 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 
 	// Copy staging buffer into destination texture
 	{
-		vk::CommandBufferAllocateInfo cmdAllocInfo;
-		cmdAllocInfo.level = vk::CommandBufferLevel::ePrimary;
-		cmdAllocInfo.commandPool = queue.GetCmdPool();
-		cmdAllocInfo.commandBufferCount = 1;
-
-		auto cmdBuffer = std::move(device.allocateCommandBuffersUnique(cmdAllocInfo).front());
-		if (!cmdBuffer)
-			throw VulkanException("Failed to create temporary command buffer", EXCEPTION_DATA());
-
-		vk::CommandBufferBeginInfo beginInfo;
-		beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-
-		cmdBuffer->begin(beginInfo);
+		auto cmdBuffer = queue.CreateCmdBufferAndBegin();
 
 		TransitionImageLayout(tex.m_Image.m_Image, tex.m_CreateInfo.format,
 			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, cmdBuffer.get(), 0);
@@ -1456,18 +1405,7 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 		TransitionImageLayout(tex.m_Image.m_Image, tex.m_CreateInfo.format,
 			vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, cmdBuffer.get(), 0);
 
-		cmdBuffer->end();
-
-		// Submit the command buffer and wait for it to finish
-		{
-			vk::SubmitInfo submit;
-			submit.commandBufferCount = 1;
-			submit.pCommandBuffers = &cmdBuffer.get();
-
-			auto& vQueue = queue.GetQueue();
-			vQueue.submit(submit, nullptr);
-			vQueue.waitIdle();
-		}
+		queue.EndAndSubmit(cmdBuffer.get());
 	}
 
 	return true;
@@ -1496,12 +1434,14 @@ void ShaderAPI::BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureH
 
 void ShaderAPI::SetRenderTarget(ShaderAPITextureHandle_t colTexHandle, ShaderAPITextureHandle_t depthTexHandle)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	return SetRenderTargetEx(0, colTexHandle, depthTexHandle);
 }
 
 void ShaderAPI::SetRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	return g_ShadowStateManager.SetRenderTargetEx(renderTargetID, colTex, depthTex);
 }
 
 void ShaderAPI::ReadPixels(int x, int y, int width, int height, unsigned char* data, ImageFormat dstFormat)
@@ -1621,12 +1561,6 @@ void ShaderAPI::EvictManagedResources()
 	// Nothing to do here (for now...)
 }
 
-void ShaderAPI::SetAnisotropicLevel(int anisoLevel)
-{
-	LOG_FUNC();
-	Util::SetDirtyVar(m_DynamicState.m_AnisotropicLevel, anisoLevel, m_DynamicStateDirty);
-}
-
 void ShaderAPI::SyncToken(const char* token)
 {
 	NOT_IMPLEMENTED_FUNC();
@@ -1634,8 +1568,8 @@ void ShaderAPI::SyncToken(const char* token)
 
 void ShaderAPI::SetStandardVertexShaderConstants(float overbright)
 {
-	LOG_FUNC();
-	Util::SetDirtyVar(m_DynamicState.m_VtxShaderConstants.m_Overbright, overbright, m_DynamicStateDirty);
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	g_StateManagerDynamic.SetOverbright(overbright);
 }
 
 ShaderAPIOcclusionQuery_t ShaderAPI::CreateOcclusionQueryObject()
@@ -1734,13 +1668,7 @@ void ShaderAPI::HandleDeviceLost()
 
 void ShaderAPI::EnableLinearColorSpaceFrameBuffer(bool enable)
 {
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex)
-{
-	LOG_FUNC();
-	Util::SetDirtyVar(m_DynamicState.m_FullScreenTexture, tex, m_DynamicStateDirty);
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void ShaderAPI::SetFloatRenderingParameter(RenderParamFloat_t param, float value)
@@ -2230,4 +2158,16 @@ void ShaderAPI::TexLodBias(float bias)
 
 	if (bias != 0)
 		NOT_IMPLEMENTED_FUNC();
+}
+
+bool ShaderAPI::IsInPass() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::IsInFrame() const
+{
+	NOT_IMPLEMENTED_FUNC();
+	return false;
 }

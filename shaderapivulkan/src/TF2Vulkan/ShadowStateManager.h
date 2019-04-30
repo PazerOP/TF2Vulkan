@@ -3,6 +3,8 @@
 #include "GraphicsPipeline.h"
 #include "VertexFormat.h"
 
+#include <TF2Vulkan/Util/Templates.h>
+
 #include <shaderapi/ishaderapi.h>
 #include <shaderapi/ishadershadow.h>
 
@@ -21,6 +23,8 @@ namespace TF2Vulkan
 	class ShadowStateManager : public IShaderShadowInternal
 	{
 	public:
+		void ApplyState(ShadowStateID id, const vk::CommandBuffer& buf);
+		void ApplyCurrentState(const vk::CommandBuffer& buf);
 		void SetDefaultState() override final;
 
 		void DepthFunc(ShaderDepthFunc_t func) override final;
@@ -108,6 +112,8 @@ namespace TF2Vulkan
 		bool UsesVertexAndPixelShaders(StateSnapshot_t id) const;
 		bool IsDepthWriteEnabled(StateSnapshot_t id) const;
 
+		void SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex);
+
 		struct FogParams final
 		{
 			constexpr FogParams() = default;
@@ -135,6 +141,8 @@ namespace TF2Vulkan
 			size_t operator()(const ShadowState& s) const;
 		};
 
+		virtual vk::UniquePipeline CreatePipeline(const ShadowState& state) const = 0;
+
 	private:
 		bool m_PipelineDirty = true;
 		bool m_FogDirty = true;
@@ -142,6 +150,8 @@ namespace TF2Vulkan
 
 		std::unordered_map<ShadowState, ShadowStateID, ShadowStateHasher> m_StatesToIDs;
 		std::vector<const ShadowState*> m_IDsToStates;
+
+		std::vector<vk::UniquePipeline> m_IDsToPipelines;
 	};
 
 	extern ShadowStateManager& g_ShadowStateManager;

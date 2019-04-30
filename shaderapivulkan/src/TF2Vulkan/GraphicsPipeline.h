@@ -2,11 +2,13 @@
 
 #include "VertexFormat.h"
 
+#include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/std_utility.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
 
 #include <materialsystem/imaterial.h>
+#include <shaderapi/ishaderdynamic.h>
 #include <shaderapi/ishadershadow.h>
 
 #include <compare>
@@ -47,8 +49,7 @@ namespace TF2Vulkan
 	{
 		constexpr PixelShaderStageSettings() = default;
 
-		//DEFAULT_STRONG_EQUALITY_OPERATOR(PixelShaderStageSettings);
-		bool operator==(const PixelShaderStageSettings& rhs) const noexcept;
+		bool operator==(const PixelShaderStageSettings& other) const noexcept;
 
 		std::array<SamplerSettings, 16> m_Samplers;
 	};
@@ -128,6 +129,16 @@ namespace TF2Vulkan
 		ShaderBlendFactor_t m_DstFactor = SHADER_BLEND_ONE;
 	};
 
+	struct RenderPassSettings
+	{
+		constexpr RenderPassSettings() = default;
+
+		DEFAULT_STRONG_EQUALITY_OPERATOR(RenderPassSettings);
+
+		ShaderAPITextureHandle_t m_RenderTargetColors[4] = { 0, -1, -1, -1 };
+		ShaderAPITextureHandle_t m_RenderTargetDepth = -1;
+	};
+
 	struct PipelineSettings
 	{
 		constexpr PipelineSettings() = default;
@@ -140,6 +151,7 @@ namespace TF2Vulkan
 		DepthStencilSettings m_DepthStencil;
 		RasterizerSettings m_Rasterizer;
 		BlendSettings m_Blend;
+		RenderPassSettings m_RenderPass;
 	};
 }
 

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+  </PropertyGroup>
+  <PropertyGroup>
+    <FullFileName>%(Filename)%(Extension)</FullFileName>
+    <FileNameWithTarget>$(FullFileName)</FileNameWithTarget>
+    <FileNameWithoutTarget>$(FileNameWithTarget.Substring(0, 10))</FileNameWithoutTarget>
+    <!--$(FileNameWithTarget.IndexOf('.'))-->
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <CustomBuild>
+      <Command>DEL $(ProjectDir)src\Generated\%(Filename).h
+glslangValidator %(FullPath) -e main -V -o $(ProjectDir)src\Generated\%(Filename).spirv
+pushd $(ProjectDir)src\Generated\
+spirv-dis -o %(Filename).spirv_dis %(Filename).spirv
+spirv-val %(Filename).spirv
+xxd -i %(Filename).spirv %(Filename).h
+DEL %(Filename).spirv
+popd</Command>
+      <BuildInParallel>true</BuildInParallel>
+      <OutputItemType>ClInclude</OutputItemType>
+      <Outputs>$(ProjectDir)src\Generated\%(Filename).h;%(Outputs)</Outputs>
+      <Message>Compiling shaders...</Message>
+    </CustomBuild>
+  </ItemDefinitionGroup>
+  <ItemGroup />
+</Project>
