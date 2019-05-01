@@ -64,6 +64,8 @@ vk::ShaderModule VulkanShaderManager::FindOrCreateShader(const ShaderID& id)
 	ci.pCode = reinterpret_cast<const uint32_t*>(blobData);
 
 	auto createdUnique = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
+	g_ShaderDevice.SetDebugName(createdUnique, id.m_Name.String());
+
 	vk::ShaderModule created = createdUnique.get();
 	m_Shaders[id] = { std::move(createdUnique) };
 	return created;

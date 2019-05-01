@@ -103,6 +103,8 @@ namespace
 
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
 
+		void SetDebugName(uint64_t obj, vk::ObjectType type, const char* name) override;
+
 	private:
 		// In a struct so we can easily reset all the vulkan-related stuff on shutdown
 		struct VulkanData : VulkanInitData
@@ -115,6 +117,7 @@ namespace
 			VulkanQueue m_GraphicsQueue;
 			std::optional<VulkanQueue> m_TransferQueue;
 			VulkanSwapChain m_SwapChain;
+			vk::DispatchLoaderDynamic m_DynamicLoader;
 
 		} m_Data;
 	};
@@ -357,6 +360,8 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 
 	if (m_Data.m_TransferQueueIndex)
 		m_Data.m_TransferQueue = CreateQueueWrapper(device.get(), m_Data.m_TransferQueueIndex.value());
+
+	m_Data.m_DynamicLoader.init(g_ShaderDeviceMgr.GetInstance(), m_Data.m_Device.get());
 }
 
 const vk::Device& ShaderDevice::GetVulkanDevice()
@@ -435,4 +440,14 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 const vk::Device& VulkanQueue::GetDevice() const
 {
 	return s_Device.GetVulkanDevice();
+}
+
+void ShaderDevice::SetDebugName(uint64_t obj, vk::ObjectType type, const char* name)
+{
+	vk::DebugUtilsObjectNameInfoEXT info;
+	info.objectHandle = obj;
+	info.objectType = type;
+	info.pObjectName = name;
+
+	GetVulkanDevice().setDebugUtilsObjectNameEXT(info, m_Data.m_DynamicLoader);
 }

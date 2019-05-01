@@ -11,13 +11,13 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <CustomBuild>
-      <Command>DEL $(ProjectDir)src\Generated\%(Filename).h
-glslangValidator %(FullPath) -e main -V -o $(ProjectDir)src\Generated\%(Filename).spirv
-pushd $(ProjectDir)src\Generated\
+      <Command>pushd $(ProjectDir)src\Generated\
+DEL %(Filename).h
+DEL %(Filename).spirv
+glslangValidator %(FullPath) -e main -V -o %(Filename).spirv
 spirv-dis -o %(Filename).spirv_dis %(Filename).spirv
 spirv-val %(Filename).spirv
 xxd -i %(Filename).spirv %(Filename).h
-DEL %(Filename).spirv
 popd</Command>
       <BuildInParallel>true</BuildInParallel>
       <OutputItemType>ClInclude</OutputItemType>

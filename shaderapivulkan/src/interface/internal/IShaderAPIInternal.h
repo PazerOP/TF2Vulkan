@@ -79,5 +79,8 @@ namespace TF2Vulkan
 
 		virtual bool IsInFrame() const = 0;
 		virtual bool IsInPass() const = 0;
+		virtual bool GetTextureSize(ShaderAPITextureHandle_t texID, uint_fast32_t& width, uint_fast32_t& height) const = 0;
 	};
+
+	extern IShaderAPIInternal& g_ShaderAPIInternal;
 }

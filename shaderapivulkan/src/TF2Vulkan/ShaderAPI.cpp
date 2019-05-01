@@ -461,8 +461,11 @@ namespace
 
 		void CopyTextureToTexture(int something1, int something2) override { NOT_IMPLEMENTED_FUNC(); }
 
+		bool GetTextureSize(ShaderAPITextureHandle_t texID,
+			uint_fast32_t& width, uint_fast32_t& height) const override;
+
 	private:
-		std::recursive_mutex m_ShaderLock;
+		mutable std::recursive_mutex m_ShaderLock;
 
 		std::atomic<ShaderAPITextureHandle_t> m_NextTextureHandle = 1;
 
@@ -493,6 +496,7 @@ static ShaderAPI s_ShaderAPI;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderAPI, SHADERAPI_INTERFACE_VERSION, s_ShaderAPI);
 
 IStateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
+IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
 
 int ShaderAPI::GetViewports(ShaderViewport_t* viewports, int max) const
 {
@@ -2169,5 +2173,22 @@ bool ShaderAPI::IsInPass() const
 bool ShaderAPI::IsInFrame() const
 {
 	NOT_IMPLEMENTED_FUNC();
+	return false;
+}
+
+bool ShaderAPI::GetTextureSize(ShaderAPITextureHandle_t texID,
+	uint_fast32_t& width, uint_fast32_t& height) const
+{
+	std::lock_guard lock(m_ShaderLock);
+
+	if (auto found = m_Textures.find(texID); found != m_Textures.end())
+	{
+		auto& extent = found->second.m_CreateInfo.extent;
+		width = extent.width;
+		height = extent.height;
+		return true;
+	}
+
+	assert(!"Invalid texture");
 	return false;
 }

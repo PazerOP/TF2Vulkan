@@ -59,11 +59,12 @@ namespace TF2Vulkan
 
 		struct ElementType final
 		{
-			VertexElement_t m_Type = VERTEX_ELEMENT_NONE;
+			VertexElement_t m_Element = VERTEX_ELEMENT_NONE;
 			DataFormat m_Format = DataFormat::Invalid;
 			uint_fast8_t m_Components = 0;
-			uint_fast8_t m_ByteSize = 0;
+			uint_fast8_t m_ComponentSize = 0;
 
+			uint_fast8_t GetTotalSize() const;
 			vk::Format GetVKFormat() const;
 		};
 
@@ -73,7 +74,7 @@ namespace TF2Vulkan
 			uint_fast8_t m_Offset = 0;
 		};
 
-		uint_fast8_t GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize = nullptr) const;
+		[[nodiscard]] uint_fast8_t GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize = nullptr) const;
 
 		VertexFormat_t m_BaseFmt;
 		struct

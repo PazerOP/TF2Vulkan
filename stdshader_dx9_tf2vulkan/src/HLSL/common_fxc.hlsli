@@ -1,6 +1,11 @@
 #ifndef INCLUDE_GUARD_COMMON_FXC_HLSLI
 #define INCLUDE_GUARD_COMMON_FXC_HLSLI
 
+#include "../../include/stdshader_dx9_tf2vulkan/ShaderShared.h"
+
+#define VTX_SHADER_START_ID 1024
+#define PIX_SHADER_START_ID 2048
+
 [[vk::constant_id(1)]] const bool VERTEXCOLOR = false;
 [[vk::constant_id(2)]] const bool CUBEMAP = false;
 [[vk::constant_id(3)]] const bool HALFLAMBERT = false;

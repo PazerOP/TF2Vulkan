@@ -380,12 +380,12 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	for (uint_fast8_t i = 0; i < vtxElemsCount; i++)
 	{
 		const auto& vtxElem = vtxElems[i];
-		switch (vtxElem.m_Type)
+		switch (vtxElem.m_Type->m_Element)
 		{
 		default:
-			if (vtxElem.m_Type >= VERTEX_ELEMENT_TEXCOORD1D_0 && vtxElem.m_Type < VERTEX_ELEMENT_NUMELEMENTS)
+			if (vtxElem.m_Type->m_Element >= VERTEX_ELEMENT_TEXCOORD1D_0 && vtxElem.m_Type->m_Element < VERTEX_ELEMENT_NUMELEMENTS)
 			{
-				const auto texCoordIdx = (vtxElem.m_Type - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_MAX_TEXTURE_COORDINATES;
+				const auto texCoordIdx = (vtxElem.m_Type->m_Element - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_MAX_TEXTURE_COORDINATES;
 				desc.m_VertexSize_TexCoord[texCoordIdx] = totalVtxSize;
 				desc.m_pTexCoord[texCoordIdx] = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
 

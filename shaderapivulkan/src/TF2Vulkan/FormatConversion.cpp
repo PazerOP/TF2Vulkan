@@ -275,6 +275,40 @@ ImageFormat TF2Vulkan::PromoteToHardware(ImageFormat format, FormatUsage usage, 
 	return result;
 }
 
+static constexpr uint_fast32_t PackDataFormat(DataFormat fmt,
+	uint_fast8_t components, uint_fast8_t componentSize)
+{
+	return (uint_fast32_t(fmt) << 16) | (uint_fast32_t(components) << 8) | (uint_fast32_t(componentSize));
+}
+template<DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize>
+static constexpr auto PACK_DFMT = PackDataFormat(fmt, components, componentSize);
+
+vk::Format TF2Vulkan::ConvertDataFormat(DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize)
+{
+	switch (PackDataFormat(fmt, components, componentSize))
+	{
+	case PACK_DFMT<DataFormat::UInt, 1, 1>: return vk::Format::eR8Uint;
+	case PACK_DFMT<DataFormat::UInt, 2, 1>: return vk::Format::eR8G8Uint;
+	case PACK_DFMT<DataFormat::UInt, 3, 1>: return vk::Format::eR8G8B8Uint;
+	case PACK_DFMT<DataFormat::UInt, 4, 1>: return vk::Format::eR8G8B8A8Uint;
+
+	case PACK_DFMT<DataFormat::SFloat, 1, 2>: return vk::Format::eR16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 1, 4>: return vk::Format::eR32Sfloat;
+
+	case PACK_DFMT<DataFormat::SFloat, 2, 2>: return vk::Format::eR16G16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 2, 4>: return vk::Format::eR32G32Sfloat;
+
+	case PACK_DFMT<DataFormat::SFloat, 3, 2>: return vk::Format::eR16G16B16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 3, 4>: return vk::Format::eR32G32B32Sfloat;
+
+	case PACK_DFMT<DataFormat::SFloat, 4, 2>: return vk::Format::eR16G16B16A16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 4, 4>: return vk::Format::eR32G32B32A32Sfloat;
+	}
+
+	assert(!"Unknown/unsupported combination");
+	return vk::Format::eUndefined;
+}
+
 bool TF2Vulkan::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering)
 {
 	auto vkFormat = ConvertImageFormat(format);

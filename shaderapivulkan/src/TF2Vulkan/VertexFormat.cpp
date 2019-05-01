@@ -5,63 +5,156 @@
 
 using namespace TF2Vulkan;
 
-static const std::array<VertexFormat::ElementType, VERTEX_ELEMENT_NUMELEMENTS> s_ElementTypes = []
+static constexpr VertexFormat::ElementType s_ElementTypesUncompressed[VERTEX_ELEMENT_NUMELEMENTS] =
 {
-	std::array<VertexFormat::ElementType, VERTEX_ELEMENT_NUMELEMENTS> retVal;
+	{ VERTEX_ELEMENT_POSITION, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_NORMAL, DataFormat::UInt, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_COLOR, DataFormat::UNorm, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_SPECULAR, DataFormat::UNorm, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_TANGENT_S, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TANGENT_T, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_WRINKLE, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_BONEINDEX, DataFormat::UInt, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS1, DataFormat::SInt, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS2, DataFormat::SInt, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS3, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS4, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA1, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA2, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA3, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA4, DataFormat::SFloat, 4, sizeof(float) },
 
-	for (int i = 0; i < VERTEX_ELEMENT_NUMELEMENTS; i++)
+	{ VERTEX_ELEMENT_TEXCOORD1D_0, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_1, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_2, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_3, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_4, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_5, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_6, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_7, DataFormat::SFloat, 1, sizeof(float) },
+
+	{ VERTEX_ELEMENT_TEXCOORD2D_0, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_1, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_2, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_3, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_4, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_5, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_6, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_7, DataFormat::SFloat, 2, sizeof(float) },
+
+	{ VERTEX_ELEMENT_TEXCOORD3D_0, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_1, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_2, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_3, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_4, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_5, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_6, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_7, DataFormat::SFloat, 3, sizeof(float) },
+
+	{ VERTEX_ELEMENT_TEXCOORD4D_0, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_1, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_2, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_3, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_4, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_5, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_6, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_7, DataFormat::SFloat, 4, sizeof(float) },
+};
+
+static constexpr VertexFormat::ElementType s_ElementTypesCompressed[VERTEX_ELEMENT_NUMELEMENTS] =
+{
+	{ VERTEX_ELEMENT_POSITION, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_NORMAL, DataFormat::UInt, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_COLOR, DataFormat::UNorm, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_SPECULAR, DataFormat::UNorm, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_TANGENT_S, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TANGENT_T, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_WRINKLE, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_BONEINDEX, DataFormat::UInt, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS1, DataFormat::SInt, 2, sizeof(int16_t) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS2, DataFormat::SInt, 2, sizeof(int16_t) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS3, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_BONEWEIGHTS4, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA1, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA2, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA3, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_USERDATA4, DataFormat::SFloat, 4, 0 },
+
+	{ VERTEX_ELEMENT_TEXCOORD1D_0, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_1, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_2, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_3, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_4, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_5, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_6, DataFormat::SFloat, 1, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD1D_7, DataFormat::SFloat, 1, sizeof(float) },
+
+	{ VERTEX_ELEMENT_TEXCOORD2D_0, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_1, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_2, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_3, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_4, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_5, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_6, DataFormat::SFloat, 2, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD2D_7, DataFormat::SFloat, 2, sizeof(float) },
+
+	{ VERTEX_ELEMENT_TEXCOORD3D_0, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_1, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_2, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_3, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_4, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_5, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_6, DataFormat::SFloat, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD3D_7, DataFormat::SFloat, 3, sizeof(float) },
+
+	{ VERTEX_ELEMENT_TEXCOORD4D_0, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_1, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_2, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_3, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_4, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_5, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_6, DataFormat::SFloat, 4, sizeof(float) },
+	{ VERTEX_ELEMENT_TEXCOORD4D_7, DataFormat::SFloat, 4, sizeof(float) },
+};
+
+static constexpr auto& GetElemTypes(VertexCompressionType_t compression)
+{
+	if (compression == VERTEX_COMPRESSION_NONE)
+		return s_ElementTypesUncompressed;
+	else if (compression == VERTEX_COMPRESSION_ON)
+		return s_ElementTypesCompressed;
+}
+
+#ifdef _DEBUG
+namespace
+{
+	struct VertexElementValidator final
 	{
-		auto& e = retVal[i];
-		e.m_Type = VertexElement_t(i);
-
-		// Data format
-		switch (i)
+		template<size_t size> static void Validate(const VertexFormat::ElementType(&arr)[size],
+			VertexCompressionType_t compression)
 		{
-		case VERTEX_ELEMENT_COLOR:
-		case VERTEX_ELEMENT_SPECULAR:
-			e.m_Format = DataFormat::UNorm;
-			break;
+			static_assert(size == VERTEX_ELEMENT_NUMELEMENTS);
+			for (int i = 0; i < VERTEX_ELEMENT_NUMELEMENTS; i++)
+			{
+				VertexElement_t elemType = VertexElement_t(i);
+				auto& elem = arr[elemType];
+				assert(elem.m_Element == elemType);
 
-		case VERTEX_ELEMENT_NORMAL:
-			e.m_Format = DataFormat::UInt;
-			break;
-
-		case VERTEX_ELEMENT_BONEWEIGHTS1:
-		case VERTEX_ELEMENT_BONEWEIGHTS2:
-			e.m_Format = DataFormat::SInt;
-			break;
-
-		case VERTEX_ELEMENT_BONEWEIGHTS3:
-		case VERTEX_ELEMENT_BONEWEIGHTS4:
-			e.m_Format = DataFormat::SFloat;
-			break;
+				const auto actualSize = elem.GetTotalSize();
+				const auto expectedSize = GetVertexElementSize(elem.m_Element, compression);
+				assert(actualSize == expectedSize);
+			}
 		}
-		assert(e.m_Format != DataFormat::Invalid);
 
-		// Component count
-		switch (i)
+		VertexElementValidator()
 		{
-		case VERTEX_ELEMENT_WRINKLE:
-			e.m_Components = 1;
-			break;
-
-		case VERTEX_ELEMENT_POSITION:
-		case VERTEX_ELEMENT_NORMAL:
-		case VERTEX_ELEMENT_TANGENT_S:
-		case VERTEX_ELEMENT_TANGENT_T:
-			e.m_Components = 3;
-			break;
-
-		case VERTEX_ELEMENT_COLOR:
-		case VERTEX_ELEMENT_SPECULAR:
-			e.m_Components = 4;
-			break;
+			Validate(s_ElementTypesUncompressed, VERTEX_COMPRESSION_NONE);
+			Validate(s_ElementTypesCompressed, VERTEX_COMPRESSION_ON);
 		}
-		assert(e.m_Components > 0);
-	}
 
-	return retVal;
-}();
+	} static const s_VertexElementValidator;
+}
+#endif
 
 size_t VertexFormat::GetVertexSize() const
 {
@@ -113,7 +206,7 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 #ifdef _DEBUG
 		if (elemCount > 0)
 		{
-			auto prev = elements[elemCount - 1].m_Type->m_Type;
+			auto prev = elements[elemCount - 1].m_Type->m_Element;
 			if (prev >= VERTEX_ELEMENT_TEXCOORD1D_0)
 			{
 				auto prevIdx = (prev - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_ELEMENT_NUMELEMENTS;
@@ -128,24 +221,9 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 #endif
 
 		Element& e = elements[elemCount++];
-		e.m_Type = elemType;
-		e.m_Size = GetVertexElementSize(elemType, compression);
-
-		switch (e.m_Type)
-		{
-		case VERTEX_ELEMENT_NORMAL:
-			e.m_Format = vk::Format::eR8G8B8A8Uint;
-			break;
-		case VERTEX_ELEMENT_COLOR:
-			e.m_Format = vk::Format::eR8G8B8A8Unorm;
-			break;
-
-		default:
-			e.m_Format =
-		}
-
+		e.m_Type = &GetElemTypes(compression)[elemType];
 		e.m_Offset = totalSizeTemp;
-		totalSizeTemp += e.m_Size;
+		totalSizeTemp += e.m_Type->GetTotalSize();
 	};
 
 	if (m_Flags & VFF::Position)
@@ -205,4 +283,14 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 		*totalSize = totalSizeTemp;
 
 	return elemCount;
+}
+
+uint_fast8_t VertexFormat::ElementType::GetTotalSize() const
+{
+	return m_Components * m_ComponentSize;
+}
+
+vk::Format VertexFormat::ElementType::GetVKFormat() const
+{
+	return TF2Vulkan::ConvertDataFormat(m_Format, m_Components, m_ComponentSize);
 }

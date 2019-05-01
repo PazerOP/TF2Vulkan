@@ -30,6 +30,6 @@ namespace TF2Vulkan
 		SFloat,
 	};
 
-	vk::Format ConvertDataFormat(DataFormat fmt, uint_fast8_t components);
+	vk::Format ConvertDataFormat(DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize);
 	[[nodiscard]] bool ConvertDataFormat(vk::Format inFmt, DataFormat& outFmt, uint_fast8_t& numComponents, uint_fast8_t& byteSize);
 }

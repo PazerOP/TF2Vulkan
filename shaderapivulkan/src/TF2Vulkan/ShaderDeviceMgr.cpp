@@ -170,6 +170,7 @@ static vk::UniqueInstance CreateInstance()
 	{
 		VK_KHR_SURFACE_EXTENSION_NAME,
 		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 	};
 	createInfo.ppEnabledExtensionNames = INSTANCE_EXTENSIONS;
 	createInfo.enabledExtensionCount = std::size(INSTANCE_EXTENSIONS);

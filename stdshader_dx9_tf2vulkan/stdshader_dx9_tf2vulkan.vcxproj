@@ -97,6 +97,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderBlobs.h" />
+    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderShared.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ShaderBlobs.cpp" />

@@ -10,8 +10,8 @@ cbuffer VertexShaderCustomConstants
 	float4 cMorphSubrect;
 };
 
-SamplerState morphSampler;
-Texture2D morphTexture;
+[[vk::binding(1)]] SamplerState morphSampler;
+[[vk::binding(1)]] Texture2D morphTexture;
 
 #define SEAMLESS_SCALE (cSeamlessScale.x)
 
@@ -22,11 +22,13 @@ struct VS_INPUT
 {
 	// This is all of the stuff that we ever use.
 	float4 vPos             : POSITION;
-	float4 vBoneWeights     : BLENDWEIGHT;
-	float4 vBoneIndices     : BLENDINDICES;
 	float4 vNormal          : NORMAL;
 	float4 vColor           : COLOR0;
 	float3 vSpecular        : COLOR1;
+
+	float4 vBoneWeights     : BLENDWEIGHT;
+	float4 vBoneIndices     : BLENDINDICES;
+
 	// make these float2's and stick the [n n 0 1] in the dot math.
 	float4 vTexCoord0       : TEXCOORD0;
 	float4 vTexCoord1       : TEXCOORD1;
@@ -53,8 +55,9 @@ struct VS_OUTPUT
 
 	float4 vProjPos             : TEXCOORD6;
 	float4 worldPos_ProjPosZ    : TEXCOORD7;
-	float4 fogFactorW           : COLOR1;
+
 	float3 SeamlessWeights      : COLOR0;
+	float4 fogFactorW           : COLOR1;
 };
 
 VS_OUTPUT main(const VS_INPUT v)
