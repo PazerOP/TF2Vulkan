@@ -42,6 +42,7 @@
     <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
     <Import Project="..\stdshader_dx9_tf2vulkan\stdshader_dx9_tf2vulkan_Link.props" />
     <Import Project="shaderapivulkan_Shared_Project.props" />
+    <Import Project="..\spirv-cross-project\spirv-cross_Link.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -49,6 +50,7 @@
     <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
     <Import Project="..\stdshader_dx9_tf2vulkan\stdshader_dx9_tf2vulkan_Link.props" />
     <Import Project="shaderapivulkan_Shared_Project.props" />
+    <Import Project="..\spirv-cross-project\spirv-cross_Link.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

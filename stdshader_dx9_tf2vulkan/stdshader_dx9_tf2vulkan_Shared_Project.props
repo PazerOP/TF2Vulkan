@@ -24,8 +24,8 @@ echo.%(Filename) | findstr /C:".vert" 1&gt;nul &amp;&amp; (
 
 dxc_git -spirv %(FullPath) -Fo %(Filename).spirv -fspv-debug=line -fspv-reflect -Ges -WX -T %DXC_TARGET%
 
-spirv-dis -o %(Filename).spirv_dis %(Filename).spirv
 spirv-val %(Filename).spirv
+spirv-dis -o %(Filename).spirv_dis --offsets %(Filename).spirv
 xxd -i %(Filename).spirv %(Filename).h
 popd</Command>
       <BuildInParallel>true</BuildInParallel>

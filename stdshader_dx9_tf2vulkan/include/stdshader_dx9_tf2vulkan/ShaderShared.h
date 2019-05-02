@@ -10,6 +10,7 @@ namespace TF2Vulkan{ namespace ShaderConstants
 #undef DECLARE_LOCATION_TYPE_ARRAY
 
 #endif // __cplusplus
+#if false
 	static const int _LOCATION_ARRAY_SIZE = 8;
 
 	static const int LOCATIONTYPE_UNIQUE = 0;
@@ -43,6 +44,10 @@ namespace TF2Vulkan{ namespace ShaderConstants
 
 	static const int _LOCATION_TYPE_COUNT = 7; // KEEP THIS UPDATED!!!
 	static const int _LOCATION_COUNT = _LOCATION_TYPE_COUNT * _LOCATION_ARRAY_SIZE;
+#endif
+
+	static int _SPEC_ID_CURRENT = 0;
+	static const int SPEC_CONST_ID_VERTEXCOLOR = _SPEC_ID_CURRENT++;
 
 #ifdef __cplusplus
 

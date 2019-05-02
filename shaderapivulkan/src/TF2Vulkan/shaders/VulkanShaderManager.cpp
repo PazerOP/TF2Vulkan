@@ -6,10 +6,13 @@
 
 #include <materialsystem/shader_vcs_version.h>
 
+#include <spirv_cross.hpp>
+
 #include <mutex>
 #include <unordered_map>
 
 using namespace TF2Vulkan;
+using namespace TF2Vulkan::ShaderReflection;
 
 STD_HASH_DEFINITION(TF2Vulkan::IVulkanShaderManager::ShaderID,
 	v.m_Name,
@@ -21,12 +24,20 @@ namespace
 	class VulkanShaderManager final : public IVulkanShaderManager
 	{
 	public:
-		vk::ShaderModule FindOrCreateShader(const ShaderID& id) override;
+		const IShader& FindOrCreateShader(const ShaderID& id) override;
 
 	private:
-		struct CompiledShader
+
+		struct CompiledShader final : IShader
 		{
+			CompiledShader(const ShaderID& id);
+			vk::ShaderModule GetModule() const override { return m_Shader.get(); }
+			const ShaderID& GetID() const override { return *m_ID; }
+			const ReflectionData& GetReflectionData() const override { return m_ReflectionData; }
+
+			const ShaderID* m_ID = nullptr;
 			vk::UniqueShaderModule m_Shader;
+			ReflectionData m_ReflectionData;
 		};
 
 		std::recursive_mutex m_Mutex;
@@ -43,16 +54,39 @@ static const std::unordered_map<std::string_view, ShaderBlob> s_ShaderBlobMappin
 	{ "vertexlit_and_unlit_generic_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
 };
 
-vk::ShaderModule VulkanShaderManager::FindOrCreateShader(const ShaderID& id)
+auto VulkanShaderManager::FindOrCreateShader(const ShaderID& id) -> const IShader&
 {
 	std::lock_guard lock(m_Mutex);
 
 	assert(id.m_StaticIndex == 0);
 
 	if (auto found = m_Shaders.find(id); found != m_Shaders.end())
-		return found->second.m_Shader.get();
+		return found->second;
 
 	// Couldn't find an existing one, we need to create it here
+	return m_Shaders.emplace(id, id).first->second;
+}
+
+static ReflectionData CreateReflectionData(const void* data, size_t byteSize)
+{
+	ReflectionData retVal;
+
+	const spirv_cross::Compiler comp(reinterpret_cast<const uint32_t*>(data), byteSize);
+
+	// Specialization constants
+	for (const auto& specConstIn : comp.get_specialization_constants())
+	{
+		auto& specConstOut = retVal.m_SpecConstants.emplace_back();
+		specConstOut.m_ID = specConstIn.constant_id;
+		specConstOut.m_Name = comp.get_name(specConstIn.id);
+	}
+
+	return retVal;
+}
+
+VulkanShaderManager::CompiledShader::CompiledShader(const ShaderID& id) :
+	m_ID(&id)
+{
 	vk::ShaderModuleCreateInfo ci;
 
 	const auto blobType = s_ShaderBlobMapping.at(id.m_Name.String());
@@ -63,10 +97,8 @@ vk::ShaderModule VulkanShaderManager::FindOrCreateShader(const ShaderID& id)
 
 	ci.pCode = reinterpret_cast<const uint32_t*>(blobData);
 
-	auto createdUnique = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
-	g_ShaderDevice.SetDebugName(createdUnique, id.m_Name.String());
+	m_Shader = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
+	g_ShaderDevice.SetDebugName(m_Shader, id.m_Name.String());
 
-	vk::ShaderModule created = createdUnique.get();
-	m_Shaders[id] = { std::move(createdUnique) };
-	return created;
+	m_ReflectionData = CreateReflectionData(blobData, ci.codeSize / sizeof(uint32_t));
 }

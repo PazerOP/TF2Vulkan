@@ -1,3 +1,6 @@
 [submodule "sdk2013"]
 	path = sdk2013
 	url = https://github.com/PazerOP/source-sdk-2013
+[submodule "spirv-cross"]
+	path = spirv-cross
+	url = https://github.com/PazerOP/SPIRV-Cross.git

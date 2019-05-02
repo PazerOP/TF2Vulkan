@@ -4,6 +4,28 @@
 
 namespace TF2Vulkan
 {
+	namespace ShaderReflection
+	{
+		struct SpecializationConstant final
+		{
+			std::string m_Name;
+			uint32_t m_ID;
+		};
+
+		struct VertexAttribute final
+		{
+			std::string m_Semantic;
+			std::string m_Name;
+			uint32_t m_Location;
+		};
+
+		struct ReflectionData final
+		{
+			std::vector<SpecializationConstant> m_SpecConstants;
+			std::vector<VertexAttribute> m_VertexAttributes;
+		};
+	}
+
 	class IVulkanShaderManager
 	{
 	public:
@@ -17,9 +39,20 @@ namespace TF2Vulkan
 			DEFAULT_STRONG_EQUALITY_OPERATOR(ShaderID);
 		};
 
-		virtual vk::ShaderModule FindOrCreateShader(const ShaderID& id) = 0;
+		class IShader
+		{
+		public:
+			virtual vk::ShaderModule GetModule() const = 0;
+			virtual const ShaderID& GetID() const = 0;
+			virtual const ShaderReflection::ReflectionData& GetReflectionData() const = 0;
 
-		vk::ShaderModule FindOrCreateShader(const CUtlSymbolDbg& name, int staticIndex)
+		protected:
+			virtual ~IShader() = default;
+		};
+
+		virtual const IShader& FindOrCreateShader(const ShaderID& id) = 0;
+
+		const IShader& FindOrCreateShader(const CUtlSymbolDbg& name, int staticIndex)
 		{
 			return FindOrCreateShader({ name, staticIndex });
 		}

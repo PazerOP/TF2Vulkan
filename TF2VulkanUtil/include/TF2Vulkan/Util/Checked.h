@@ -38,7 +38,7 @@ namespace Util
 
 		operator bool() const
 		{
-			m_Checked = true;
+			MarkChecked();
 			return (bool)m_Ptr;
 		}
 

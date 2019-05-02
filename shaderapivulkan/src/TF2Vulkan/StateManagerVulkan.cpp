@@ -195,7 +195,7 @@ static vk::PipelineShaderStageCreateInfo CreateStageInfo(
 	retVal.stage = type;
 
 	retVal.module = g_ShaderManager.FindOrCreateShader(
-		name, staticIndex);
+		name, staticIndex).GetModule();
 
 	retVal.pName = "main"; // Shader entry point
 
