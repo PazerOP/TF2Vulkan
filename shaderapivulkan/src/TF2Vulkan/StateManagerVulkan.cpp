@@ -1,6 +1,7 @@
 #include "interface/internal/IShaderAPIInternal.h"
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
+#include "MaterialSystemHardwareConfig.h"
 #include "ShaderDevice.h"
 #include "shaders/VulkanShaderManager.h"
 
@@ -164,8 +165,6 @@ namespace
 			const LogicalDynamicState& dynamicState);
 
 	private:
-		vk::UniquePipelineCache m_PipelineCache;
-
 		const PipelineLayout& FindOrCreatePipelineLayout(
 			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 
@@ -333,7 +332,7 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 	return retVal;
 }
 
-static Pipeline CreatePipeline(const vk::PipelineCache& cache, const PipelineKey& key,
+static Pipeline CreatePipeline(const PipelineKey& key,
 	const PipelineLayout& layout, const RenderPass& renderPass)
 {
 	Pipeline retVal;
@@ -363,7 +362,8 @@ static Pipeline CreatePipeline(const vk::PipelineCache& cache, const PipelineKey
 			attrs.emplace_back(VIAD(i, 0, vertexElement.m_Type->GetVKFormat(), vertexElement.m_Offset));
 		}
 
-		for (size_t i = 0; i < Util::SafeConvert<size_t>(ShaderConstants::_LOCATION_COUNT); i++)
+		const auto maxVertexAttributes = g_MatSysConfig.MaxVertexAttributes();
+		for (size_t i = 0; i < maxVertexAttributes; i++)
 		{
 			bool found = false;
 			for (auto& attr : attrs)
@@ -386,7 +386,7 @@ static Pipeline CreatePipeline(const vk::PipelineCache& cache, const PipelineKey
 		binds.emplace_back(vk::VertexInputBindingDescription(0, totalVertexSize));
 
 		// "Fake" binding with no real data
-		//binds.emplace_back(vk::VertexInputBindingDescription(1, 128, vk::VertexInputRate::eInstance));
+		binds.emplace_back(vk::VertexInputBindingDescription(1, sizeof(float) * 4, vk::VertexInputRate::eInstance));
 
 		auto& ci = retVal.m_VertexInputStateCI;
 		ci.pVertexBindingDescriptions = binds.data();
@@ -475,7 +475,7 @@ static Pipeline CreatePipeline(const vk::PipelineCache& cache, const PipelineKey
 		ci.renderPass = retVal.m_RenderPass->m_RenderPass.get();
 
 		// ci.subpass = 0;
-		retVal.m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(cache, ci);
+		retVal.m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(nullptr, ci);
 		g_ShaderDevice.SetDebugName(retVal.m_Pipeline, "Test pipeline");
 	}
 
@@ -511,7 +511,7 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticI
 	auto& pl = m_StatesToPipelines[key];
 	if (!pl)
 	{
-		pl = CreatePipeline(m_PipelineCache.get(), key,
+		pl = CreatePipeline(key,
 			FindOrCreatePipelineLayout(staticState, dynamicState),
 			FindOrCreateRenderPass(staticState, dynamicState));
 

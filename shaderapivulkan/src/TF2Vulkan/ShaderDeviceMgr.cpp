@@ -1,3 +1,4 @@
+#include "MaterialSystemHardwareConfig.h"
 #include "ShaderDeviceMgr.h"
 #include "ShaderDevice.h"
 
@@ -294,6 +295,7 @@ InitReturnVal_t ShaderDeviceMgr::Init()
 	}
 
 	m_Adapter = physicalDevices[m_AdapterIndex];
+	g_MatSysConfig.Init();
 
 	QueueFamilies queueFamilies;
 	if (auto device = CreateDevice(m_Adapter, queueFamilies))

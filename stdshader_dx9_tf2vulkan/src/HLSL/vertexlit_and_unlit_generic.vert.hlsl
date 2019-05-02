@@ -89,7 +89,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	else
 	{
 		ApplyMorph(morphTexture, morphSampler, cMorphTargetTextureDim, cMorphSubrect,
-			v.vVertexID, v.vTexCoord2, vPosition.xyz, vNormal);
+			v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal);
 	}
 
 	// Perform skinning
@@ -114,7 +114,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	vProjPos.z = dot(float4(worldPos, 1), cViewProjZ);
 
 	o.vProjPos = vProjPos;
-	o.fogFactorW.w = CalcFog(worldPos, vProjPos, DOWATERFOG);
+	o.fogFactorW.w = CalcFog(worldPos, vProjPos.xyz, DOWATERFOG);
 	o.fog = o.fogFactorW.w;
 	o.worldPos_ProjPosZ.xyz = worldPos.xyz;
 	o.worldPos_ProjPosZ.w = vProjPos.z;
@@ -169,7 +169,8 @@ VS_OUTPUT main(const VS_INPUT v)
 
 	if (LIGHTING_PREVIEW)
 	{
-		float dot = 0.5 + 0.5 * worldNormal * float3(0.7071, 0.7071, 0);
+		// FIXME: Did the author really mean to truncate to a float?
+		float dot = (0.5 + 0.5 * worldNormal * float3(0.7071, 0.7071, 0)).x;
 		o.color.xyz = float3(dot, dot, dot);
 	}
 

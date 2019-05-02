@@ -12,9 +12,18 @@
   <ItemDefinitionGroup>
     <CustomBuild>
       <Command>pushd $(ProjectDir)src\Generated\
-DEL %(Filename).h
-DEL %(Filename).spirv
-glslangValidator %(FullPath) -e main -V -o %(Filename).spirv
+DEL /S %(Filename).h 2&gt;nul
+DEL /S %(Filename).spirv 2&gt;nul
+
+REM awful awful hack
+echo.%(Filename) | findstr /C:".vert" 1&gt;nul &amp;&amp; (
+   SET DXC_TARGET=vs_6_0
+) || (
+   SET DXC_TARGET=ps_6_0
+)
+
+dxc_git -spirv %(FullPath) -Fo %(Filename).spirv -fspv-debug=line -fspv-reflect -Ges -WX -T %DXC_TARGET%
+
 spirv-dis -o %(Filename).spirv_dis %(Filename).spirv
 spirv-val %(Filename).spirv
 xxd -i %(Filename).spirv %(Filename).h
@@ -24,6 +33,7 @@ popd</Command>
       <Outputs>$(ProjectDir)src\Generated\%(Filename).h;%(Outputs)</Outputs>
       <Message>Compiling shaders...</Message>
     </CustomBuild>
+    <CustomBuildStep />
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

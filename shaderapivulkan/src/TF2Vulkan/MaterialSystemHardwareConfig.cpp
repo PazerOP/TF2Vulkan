@@ -120,17 +120,27 @@ namespace
 		int NumBooleanPixelShaderConstants() const override;
 		int NumIntegerPixelShaderConstants() const override;
 
+		uint32_t MaxVertexAttributes() const override;
+
+		void Init() override;
+
 	private:
 		HDRType_t m_HDRType = HDRType_t::HDR_TYPE_FLOAT;
 
-		static vk::PhysicalDeviceLimits GetLimits();
-		static vk::PhysicalDeviceFeatures GetFeatures();
+		bool m_Init = false;
+		vk::PhysicalDeviceLimits m_Limits;
+		vk::PhysicalDeviceFeatures m_Features;
+
+		const vk::PhysicalDeviceLimits& GetLimits() const;
+		const vk::PhysicalDeviceFeatures& GetFeatures() const;
 	};
 }
 
 static MaterialSystemHardwareConfig s_HardwareConfig;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(MaterialSystemHardwareConfig, IMaterialSystemHardwareConfig,
 	MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION, s_HardwareConfig);
+
+IMaterialSystemHardwareConfigInternal& TF2Vulkan::g_MatSysConfig = s_HardwareConfig;
 
 bool MaterialSystemHardwareConfig::HasDestAlphaBuffer() const
 {
@@ -586,15 +596,16 @@ const char* MaterialSystemHardwareConfig::GetHWSpecificShaderDLLName() const
 	return nullptr;
 }
 
-vk::PhysicalDeviceLimits MaterialSystemHardwareConfig::GetLimits()
+const vk::PhysicalDeviceLimits& MaterialSystemHardwareConfig::GetLimits() const
 {
-	const auto adapter = g_ShaderDeviceMgr.GetAdapter();
-	return adapter.getProperties().limits;
+	assert(m_Init);
+	return m_Limits;
 }
 
-vk::PhysicalDeviceFeatures MaterialSystemHardwareConfig::GetFeatures()
+const vk::PhysicalDeviceFeatures& MaterialSystemHardwareConfig::GetFeatures() const
 {
-	return g_ShaderDeviceMgr.GetAdapter().getFeatures();
+	assert(m_Init);
+	return m_Features;
 }
 
 int MaterialSystemHardwareConfig::NumBooleanVertexShaderConstants() const
@@ -627,4 +638,20 @@ int MaterialSystemHardwareConfig::NumIntegerPixelShaderConstants() const
 	// Since we're really using constant buffers... "max constants" doesn't
 	// really mean anything anymore
 	return INT_MAX;
+}
+
+uint32_t MaterialSystemHardwareConfig::MaxVertexAttributes() const
+{
+	return GetLimits().maxVertexInputAttributes;
+}
+
+void MaterialSystemHardwareConfig::Init()
+{
+	assert(!m_Init);
+
+	auto adapter = g_ShaderDeviceMgr.GetAdapter();
+	m_Limits = adapter.getProperties().limits;
+	m_Features = adapter.getFeatures();
+
+	m_Init = true;
 }

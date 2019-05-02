@@ -209,7 +209,7 @@ bool ApplyMorph(Texture2D morphTexture, SamplerState morphSampler, const float3 
 		else
 		{
 			float4 t = float4(vMorphTexCoord.x, vMorphTexCoord.y, 0.0f, 0.0f);
-			float3 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
+			float3 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w).xyz;
 			vPosition += vPosDelta.xyz * vMorphTexCoord.z;
 		}
 
@@ -237,9 +237,9 @@ bool ApplyMorph(Texture2D morphTexture, SamplerState morphSampler, const float3 
 		else
 		{
 			float4 t = float4(vMorphTexCoord.x, vMorphTexCoord.y, 0.0f, 0.0f);
-			float3 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
+			float3 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w).xyz;
 			t.x += 1.0f / vMorphTargetTextureDim.x;
-			float3 vNormalDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
+			float3 vNormalDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w).xyz;
 			vPosition += vPosDelta.xyz * vMorphTexCoord.z;
 			vNormal += vNormalDelta.xyz * vMorphTexCoord.z;
 		}
@@ -269,9 +269,9 @@ bool ApplyMorph(Texture2D morphTexture, SamplerState morphSampler, const float3 
 		else
 		{
 			float4 t = float4(vMorphTexCoord.x, vMorphTexCoord.y, 0.0f, 0.0f);
-			float3 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
+			float3 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w).xyz;
 			t.x += 1.0f / vMorphTargetTextureDim.x;
-			float3 vNormalDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
+			float3 vNormalDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w).xyz;
 			vPosition += vPosDelta.xyz * vMorphTexCoord.z;
 			vNormal += vNormalDelta.xyz * vMorphTexCoord.z;
 			vTangent += vNormalDelta.xyz * vMorphTexCoord.z;
@@ -305,7 +305,7 @@ bool ApplyMorph(Texture2D morphTexture, SamplerState morphSampler, const float3 
 			float4 t = float4(vMorphTexCoord.x, vMorphTexCoord.y, 0.0f, 0.0f);
 			float4 vPosDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
 			t.x += 1.0f / vMorphTargetTextureDim.x;
-			float3 vNormalDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w);
+			float3 vNormalDelta = morphTexture.SampleLevel(morphSampler, t.xy, t.w).xyz;
 
 			vPosition += vPosDelta.xyz * vMorphTexCoord.z;
 			vNormal += vNormalDelta.xyz * vMorphTexCoord.z;
@@ -345,7 +345,7 @@ void SkinPositionAndNormal(bool bSkinning, const float4 modelPos, const float3 m
 	out float3 worldPos, out float3 worldNormal)
 {
 	// Needed for invariance issues caused by multipass rendering
-	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices);
+	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices).xyz;
 
 	if (!bSkinning)
 	{
@@ -456,7 +456,7 @@ float VertexAttenInternal(const float3 worldPos, int lightNum)
 	float result = 0.0f;
 
 	// Get light direction
-	float3 lightDir = cLightInfo[lightNum].pos - worldPos;
+	float3 lightDir = cLightInfo[lightNum].pos.xyz - worldPos;
 
 	// Get light distance squared.
 	float lightDistSquared = dot(lightDir, lightDir);
@@ -467,7 +467,7 @@ float VertexAttenInternal(const float3 worldPos, int lightNum)
 	// Normalize light direction
 	lightDir *= ooLightDist;
 
-	float3 vDist = dst(lightDistSquared, ooLightDist);
+	float3 vDist = dst(lightDistSquared, ooLightDist).xyz;
 
 	float flDistanceAtten = 1.0f / dot(cLightInfo[lightNum].atten.xyz, vDist);
 
@@ -490,10 +490,10 @@ float VertexAttenInternal(const float3 worldPos, int lightNum)
 float CosineTermInternal(const float3 worldPos, const float3 worldNormal, int lightNum, bool bHalfLambert)
 {
 	// Calculate light direction assuming this is a point or spot
-	float3 lightDir = normalize(cLightInfo[lightNum].pos - worldPos);
+	float3 lightDir = normalize(cLightInfo[lightNum].pos.xyz - worldPos);
 
 	// Select the above direction or the one in the structure, based upon light type
-	lightDir = lerp(lightDir, -cLightInfo[lightNum].dir, cLightInfo[lightNum].color.w);
+	lightDir = lerp(lightDir, -cLightInfo[lightNum].dir.xyz, cLightInfo[lightNum].color.w);
 
 	// compute N dot L
 	float NDotL = dot(worldNormal, lightDir);
@@ -512,9 +512,9 @@ float CosineTermInternal(const float3 worldPos, const float3 worldNormal, int li
 
 float3 DoLightInternal(const float3 worldPos, const float3 worldNormal, int lightNum, bool bHalfLambert)
 {
-	return cLightInfo[lightNum].color*
-		CosineTermInternal(worldPos, worldNormal, lightNum, bHalfLambert)*
-		VertexAttenInternal(worldPos, lightNum);
+	return (cLightInfo[lightNum].color *
+		CosineTermInternal(worldPos, worldNormal, lightNum, bHalfLambert) *
+		VertexAttenInternal(worldPos, lightNum)).xyz;
 }
 
 float3 DoLighting(const float3 worldPos, const float3 worldNormal,
