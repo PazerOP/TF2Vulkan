@@ -24,6 +24,12 @@
 [[vk::constant_id(15)]] const bool LIGHTING_PREVIEW = false;
 [[vk::constant_id(16)]] const bool MORPHING = false;
 
+static const int BINDING_CBUF_VS_STANDARD = 10;
+static const int BINDING_CBUF_VS_CUSTOM = 11;
+
+static const int BINDING_CBUF_PS_STANDARD = 20;
+static const int BINDING_CBUF_PS_CUSTOM = 21;
+
 #define g_FogType DOWATERFOG
 
 // These cause bad codegen with glslangValidator

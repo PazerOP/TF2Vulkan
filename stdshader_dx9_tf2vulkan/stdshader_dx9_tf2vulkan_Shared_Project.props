@@ -15,14 +15,7 @@
 DEL /S %(Filename).h 2&gt;nul
 DEL /S %(Filename).spirv 2&gt;nul
 
-REM awful awful hack
-echo.%(Filename) | findstr /C:".vert" 1&gt;nul &amp;&amp; (
-   SET DXC_TARGET=vs_6_0
-) || (
-   SET DXC_TARGET=ps_6_0
-)
-
-dxc_git -spirv %(FullPath) -Fo %(Filename).spirv -fspv-debug=line -fspv-reflect -Ges -WX -T %DXC_TARGET%
+glslangvalidator -fhlsl_functionality1 --auto-map-bindings --shift-sampler-binding vert 100 --shift-texture-binding vert 100 --shift-sampler-binding frag 200 --shift-texture-binding frag 200 -e main -V %(FullPath) -o %(Filename).spirv
 
 spirv-val %(Filename).spirv
 spirv-dis -o %(Filename).spirv_dis --offsets %(Filename).spirv

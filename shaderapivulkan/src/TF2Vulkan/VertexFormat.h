@@ -59,6 +59,8 @@ namespace TF2Vulkan
 
 		struct ElementType final
 		{
+			constexpr ElementType(VertexElement_t elem, DataFormat fmt, uint_fast8_t compCount, uint_fast8_t compSize);
+
 			VertexElement_t m_Element = VERTEX_ELEMENT_NONE;
 			DataFormat m_Format = DataFormat::Invalid;
 			uint_fast8_t m_Components = 0;

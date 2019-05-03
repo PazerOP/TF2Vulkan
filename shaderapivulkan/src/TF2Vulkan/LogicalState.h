@@ -85,14 +85,8 @@ namespace TF2Vulkan
 		bool m_OMAlphaWrite = false;
 		ShaderBlendFactor_t m_OMSrcFactor = SHADER_BLEND_ZERO;
 		ShaderBlendFactor_t m_OMDstFactor = SHADER_BLEND_ONE;
-		ShaderAPITextureHandle_t m_OMDepthRT = INVALID_SHADERAPI_TEXTURE_HANDLE;
-		ShaderAPITextureHandle_t m_OMColorRTs[4] =
-		{
-			INVALID_SHADERAPI_TEXTURE_HANDLE,
-			INVALID_SHADERAPI_TEXTURE_HANDLE,
-			INVALID_SHADERAPI_TEXTURE_HANDLE,
-			INVALID_SHADERAPI_TEXTURE_HANDLE
-		};
+		ShaderAPITextureHandle_t m_OMDepthRT = 0;
+		ShaderAPITextureHandle_t m_OMColorRTs[4] = { 0, -1, -1, -1 };
 
 		// Fog settings
 		ShaderFogMode_t m_FogMode = SHADER_FOGMODE_DISABLED;

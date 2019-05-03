@@ -5,7 +5,7 @@
 
 using namespace TF2Vulkan;
 
-void IStateManagerDynamic::SetViewports(int count, const ShaderViewport_t* viewports)
+void IShaderAPI_StateManagerDynamic::SetViewports(int count, const ShaderViewport_t* viewports)
 {
 	LOG_FUNC();
 
@@ -16,37 +16,37 @@ void IStateManagerDynamic::SetViewports(int count, const ShaderViewport_t* viewp
 	m_Dirty = true;
 }
 
-void IStateManagerDynamic::SetAnisotropicLevel(int anisoLevel)
+void IShaderAPI_StateManagerDynamic::SetAnisotropicLevel(int anisoLevel)
 {
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_AnisotropicLevel, anisoLevel, m_Dirty);
 }
 
-void IStateManagerDynamic::SetOverbright(float overbright)
+void IShaderAPI_StateManagerDynamic::SetOverbright(float overbright)
 {
 	Util::SetDirtyVar(m_State.m_SCOverbright, overbright, m_Dirty);
 }
 
-void IStateManagerDynamic::SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex)
+void IShaderAPI_StateManagerDynamic::SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_FullScreenTexture, tex, m_Dirty);
 }
 
-void IStateManagerDynamic::SetDefaultState()
+void IShaderAPI_StateManagerDynamic::SetDefaultState()
 {
 	LOG_FUNC();
 	m_State = {};
 	m_Dirty = true;
 }
 
-int IStateManagerDynamic::GetCurrentNumBones() const
+int IShaderAPI_StateManagerDynamic::GetCurrentNumBones() const
 {
 	LOG_FUNC();
 	return m_State.m_BoneCount;
 }
 
-void IStateManagerDynamic::ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+void IShaderAPI_StateManagerDynamic::ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
 	LOG_FUNC();
 
@@ -62,13 +62,13 @@ void IStateManagerDynamic::ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_
 		Util::SetDirtyVar(m_State.m_ClearColor, i, fValues[i], m_Dirty);
 }
 
-void IStateManagerDynamic::ClearColor3ub(uint8_t r, uint8_t g, uint8_t b)
+void IShaderAPI_StateManagerDynamic::ClearColor3ub(uint8_t r, uint8_t g, uint8_t b)
 {
 	LOG_FUNC();
 	return ClearColor4ub(r, g, b, 255);
 }
 
-void IStateManagerDynamic::Bind(IMaterial* material)
+void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 {
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_BoundMaterial, material, m_Dirty);

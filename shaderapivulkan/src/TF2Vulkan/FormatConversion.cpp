@@ -122,6 +122,17 @@ static ImageFormat FindSupportedFormat(FormatUsage usage, bool filtering, std::i
 	return IMAGE_FORMAT_UNKNOWN;
 }
 
+static vk::Format FindSupportedFormat(FormatUsage usage, bool filtering, std::initializer_list<vk::Format> formats)
+{
+	for (auto fmt : formats)
+	{
+		if (TF2Vulkan::HasHardwareSupport(fmt, usage, filtering))
+			return fmt;
+	}
+
+	return vk::Format::eUndefined;
+}
+
 namespace
 {
 	enum class FilteringSupport
@@ -157,6 +168,8 @@ namespace
 						auto & hwf = allHWF[filtering][usage];
 						hwf.fill(IMAGE_FORMAT_UNINITIALIZED);
 
+#pragma push_macro("PROMOTE_2_HARDWARE")
+#undef PROMOTE_2_HARDWARE
 #define PROMOTE_2_HARDWARE(baseFmt, ...) \
 	assert(hwf[baseFmt] == IMAGE_FORMAT_UNINITIALIZED); \
 	hwf[baseFmt] = FindSupportedFormat(FormatUsage(usage), bool(filtering), { baseFmt, __VA_ARGS__ })
@@ -246,6 +259,8 @@ namespace
 
 						hwf[IMAGE_FORMAT_P8] = IMAGE_FORMAT_UNKNOWN;
 
+#pragma pop_macro("PROMOTE_2_HARDWARE")
+
 #ifdef _DEBUG
 						for (size_t i = 0; i < NUM_IMAGE_FORMATS; i++)
 						{
@@ -275,10 +290,34 @@ ImageFormat TF2Vulkan::PromoteToHardware(ImageFormat format, FormatUsage usage, 
 	return result;
 }
 
+vk::Format TF2Vulkan::PromoteToHardware(vk::Format format, FormatUsage usage, bool filtering)
+{
+	switch (format)
+	{
+	default:
+		Warning(TF2VULKAN_PREFIX "No fallback formats defined for %s\n", vk::to_string(format).c_str());
+		if (HasHardwareSupport(format, usage, filtering))
+			return format;
+		else
+			return vk::Format::eUndefined;
+
+#pragma push_macro("PROMOTE_2_HARDWARE")
+#undef PROMOTE_2_HARDWARE
+#define PROMOTE_2_HARDWARE(fmt, ...) \
+	case fmt : return FindSupportedFormat(usage, filtering, { fmt, __VA_ARGS__ })
+
+		PROMOTE_2_HARDWARE(vk::Format::eD24UnormS8Uint,
+			vk::Format::eD16UnormS8Uint,
+			vk::Format::eD32SfloatS8Uint);
+
+#pragma pop_macro("PROMOTE_2_HARDWARE")
+	}
+}
+
 static constexpr uint_fast32_t PackDataFormat(DataFormat fmt,
 	uint_fast8_t components, uint_fast8_t componentSize)
 {
-	return (uint_fast32_t(fmt) << 16) | (uint_fast32_t(components) << 8) | (uint_fast32_t(componentSize));
+	return (uint_fast32_t(fmt) << 16) | (uint_fast32_t(componentSize) << 8) | (uint_fast32_t(components));
 }
 template<DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize>
 static constexpr auto PACK_DFMT = PackDataFormat(fmt, components, componentSize);
@@ -287,22 +326,30 @@ vk::Format TF2Vulkan::ConvertDataFormat(DataFormat fmt, uint_fast8_t components,
 {
 	switch (PackDataFormat(fmt, components, componentSize))
 	{
-	case PACK_DFMT<DataFormat::UInt, 1, 1>: return vk::Format::eR8Uint;
-	case PACK_DFMT<DataFormat::UInt, 2, 1>: return vk::Format::eR8G8Uint;
-	case PACK_DFMT<DataFormat::UInt, 3, 1>: return vk::Format::eR8G8B8Uint;
-	case PACK_DFMT<DataFormat::UInt, 4, 1>: return vk::Format::eR8G8B8A8Uint;
+	case PACK_DFMT<DataFormat::UInt, 1, 1>:          return vk::Format::eR8Uint;
+	case PACK_DFMT<DataFormat::UInt, 2, 1>:          return vk::Format::eR8G8Uint;
+	case PACK_DFMT<DataFormat::UInt, 3, 1>:          return vk::Format::eR8G8B8Uint;
+	case PACK_DFMT<DataFormat::UInt, 4, 1>:          return vk::Format::eR8G8B8A8Uint;
 
-	case PACK_DFMT<DataFormat::SFloat, 1, 2>: return vk::Format::eR16Sfloat;
-	case PACK_DFMT<DataFormat::SFloat, 1, 4>: return vk::Format::eR32Sfloat;
+	case PACK_DFMT<DataFormat::UIntCastFloat, 1, 1>: return vk::Format::eR8Uscaled;
+	case PACK_DFMT<DataFormat::UIntCastFloat, 2, 1>: return vk::Format::eR8G8Uscaled;
+	case PACK_DFMT<DataFormat::UIntCastFloat, 3, 1>: return vk::Format::eR8G8B8Uscaled;
+	case PACK_DFMT<DataFormat::UIntCastFloat, 4, 1>: return vk::Format::eR8G8B8A8Uscaled;
 
-	case PACK_DFMT<DataFormat::SFloat, 2, 2>: return vk::Format::eR16G16Sfloat;
-	case PACK_DFMT<DataFormat::SFloat, 2, 4>: return vk::Format::eR32G32Sfloat;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 1, 1>: return vk::Format::eR8Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 2, 1>: return vk::Format::eR8G8Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 3, 1>: return vk::Format::eR8G8B8Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 4, 1>: return vk::Format::eR8G8B8A8Sscaled;
 
-	case PACK_DFMT<DataFormat::SFloat, 3, 2>: return vk::Format::eR16G16B16Sfloat;
-	case PACK_DFMT<DataFormat::SFloat, 3, 4>: return vk::Format::eR32G32B32Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 1, 2>:        return vk::Format::eR16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 2, 2>:        return vk::Format::eR16G16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 3, 2>:        return vk::Format::eR16G16B16Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 4, 2>:        return vk::Format::eR16G16B16A16Sfloat;
 
-	case PACK_DFMT<DataFormat::SFloat, 4, 2>: return vk::Format::eR16G16B16A16Sfloat;
-	case PACK_DFMT<DataFormat::SFloat, 4, 4>: return vk::Format::eR32G32B32A32Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 1, 4>:        return vk::Format::eR32Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 2, 4>:        return vk::Format::eR32G32Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 3, 4>:        return vk::Format::eR32G32B32Sfloat;
+	case PACK_DFMT<DataFormat::SFloat, 4, 4>:        return vk::Format::eR32G32B32A32Sfloat;
 	}
 
 	assert(!"Unknown/unsupported combination");
@@ -315,13 +362,20 @@ bool TF2Vulkan::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool f
 	if (vkFormat == vk::Format::eUndefined)
 		return false;
 
-	auto formatProperties = g_ShaderDeviceMgr.GetAdapter().getFormatProperties(vkFormat);
+	return HasHardwareSupport(vkFormat, usage, filtering);
+}
+
+bool TF2Vulkan::HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering)
+{
+	auto formatProperties = g_ShaderDeviceMgr.GetAdapter().getFormatProperties(format);
 
 	using Flags = vk::FormatFeatureFlagBits;
 
 	vk::FormatFeatureFlags REQUIRED_FLAGS{};
 
-	if (usage == FormatUsage::ImmutableTexture || usage == FormatUsage::RenderTarget)
+	if (usage == FormatUsage::ImmutableTexture ||
+		usage == FormatUsage::RenderTarget ||
+		usage == FormatUsage::DepthStencil)
 	{
 		if (filtering)
 			REQUIRED_FLAGS |= Flags::eSampledImageFilterLinear;
@@ -329,9 +383,9 @@ bool TF2Vulkan::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool f
 			REQUIRED_FLAGS |= Flags::eSampledImage;
 
 		if (usage == FormatUsage::RenderTarget)
-		{
-			REQUIRED_FLAGS |= Flags::eStorageImage;
-		}
+			REQUIRED_FLAGS |= Flags::eColorAttachment;
+		else if (usage == FormatUsage::DepthStencil)
+			REQUIRED_FLAGS |= Flags::eDepthStencilAttachment;
 	}
 	else
 	{

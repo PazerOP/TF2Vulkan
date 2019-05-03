@@ -15,16 +15,17 @@ namespace Util
 	template<typename To, typename From>
 	inline constexpr To SafeConvert(const From& f)
 	{
-		if constexpr (std::is_floating_point_v<To> ||
-			std::is_floating_point_v<From> ||
-			std::is_same_v<To, From>)
+		using RealTo = Util::type_traits::safe_underlying_type_t<To>;
+		using RealFrom = Util::type_traits::safe_underlying_type_t<From>;
+
+		if constexpr (std::is_floating_point_v<RealTo> ||
+			std::is_floating_point_v<RealFrom> ||
+			std::is_same_v<RealTo, RealFrom>)
 		{
 			return To(f);
 		}
 		else
 		{
-			using RealTo = Util::type_traits::safe_underlying_type_t<To>;
-			using RealFrom = Util::type_traits::safe_underlying_type_t<From>;
 			constexpr auto TO_MIN = intmax_t(std::numeric_limits<RealTo>::min());
 			constexpr auto TO_MAX = uintmax_t(std::numeric_limits<RealTo>::max());
 			constexpr auto FROM_MIN = intmax_t(std::numeric_limits<RealFrom>::min());

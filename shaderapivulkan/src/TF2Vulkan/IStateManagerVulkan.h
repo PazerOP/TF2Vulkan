@@ -21,13 +21,15 @@ namespace TF2Vulkan
 			LogicalShadowStateID staticID, const LogicalShadowState& staticState,
 			const LogicalDynamicState& dynamicState) = 0;
 
-		virtual void ApplyState(VulkanStateID stateID) = 0;
+		virtual void ApplyState(VulkanStateID stateID, const vk::CommandBuffer& buf) = 0;
 
 		VulkanStateID ApplyState(
 			LogicalShadowStateID staticID, const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState)
+			const LogicalDynamicState& dynamicState, const vk::CommandBuffer& buf)
 		{
-			ApplyState(FindOrCreateState(staticID, staticState, dynamicState));
+			const auto& stateID = FindOrCreateState(staticID, staticState, dynamicState);
+			ApplyState(stateID, buf);
+			return stateID;
 		}
 	};
 

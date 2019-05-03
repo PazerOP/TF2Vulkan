@@ -18,8 +18,8 @@ struct PS_INPUT
 	float4 fogFactorW           : COLOR1;
 };
 
-[[vk::binding(0)]] Texture2D BaseTexture;
-[[vk::binding(1)]] SamplerState BaseTextureSampler;
+Texture2D BaseTexture;
+SamplerState BaseTextureSampler;
 
 float4 main(const PS_INPUT i) : SV_Target
 {

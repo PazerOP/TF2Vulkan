@@ -1,6 +1,8 @@
 #pragma once
 
+#include "TF2Vulkan/ShaderDevice.h"
 #include "TF2Vulkan/IShaderAPI_DSA.h"
+#include "TF2Vulkan/IShaderAPITexture.h"
 #include <TF2Vulkan/Util/ImageManip.h>
 
 enum RenderParamFloat_t;
@@ -79,7 +81,25 @@ namespace TF2Vulkan
 
 		virtual bool IsInFrame() const = 0;
 		virtual bool IsInPass() const = 0;
-		virtual bool GetTextureSize(ShaderAPITextureHandle_t texID, uint_fast32_t& width, uint_fast32_t& height) const = 0;
+
+		virtual const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const = 0;
+		IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID)
+		{
+			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetTexture(texID));
+		}
+
+		using IShaderAPI_DSA::CreateTexture;
+		virtual IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI) = 0;
+
+		void GetBackBufferDimensions(uint32_t& width, uint32_t& height) const
+		{
+			return g_ShaderDevice.GetBackBufferDimensions(width, height);
+		}
+		void GetBackBufferDimensions(int& width, int& height) const override final
+		{
+			LOG_FUNC();
+			return g_ShaderDevice.GetBackBufferDimensions(width, height);
+		}
 	};
 
 	extern IShaderAPIInternal& g_ShaderAPIInternal;

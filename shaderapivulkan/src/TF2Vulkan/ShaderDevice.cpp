@@ -1,4 +1,6 @@
 #include "FormatConversion.h"
+#include "interface/internal/IShaderAPIInternal.h"
+#include "IShaderAPITexture.h"
 #include "ShaderDevice.h"
 #include "ShaderDeviceMgr.h"
 
@@ -32,6 +34,8 @@ namespace
 		vk::UniqueSurfaceKHR m_Surface;
 		vk::SwapchainCreateInfoKHR m_SwapChainCreateInfo;
 		vk::UniqueSwapchainKHR m_SwapChain;
+		std::vector<vk::Image> m_Images;
+		std::vector<vk::UniqueImageView> m_ImageViews;
 	};
 
 	class ShaderDevice final : public IShaderDeviceInternal
@@ -41,7 +45,7 @@ namespace
 		void ReacquireResources() override;
 
 		ImageFormat GetBackBufferFormat() const override;
-		void GetBackBufferDimensions(int& width, int& height) const override;
+		void GetBackBufferDimensions(uint32_t& width, uint32_t& height) const override;
 
 		int GetCurrentAdapter() const override;
 
@@ -103,7 +107,11 @@ namespace
 
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
 
+		using IShaderDeviceInternal::SetDebugName;
 		void SetDebugName(uint64_t obj, vk::ObjectType type, const char* name) override;
+
+		const IShaderAPITexture& GetBackBufferColorTexture() const override { return m_BackbufferColorTexture; }
+		const IShaderAPITexture& GetBackBufferDepthTexture() const override { return *m_Data.m_DepthTexture;  }
 
 	private:
 		// In a struct so we can easily reset all the vulkan-related stuff on shutdown
@@ -119,7 +127,20 @@ namespace
 			VulkanSwapChain m_SwapChain;
 			vk::DispatchLoaderDynamic m_DynamicLoader;
 
+			const IShaderAPITexture* m_DepthTexture = nullptr;
+
 		} m_Data;
+
+		struct BackbufferColorTexture : IShaderAPITexture
+		{
+			std::string_view GetDebugName() const override { return "__rt_tf2vulkan_backbuffer"; }
+			const vk::Image& GetImage() const override;
+			const vk::ImageCreateInfo& GetImageCreateInfo() const override;
+			const vk::ImageView& FindOrCreateView() override;
+			const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override { NOT_IMPLEMENTED_FUNC(); }
+			ShaderAPITextureHandle_t GetHandle() const override { return 0; }
+		};
+		BackbufferColorTexture m_BackbufferColorTexture;
 	};
 }
 
@@ -129,12 +150,12 @@ IShaderDeviceInternal& TF2Vulkan::g_ShaderDevice = s_Device;
 
 void ShaderDevice::ReleaseResources()
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void ShaderDevice::ReacquireResources()
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 ImageFormat ShaderDevice::GetBackBufferFormat() const
@@ -143,13 +164,13 @@ ImageFormat ShaderDevice::GetBackBufferFormat() const
 	return TF2Vulkan::ConvertImageFormat(m_Data.m_SwapChain.m_SwapChainCreateInfo.imageFormat);
 }
 
-void ShaderDevice::GetBackBufferDimensions(int& width, int& height) const
+void ShaderDevice::GetBackBufferDimensions(uint32_t& width, uint32_t& height) const
 {
 	LOG_FUNC();
 	auto& swapChainExtent = m_Data.m_SwapChain.m_SwapChainCreateInfo.imageExtent;
 
-	Util::SafeConvert(swapChainExtent.width, width);
-	Util::SafeConvert(swapChainExtent.height, height);
+	width = swapChainExtent.width;
+	height = swapChainExtent.height;
 }
 
 int ShaderDevice::GetCurrentAdapter() const
@@ -160,6 +181,7 @@ int ShaderDevice::GetCurrentAdapter() const
 
 bool ShaderDevice::IsUsingGraphics() const
 {
+	LOG_FUNC();
 	return true;
 }
 
@@ -192,7 +214,7 @@ void ShaderDevice::GetWindowSize(int& width, int& height) const
 
 void ShaderDevice::SetHardwareGammaRamp(float gamma, float gammaTVRangeMin, float gammaTVRangeMax, float gammaTVExponent, bool tvEnabled)
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 bool ShaderDevice::AddView(void* hwnd)
@@ -431,9 +453,58 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		scCreateInfo.presentMode = presentModes.at(0);
 
 		newSwapChain.m_SwapChain = m_Data.m_Device->createSwapchainKHRUnique(scCreateInfo);
+		SetDebugName(newSwapChain.m_SwapChain, "TF2Vulkan Swap Chain");
+	}
+
+	// Swap chain images and image views
+	{
+		newSwapChain.m_Images = m_Data.m_Device->getSwapchainImagesKHR(newSwapChain.m_SwapChain.get());
+
+		auto& scCI = newSwapChain.m_SwapChainCreateInfo;
+		vk::ImageViewCreateInfo ci;
+
+		ci.format = scCI.imageFormat;
+		ci.subresourceRange.layerCount = 1;
+		ci.subresourceRange.levelCount = 1;
+		ci.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		ci.viewType = vk::ImageViewType::e2D;
+
+		size_t index = 0;
+		for (const auto& img : newSwapChain.m_Images)
+		{
+			ci.image = img;
+			auto& newImgView = newSwapChain.m_ImageViews.emplace_back(m_Data.m_Device->createImageViewUnique(ci));
+
+			char buf[128];
+			sprintf_s(buf, "TF2Vulkan Swap Chain Image #%zu", index);
+			SetDebugName(img, buf);
+
+			sprintf_s(buf, "TF2Vulkan Swap Chain Image View #%zu", index);
+			SetDebugName(newImgView, buf);
+
+			index++;
+		}
+	}
+
+	// Depth buffer
+	{
+		vk::ImageCreateInfo ci;
+		ci.format = TF2Vulkan::PromoteToHardware(vk::Format::eD24UnormS8Uint, FormatUsage::DepthStencil, false);
+		ci.extent.width = newSwapChain.m_SwapChainCreateInfo.imageExtent.width;
+		ci.extent.height = newSwapChain.m_SwapChainCreateInfo.imageExtent.height;
+		ci.extent.depth = 1;
+		ci.arrayLayers = 1;
+		ci.imageType = vk::ImageType::e2D;
+		ci.mipLevels = 1;
+		ci.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		ci.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+
+		assert(!m_Data.m_DepthTexture); // TODO
+		m_Data.m_DepthTexture = &g_ShaderAPIInternal.CreateTexture("__rt_tf2vulkan_depth", ci);
 	}
 
 	m_Data.m_SwapChain = std::move(newSwapChain);
+
 	return true;
 }
 
@@ -450,4 +521,32 @@ void ShaderDevice::SetDebugName(uint64_t obj, vk::ObjectType type, const char* n
 	info.pObjectName = name;
 
 	GetVulkanDevice().setDebugUtilsObjectNameEXT(info, m_Data.m_DynamicLoader);
+}
+
+const vk::Image& ShaderDevice::BackbufferColorTexture::GetImage() const
+{
+	return s_Device.m_Data.m_SwapChain.m_Images.at(0);
+}
+
+const vk::ImageView& ShaderDevice::BackbufferColorTexture::FindOrCreateView()
+{
+	return s_Device.m_Data.m_SwapChain.m_ImageViews.at(0).get();
+}
+
+const vk::ImageCreateInfo& ShaderDevice::BackbufferColorTexture::GetImageCreateInfo() const
+{
+	// FIXME REALLY SOON
+	static thread_local vk::ImageCreateInfo s_BBIC;
+
+	const auto& scci = s_Device.m_Data.m_SwapChain.m_SwapChainCreateInfo;
+
+	s_BBIC.format = scci.imageFormat;
+	s_BBIC.extent.width = scci.imageExtent.width;
+	s_BBIC.extent.height = scci.imageExtent.height;
+	s_BBIC.mipLevels = 1;
+	s_BBIC.usage = scci.imageUsage;
+	s_BBIC.arrayLayers = scci.imageArrayLayers;
+	s_BBIC.sharingMode = scci.imageSharingMode;
+
+	return s_BBIC;
 }

@@ -5,8 +5,14 @@
 #include "ShaderDevice.h"
 #include "shaders/VulkanShaderManager.h"
 
+#include <TF2Vulkan/Util/MemoryPool.h>
+
 #include <stdshader_dx9_tf2vulkan/ShaderShared.h>
 
+#undef min
+#undef max
+
+#include <mutex>
 #include <unordered_map>
 
 using namespace TF2Vulkan;
@@ -25,9 +31,15 @@ namespace
 		CUtlSymbolDbg m_PSName;
 		int m_PSStaticIndex;
 
+		ShaderDepthFunc_t m_DepthCompareFunc;
+		bool m_DepthTest;
+		bool m_DepthWrite;
+
 		bool m_RSBackFaceCulling;
 		ShaderPolyMode_t m_RSPolyMode;
 
+		ShaderBlendFactor_t m_OMSrcFactor;
+		ShaderBlendFactor_t m_OMDstFactor;
 		ShaderAPITextureHandle_t m_OMDepthRT;
 		ShaderAPITextureHandle_t m_OMColorRTs[4];
 
@@ -43,9 +55,15 @@ STD_HASH_DEFINITION(PipelineKey,
 	v.m_PSName,
 	v.m_PSStaticIndex,
 
+	v.m_DepthCompareFunc,
+	v.m_DepthTest,
+	v.m_DepthWrite,
+
 	v.m_RSBackFaceCulling,
 	v.m_RSPolyMode,
 
+	v.m_OMSrcFactor,
+	v.m_OMDstFactor,
 	v.m_OMDepthRT,
 	v.m_OMColorRTs,
 
@@ -58,11 +76,23 @@ namespace
 	{
 		constexpr PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 		DEFAULT_WEAK_EQUALITY_OPERATOR(PipelineLayoutKey);
+
+		CUtlSymbolDbg m_VSName;
+		int m_VSStaticIndex;
+		VertexFormat m_VSVertexFormat;
+
+		CUtlSymbolDbg m_PSName;
+		int m_PSStaticIndex;
 	};
 }
 
 STD_HASH_DEFINITION(PipelineLayoutKey,
+	v.m_VSName,
+	v.m_VSStaticIndex,
+	v.m_VSVertexFormat,
 
+	v.m_PSName,
+	v.m_PSStaticIndex
 );
 
 namespace
@@ -80,6 +110,28 @@ namespace
 STD_HASH_DEFINITION(RenderPassKey,
 	v.m_OMDepthRT,
 	v.m_OMColorRTs
+);
+
+namespace
+{
+	struct RenderPass;
+	struct FramebufferKey final
+	{
+		constexpr FramebufferKey(const RenderPass& rp);
+		DEFAULT_WEAK_EQUALITY_OPERATOR(FramebufferKey);
+
+		ShaderAPITextureHandle_t m_OMDepthRT;
+		ShaderAPITextureHandle_t m_OMColorRTs[4];
+
+		const RenderPass* m_RenderPass;
+	};
+}
+
+STD_HASH_DEFINITION(FramebufferKey,
+	v.m_OMDepthRT,
+	v.m_OMColorRTs,
+
+	v.m_RenderPass
 );
 
 namespace
@@ -105,13 +157,17 @@ namespace
 
 	struct Subpass final
 	{
-		std::vector<vk::AttachmentReference> m_Attachments;
+		std::vector<vk::AttachmentReference> m_InputAttachments;
+		std::vector<vk::AttachmentReference> m_ColorAttachments;
+		vk::AttachmentReference m_DepthStencilAttachment;
 
-		vk::SubpassDescription m_Subpass;
+		vk::SubpassDescription m_CreateInfo;
 	};
 
 	struct RenderPass final
 	{
+		RenderPass(RenderPassKey&& key) : m_Key(key) {}
+
 		std::vector<vk::AttachmentDescription> m_Attachments;
 		std::vector<vk::SubpassDependency> m_Dependencies;
 		std::vector<Subpass> m_Subpasses;
@@ -119,12 +175,30 @@ namespace
 		vk::RenderPassCreateInfo m_CreateInfo;
 		vk::UniqueRenderPass m_RenderPass;
 
+		RenderPassKey m_Key;
+
 		bool operator!() const { return !m_RenderPass; }
+	};
+
+	struct Framebuffer final
+	{
+		std::vector<vk::ImageView> m_Attachments;
+
+		vk::FramebufferCreateInfo m_CreateInfo;
+		vk::UniqueFramebuffer m_Framebuffer;
+
+		bool operator!() const { return !m_Framebuffer; }
+	};
+
+	struct ShaderStageCreateInfo
+	{
+		const IVulkanShaderManager::IShader* m_Shader = nullptr;
+		vk::PipelineShaderStageCreateInfo m_CreateInfo;
 	};
 
 	struct Pipeline final
 	{
-		std::vector<vk::PipelineShaderStageCreateInfo> m_ShaderStageCIs;
+		std::vector<ShaderStageCreateInfo> m_ShaderStageCIs;
 
 		std::vector<vk::VertexInputAttributeDescription> m_VertexInputAttributeDescriptions;
 		std::vector<vk::VertexInputBindingDescription> m_VertexInputBindingDescriptions;
@@ -138,9 +212,12 @@ namespace
 
 		vk::PipelineRasterizationStateCreateInfo m_RasterizationStateCI;
 
+		std::vector<vk::PipelineColorBlendAttachmentState> m_ColorBlendAttachmentStates;
 		vk::PipelineColorBlendStateCreateInfo m_ColorBlendStateCI;
 
 		vk::PipelineMultisampleStateCreateInfo m_MultisampleStateCI;
+
+		vk::PipelineDepthStencilStateCreateInfo m_DepthStencilStateCI;
 
 		const PipelineLayout* m_Layout = nullptr;
 		const RenderPass* m_RenderPass = nullptr;
@@ -158,7 +235,7 @@ namespace
 	class StateManagerVulkan final : public IStateManagerVulkan
 	{
 	public:
-		void ApplyState(VulkanStateID stateID) override { NOT_IMPLEMENTED_FUNC(); }
+		void ApplyState(VulkanStateID stateID, const vk::CommandBuffer& buf) override;
 
 		VulkanStateID FindOrCreateState(
 			LogicalShadowStateID staticID, const LogicalShadowState& staticState,
@@ -171,10 +248,17 @@ namespace
 		const RenderPass& FindOrCreateRenderPass(
 			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 
+		const Framebuffer& FindOrCreateFramebuffer(
+			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		const Framebuffer& FindOrCreateFramebuffer(const FramebufferKey& key);
+
+		std::recursive_mutex m_Mutex;
+
 		std::unordered_map<PipelineKey, Pipeline> m_StatesToPipelines;
 		std::vector<const Pipeline*> m_IDsToPipelines;
 		std::unordered_map<PipelineLayoutKey, PipelineLayout> m_StatesToLayouts;
 		std::unordered_map<RenderPassKey, RenderPass> m_StatesToRenderPasses;
+		std::unordered_map<FramebufferKey, Framebuffer> m_StatesToFramebuffers;
 	};
 }
 
@@ -188,18 +272,58 @@ static void AttachVector(const T*& destData, TSize& destSize, const std::vector<
 	Util::SafeConvert(src.size(), destSize);
 }
 
-static vk::PipelineShaderStageCreateInfo CreateStageInfo(
+static ShaderStageCreateInfo CreateStageInfo(
 	const CUtlSymbolDbg& name, int staticIndex, vk::ShaderStageFlagBits type)
 {
-	vk::PipelineShaderStageCreateInfo retVal;
-	retVal.stage = type;
+	ShaderStageCreateInfo retVal;
+	retVal.m_CreateInfo.stage = type;
 
-	retVal.module = g_ShaderManager.FindOrCreateShader(
-		name, staticIndex).GetModule();
+	retVal.m_Shader = &g_ShaderManager.FindOrCreateShader(
+		name, staticIndex);
 
-	retVal.pName = "main"; // Shader entry point
+	retVal.m_CreateInfo.module = retVal.m_Shader->GetModule();
+
+	retVal.m_CreateInfo.pName = "main"; // Shader entry point
 
 	return retVal;
+}
+
+static void CreateBindings(DescriptorSetLayout& layout, const CUtlSymbolDbg& shaderName, int shaderStaticIndex)
+{
+	const auto& reflectionData =
+		g_ShaderManager.FindOrCreateShader(shaderName, shaderStaticIndex).GetReflectionData();
+
+	auto& bindings = layout.m_Bindings;
+
+	// Samplers
+	for (const auto& samplerIn : reflectionData.m_Samplers)
+	{
+		auto& samplerOut = bindings.emplace_back();
+		samplerOut.binding = samplerIn.m_Binding;
+		samplerOut.descriptorCount = 1;
+		samplerOut.descriptorType = vk::DescriptorType::eSampler;
+		samplerOut.stageFlags = reflectionData.m_ShaderStage;
+	}
+
+	// Textures
+	for (const auto& textureIn : reflectionData.m_Textures)
+	{
+		auto& textureOut = bindings.emplace_back();
+		textureOut.binding = textureIn.m_Binding;
+		textureOut.descriptorCount = 1;
+		textureOut.descriptorType = vk::DescriptorType::eSampledImage;
+		textureOut.stageFlags = reflectionData.m_ShaderStage;
+	}
+
+	// Constant buffers
+	for (const auto& cbufIn : reflectionData.m_UniformBuffers)
+	{
+		auto& cbufOut = bindings.emplace_back();
+		cbufOut.binding = cbufIn.m_Binding;
+		cbufOut.descriptorCount = 1;
+		cbufOut.descriptorType = vk::DescriptorType::eUniformBuffer;
+		cbufOut.stageFlags = reflectionData.m_ShaderStage;
+	}
 }
 
 static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& key)
@@ -207,32 +331,14 @@ static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& ke
 	DescriptorSetLayout retVal;
 
 	// Bindings
-	{
-		auto& bindings = retVal.m_Bindings;
-		// BaseTexture
-		{
-			auto& baseTex = bindings.emplace_back();
-			baseTex.binding = 0;
-			baseTex.descriptorCount = 1;
-			baseTex.descriptorType = vk::DescriptorType::eSampledImage;
-			baseTex.stageFlags = vk::ShaderStageFlagBits::eFragment;
-		}
-
-		// BaseTextureSampler
-		{
-			auto& baseTexSampler = bindings.emplace_back();
-			baseTexSampler.binding = 1;
-			baseTexSampler.descriptorCount = 1;
-			baseTexSampler.descriptorType = vk::DescriptorType::eSampler;
-			baseTexSampler.stageFlags = vk::ShaderStageFlagBits::eFragment;
-		}
-	}
+	CreateBindings(retVal, key.m_VSName, key.m_VSStaticIndex);
+	CreateBindings(retVal, key.m_PSName, key.m_PSStaticIndex);
 
 	// Descriptor set layout
 	{
 		auto& ci = retVal.m_CreateInfo;
-		ci.pBindings = retVal.m_Bindings.data();
-		Util::SafeConvert(retVal.m_Bindings.size(), ci.bindingCount);
+
+		AttachVector(ci.pBindings, ci.bindingCount, retVal.m_Bindings);
 
 		retVal.m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci);
 		g_ShaderDevice.SetDebugName(retVal.m_Layout, "test descriptor set layout");
@@ -277,39 +383,67 @@ static PipelineLayout CreatePipelineLayout(const PipelineLayoutKey& key)
 
 static RenderPass CreateRenderPass(const RenderPassKey& key)
 {
-	RenderPass retVal;
+	RenderPass retVal{ RenderPassKey(key) };
 
 	// Subpass 0
 	{
 		auto& sp = retVal.m_Subpasses.emplace_back();
 
-		for (auto& colorID : key.m_OMColorRTs)
+		// Color attachments
 		{
-			if (colorID < 0)
-				continue;
+			for (auto& colorID : key.m_OMColorRTs)
+			{
+				if (colorID < 0)
+					continue;
 
-			auto& att = retVal.m_Attachments.emplace_back();
-			att.initialLayout = vk::ImageLayout::eUndefined;
-			att.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-			att.samples = vk::SampleCountFlagBits::e1;
-			att.loadOp = vk::AttachmentLoadOp::eDontCare;
-			att.storeOp = vk::AttachmentStoreOp::eDontCare;
-			att.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-			att.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+				auto& att = retVal.m_Attachments.emplace_back();
+				att.initialLayout = vk::ImageLayout::eUndefined;
+				att.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+				att.samples = vk::SampleCountFlagBits::e1;
+				att.loadOp = vk::AttachmentLoadOp::eDontCare;
+				att.storeOp = vk::AttachmentStoreOp::eStore;
+				att.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+				att.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 
-			auto& attRef = sp.m_Attachments.emplace_back();
-			attRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
-			Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
+				const auto& tex = g_ShaderAPIInternal.GetTexture(colorID);
+				att.format = tex.GetImageCreateInfo().format;
+
+				auto& attRef = sp.m_ColorAttachments.emplace_back();
+				attRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+				Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
+			}
 		}
 
-		if (key.m_OMDepthRT >= 0)
+		// Depth attachments
 		{
-			auto& att = retVal.m_Attachments.emplace_back();
+			if (key.m_OMDepthRT >= 0)
+			{
+				auto& att = retVal.m_Attachments.emplace_back();
 
-			auto& attRef = sp.m_Attachments.emplace_back();
-			attRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-			Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
+				auto& tex = (key.m_OMDepthRT == 0) ?
+					g_ShaderDevice.GetBackBufferDepthTexture() :
+					g_ShaderAPIInternal.GetTexture(key.m_OMDepthRT);
+
+				att.initialLayout = vk::ImageLayout::eUndefined;
+				att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+				att.samples = vk::SampleCountFlagBits::e1;
+				att.loadOp = vk::AttachmentLoadOp::eDontCare;
+				att.storeOp = vk::AttachmentStoreOp::eStore;
+				att.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+				att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
+
+				att.format = tex.GetImageCreateInfo().format;
+
+				auto& attRef = sp.m_DepthStencilAttachment;
+				attRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+				Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
+
+				sp.m_CreateInfo.pDepthStencilAttachment = &sp.m_DepthStencilAttachment;
+			}
 		}
+
+		AttachVector(sp.m_CreateInfo.pInputAttachments, sp.m_CreateInfo.inputAttachmentCount, sp.m_InputAttachments);
+		AttachVector(sp.m_CreateInfo.pColorAttachments, sp.m_CreateInfo.colorAttachmentCount, sp.m_ColorAttachments);
 	}
 
 	// Render pass
@@ -321,7 +455,7 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 
 		std::vector<vk::SubpassDescription> subpassTemp;
 		for (auto& sp : retVal.m_Subpasses)
-			subpassTemp.push_back(sp.m_Subpass);
+			subpassTemp.push_back(sp.m_CreateInfo);
 
 		AttachVector(ci.pSubpasses, ci.subpassCount, subpassTemp);
 
@@ -330,6 +464,45 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 	}
 
 	return retVal;
+}
+
+static vk::BlendFactor ConvertBlendFactor(ShaderBlendFactor_t blendFactor)
+{
+	switch (blendFactor)
+	{
+	case SHADER_BLEND_ZERO:                 return vk::BlendFactor::eZero;
+	case SHADER_BLEND_ONE:                  return vk::BlendFactor::eOne;
+	case SHADER_BLEND_DST_COLOR:            return vk::BlendFactor::eDstColor;
+	case SHADER_BLEND_ONE_MINUS_DST_COLOR:  return vk::BlendFactor::eOneMinusDstColor;
+	case SHADER_BLEND_SRC_ALPHA:            return vk::BlendFactor::eSrcAlpha;
+	case SHADER_BLEND_ONE_MINUS_SRC_ALPHA:  return vk::BlendFactor::eOneMinusSrcAlpha;
+	case SHADER_BLEND_DST_ALPHA:            return vk::BlendFactor::eDstAlpha;
+	case SHADER_BLEND_ONE_MINUS_DST_ALPHA:  return vk::BlendFactor::eOneMinusDstAlpha;
+	case SHADER_BLEND_SRC_ALPHA_SATURATE:   return vk::BlendFactor::eSrcAlphaSaturate;
+	case SHADER_BLEND_SRC_COLOR:            return vk::BlendFactor::eSrcColor;
+	case SHADER_BLEND_ONE_MINUS_SRC_COLOR:  return vk::BlendFactor::eOneMinusSrcColor;
+
+	default:
+		throw VulkanException("Unknown ShaderBlendFactor_t", EXCEPTION_DATA());
+	}
+}
+
+static vk::CompareOp ConvertCompareOp(ShaderDepthFunc_t op)
+{
+	switch (op)
+	{
+	case SHADER_DEPTHFUNC_NEVER:           return vk::CompareOp::eNever;
+	case SHADER_DEPTHFUNC_NEARER:          return vk::CompareOp::eLess;
+	case SHADER_DEPTHFUNC_EQUAL:           return vk::CompareOp::eEqual;
+	case SHADER_DEPTHFUNC_NEAREROREQUAL:   return vk::CompareOp::eLessOrEqual;
+	case SHADER_DEPTHFUNC_FARTHER:         return vk::CompareOp::eGreater;
+	case SHADER_DEPTHFUNC_NOTEQUAL:        return vk::CompareOp::eNotEqual;
+	case SHADER_DEPTHFUNC_FARTHEROREQUAL:  return vk::CompareOp::eGreaterOrEqual;
+	case SHADER_DEPTHFUNC_ALWAYS:          return vk::CompareOp::eAlways;
+
+	default:
+		throw VulkanException("Unknown ShaderDepthFunc_t", EXCEPTION_DATA());
+	}
 }
 
 static Pipeline CreatePipeline(const PipelineKey& key,
@@ -379,7 +552,7 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 				continue;
 
 			// Otherwise, insert an empty one
-			attrs.emplace_back(VIAD(i, 1, vk::Format::eR8G8B8A8Unorm));
+			attrs.emplace_back(VIAD(i, 1, vk::Format::eR32G32B32A32Sfloat));
 		}
 
 		auto & binds = retVal.m_VertexInputBindingDescriptions;
@@ -389,11 +562,8 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 		binds.emplace_back(vk::VertexInputBindingDescription(1, sizeof(float) * 4, vk::VertexInputRate::eInstance));
 
 		auto& ci = retVal.m_VertexInputStateCI;
-		ci.pVertexBindingDescriptions = binds.data();
-		Util::SafeConvert(binds.size(), ci.vertexBindingDescriptionCount);
-
-		ci.pVertexAttributeDescriptions = attrs.data();
-		Util::SafeConvert(attrs.size(), ci.vertexAttributeDescriptionCount);
+		AttachVector(ci.pVertexAttributeDescriptions, ci.vertexAttributeDescriptionCount, attrs);
+		AttachVector(ci.pVertexBindingDescriptions, ci.vertexBindingDescriptionCount, binds);
 	}
 
 	// Vertex input assembly state create info
@@ -416,11 +586,10 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 			Util::SafeConvert(vpIn.m_flMaxZ, vpOut.maxDepth);
 		}
 
-		Util::SafeConvert(key.m_Viewports.size(), ci.viewportCount);
-		ci.pViewports = retVal.m_Viewports.data();
+		AttachVector(ci.pViewports, ci.viewportCount, retVal.m_Viewports);
 
 		auto& scissor = retVal.m_Scissor;
-		g_ShaderAPIInternal.GetTextureSize(key.m_OMColorRTs[0], scissor.extent.width, scissor.extent.height);
+		g_ShaderAPIInternal.GetTexture(key.m_OMColorRTs[0]).GetSize(scissor.extent.width, scissor.extent.height);
 
 		ci.pScissors = &scissor;
 		ci.scissorCount = 1;
@@ -457,14 +626,42 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 	// Color blend state create info
 	{
 		auto& ci = retVal.m_ColorBlendStateCI;
+
+		auto& att = retVal.m_ColorBlendAttachmentStates.emplace_back();
+
+		att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(key.m_OMSrcFactor);
+		att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(key.m_OMDstFactor);
+
+		att.colorWriteMask =
+			vk::ColorComponentFlagBits::eR |
+			vk::ColorComponentFlagBits::eG |
+			vk::ColorComponentFlagBits::eB |
+			vk::ColorComponentFlagBits::eA;
+
+		AttachVector(ci.pAttachments, ci.attachmentCount, retVal.m_ColorBlendAttachmentStates);
+	}
+
+	// Depth stencil state
+	if (key.m_OMDepthRT >= 0)
+	{
+		auto& ci = retVal.m_DepthStencilStateCI;
+		retVal.m_CreateInfo.pDepthStencilState = &ci;
+
+		ci.depthTestEnable = key.m_DepthTest;
+		ci.depthWriteEnable = key.m_DepthWrite;
+		ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
 	}
 
 	// Graphics pipeline
 	{
 		vk::GraphicsPipelineCreateInfo& ci = retVal.m_CreateInfo;
 
-		Util::SafeConvert(retVal.m_ShaderStageCIs.size(), ci.stageCount);
-		ci.pStages = retVal.m_ShaderStageCIs.data();
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
+		for (const auto& stage : retVal.m_ShaderStageCIs)
+			shaderStages.push_back(stage.m_CreateInfo);
+
+		AttachVector(ci.pStages, ci.stageCount, shaderStages);
+
 		ci.pVertexInputState = &retVal.m_VertexInputStateCI;
 		ci.pInputAssemblyState = &retVal.m_InputAssemblyStateCI;
 		ci.pViewportState = &retVal.m_ViewportStateCI;
@@ -482,20 +679,131 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 	return retVal;
 }
 
+static Framebuffer CreateFramebuffer(const FramebufferKey& key)
+{
+	Framebuffer retVal;
+
+	// Attachments
+	uint32_t width = std::numeric_limits<uint32_t>::max();
+	uint32_t height = width;
+
+	std::string debugName = "COL{ ";
+	{
+		bool debugNameFirst = true;
+
+		auto& atts = retVal.m_Attachments;
+		for (size_t i = 0; i < std::size(key.m_OMColorRTs); i++)
+		{
+			const auto rtID = key.m_OMColorRTs[i];
+			if (rtID < 0)
+				continue;
+
+			if (debugNameFirst)
+				debugNameFirst = false;
+			else
+				debugName += '/';
+
+			if (rtID == 0)
+			{
+				atts.push_back(g_ShaderDevice.GetBackBufferColorTexture().FindOrCreateView());
+				debugName += "<backbuffer>";
+
+				uint32_t localW, localH;
+				g_ShaderDevice.GetBackBufferDimensions(localW, localH);
+				width = std::min(width, localW);
+				height = std::min(height, localH);
+			}
+			else
+			{
+				auto& tex = g_ShaderAPIInternal.GetTexture(rtID);
+				atts.push_back(tex.FindOrCreateView());
+
+				debugName += '\'';
+				debugName += tex.GetDebugName();
+				debugName += '\'';
+
+				const auto& ci = tex.GetImageCreateInfo();
+				width = std::min(width, ci.extent.width);
+				height = std::min(height, ci.extent.height);
+			}
+		}
+	}
+
+	debugName += " }";
+
+	// Framebuffer
+	{
+		auto& ci = retVal.m_CreateInfo;
+		ci.width = width;
+		ci.height = height;
+
+		AttachVector(ci.pAttachments, ci.attachmentCount, retVal.m_Attachments);
+		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
+
+		ci.layers = 1;
+
+		retVal.m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci);
+		g_ShaderDevice.SetDebugName(retVal.m_Framebuffer, debugName.c_str());
+	}
+
+	return retVal;
+}
+
+const Framebuffer& StateManagerVulkan::FindOrCreateFramebuffer(const FramebufferKey& key)
+{
+	std::lock_guard lock(m_Mutex);
+
+	auto& fb = m_StatesToFramebuffers[key];
+	if (!fb)
+		fb = CreateFramebuffer(key);
+
+	return fb;
+}
+
+void StateManagerVulkan::ApplyState(VulkanStateID id, const vk::CommandBuffer& buf)
+{
+	LOG_FUNC();
+	std::lock_guard lock(m_Mutex);
+
+	const auto& state = *m_IDsToPipelines.at(size_t(id));
+
+	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, state.m_Pipeline.get());
+
+	vk::RenderPassBeginInfo rpInfo;
+	rpInfo.renderPass = state.m_RenderPass->m_RenderPass.get();
+
+	//state.m_RenderPass->m_CreateInfo.
+
+	// Hack!
+	const auto& fb = FindOrCreateFramebuffer(*state.m_RenderPass);
+	rpInfo.framebuffer = fb.m_Framebuffer.get();
+
+	rpInfo.renderArea.extent.width = fb.m_CreateInfo.width;
+	rpInfo.renderArea.extent.height = fb.m_CreateInfo.height;
+
+	buf.beginRenderPass(rpInfo, vk::SubpassContents::eInline);
+}
+
 const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
 {
-	const RenderPassKey key(staticState, dynamicState);
-	auto& renderPass = m_StatesToRenderPasses[key];
-	if (!renderPass)
-		renderPass = CreateRenderPass(key);
+	std::lock_guard lock(m_Mutex);
 
-	return renderPass;
+	const RenderPassKey key(staticState, dynamicState);
+	if (auto found = m_StatesToRenderPasses.find(key); found != m_StatesToRenderPasses.end())
+	{
+		assert(!!found->second);
+		return found->second;
+	}
+
+	return m_StatesToRenderPasses.emplace(key, CreateRenderPass(key)).first->second;
 }
 
 const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
 {
+	std::lock_guard lock(m_Mutex);
+
 	const PipelineLayoutKey key(staticState, dynamicState);
 	auto& layout = m_StatesToLayouts[key];
 	if (!layout)
@@ -507,6 +815,8 @@ const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(
 VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticID,
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
 {
+	std::lock_guard lock(m_Mutex);
+
 	const PipelineKey key(staticState, dynamicState);
 	auto& pl = m_StatesToPipelines[key];
 	if (!pl)
@@ -515,8 +825,8 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticI
 			FindOrCreatePipelineLayout(staticState, dynamicState),
 			FindOrCreateRenderPass(staticState, dynamicState));
 
+		Util::SafeConvert(m_IDsToPipelines.size(), pl.m_ID);
 		m_IDsToPipelines.push_back(&pl);
-		assert(VulkanStateID(m_IDsToPipelines.size() - 1) == pl.m_ID);
 	}
 
 	return pl.m_ID;
@@ -532,9 +842,15 @@ constexpr PipelineKey::PipelineKey(const LogicalShadowState& staticState,
 	m_PSName(staticState.m_PSName),
 	m_PSStaticIndex(staticState.m_PSStaticIndex),
 
+	m_DepthCompareFunc(staticState.m_DepthCompareFunc),
+	m_DepthTest(staticState.m_DepthTest),
+	m_DepthWrite(staticState.m_DepthWrite),
+
 	m_RSBackFaceCulling(staticState.m_RSBackFaceCulling),
 	m_RSPolyMode(staticState.m_RSFrontFacePolyMode),
 
+	m_OMSrcFactor(staticState.m_OMSrcFactor),
+	m_OMDstFactor(staticState.m_OMDstFactor),
 	m_OMColorRTs{ staticState.m_OMColorRTs[0], staticState.m_OMColorRTs[1], staticState.m_OMColorRTs[2], staticState.m_OMColorRTs[3] },
 	m_OMDepthRT(staticState.m_OMDepthRT),
 
@@ -545,7 +861,14 @@ constexpr PipelineKey::PipelineKey(const LogicalShadowState& staticState,
 }
 
 constexpr PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState)
+	const LogicalDynamicState& dynamicState) :
+
+	m_VSName(staticState.m_VSName),
+	m_VSStaticIndex(staticState.m_VSStaticIndex),
+	m_VSVertexFormat(staticState.m_VSVertexFormat),
+
+	m_PSName(staticState.m_PSName),
+	m_PSStaticIndex(staticState.m_PSStaticIndex)
 {
 }
 
@@ -554,5 +877,13 @@ constexpr RenderPassKey::RenderPassKey(const LogicalShadowState& staticState,
 
 	m_OMColorRTs{ staticState.m_OMColorRTs[0], staticState.m_OMColorRTs[1], staticState.m_OMColorRTs[2], staticState.m_OMColorRTs[3] },
 	m_OMDepthRT(staticState.m_OMDepthRT)
+{
+}
+
+constexpr FramebufferKey::FramebufferKey(const RenderPass& rp) :
+	m_OMColorRTs{ rp.m_Key.m_OMColorRTs[0], rp.m_Key.m_OMColorRTs[1], rp.m_Key.m_OMColorRTs[2], rp.m_Key.m_OMColorRTs[3] },
+	m_OMDepthRT(rp.m_Key.m_OMDepthRT),
+
+	m_RenderPass(&rp)
 {
 }

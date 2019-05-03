@@ -11,12 +11,15 @@ namespace TF2Vulkan
 	{
 		ImmutableTexture,
 		RenderTarget,
+		DepthStencil,
 
 		COUNT,
 	};
 
 	bool HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering);
+	bool HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering);
 	ImageFormat PromoteToHardware(ImageFormat format, FormatUsage usage, bool filtering);
+	vk::Format PromoteToHardware(vk::Format format, FormatUsage usage, bool filtering);
 
 	enum class DataFormat : uint_fast8_t
 	{
@@ -24,6 +27,8 @@ namespace TF2Vulkan
 
 		UNorm = 0,
 		SNorm,
+		UIntCastFloat,
+		SIntCastFloat,
 		UInt,
 		SInt,
 		UFloat,

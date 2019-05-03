@@ -33,7 +33,7 @@ namespace Util
 
 #ifdef MATT_HAYNIE
 #define NOT_IMPLEMENTED_FUNC() \
-	{ NOT_IMPLEMENTED_FUNC_NOBREAK(); __debugbreak(); }
+	{ NOT_IMPLEMENTED_FUNC_NOBREAK(); __debugbreak(); throw 0; }
 #else
 #define NOT_IMPLEMENTED_FUNC() NOT_IMPLEMENTED_FUNC_NOBREAK()
 #endif

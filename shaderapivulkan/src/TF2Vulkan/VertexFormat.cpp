@@ -5,10 +5,20 @@
 
 using namespace TF2Vulkan;
 
+constexpr VertexFormat::ElementType::ElementType(VertexElement_t elem, DataFormat fmt,
+	uint_fast8_t compCount, uint_fast8_t compSize) :
+
+	m_Element(elem),
+	m_Format(fmt),
+	m_Components(compCount),
+	m_ComponentSize(compSize)
+{
+}
+
 static constexpr VertexFormat::ElementType s_ElementTypesUncompressed[VERTEX_ELEMENT_NUMELEMENTS] =
 {
 	{ VERTEX_ELEMENT_POSITION, DataFormat::SFloat, 3, sizeof(float) },
-	{ VERTEX_ELEMENT_NORMAL, DataFormat::UInt, 3, sizeof(float) },
+	{ VERTEX_ELEMENT_NORMAL, DataFormat::SFloat, 3, sizeof(float) },
 	{ VERTEX_ELEMENT_COLOR, DataFormat::UNorm, 4, sizeof(uint8_t) },
 	{ VERTEX_ELEMENT_SPECULAR, DataFormat::UNorm, 4, sizeof(uint8_t) },
 	{ VERTEX_ELEMENT_TANGENT_S, DataFormat::SFloat, 3, sizeof(float) },
@@ -64,7 +74,7 @@ static constexpr VertexFormat::ElementType s_ElementTypesUncompressed[VERTEX_ELE
 static constexpr VertexFormat::ElementType s_ElementTypesCompressed[VERTEX_ELEMENT_NUMELEMENTS] =
 {
 	{ VERTEX_ELEMENT_POSITION, DataFormat::SFloat, 3, sizeof(float) },
-	{ VERTEX_ELEMENT_NORMAL, DataFormat::UInt, 4, sizeof(uint8_t) },
+	{ VERTEX_ELEMENT_NORMAL, DataFormat::UIntCastFloat, 4, sizeof(uint8_t) },
 	{ VERTEX_ELEMENT_COLOR, DataFormat::UNorm, 4, sizeof(uint8_t) },
 	{ VERTEX_ELEMENT_SPECULAR, DataFormat::UNorm, 4, sizeof(uint8_t) },
 	{ VERTEX_ELEMENT_TANGENT_S, DataFormat::SFloat, 3, sizeof(float) },
@@ -121,8 +131,11 @@ static constexpr auto& GetElemTypes(VertexCompressionType_t compression)
 {
 	if (compression == VERTEX_COMPRESSION_NONE)
 		return s_ElementTypesUncompressed;
-	else if (compression == VERTEX_COMPRESSION_ON)
+	else //if (compression == VERTEX_COMPRESSION_ON)
+	{
+		assert(compression == VERTEX_COMPRESSION_ON);
 		return s_ElementTypesCompressed;
+	}
 }
 
 #ifdef _DEBUG

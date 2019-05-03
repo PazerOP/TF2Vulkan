@@ -64,86 +64,84 @@ template<> struct ::std::hash<SamplerSettingsDynamic>
 
 namespace
 {
-	class ShaderAPI final : public IStateManagerDynamic
+	class ShaderAPI final : public IShaderAPI_StateManagerDynamic
 	{
 	public:
-		int GetViewports(ShaderViewport_t* viewports, int max) const override;
+		int GetViewports(ShaderViewport_t* viewports, int max) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		double CurrentTime() const override;
+		double CurrentTime() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetLightmapDimensions(int* w, int* h) override;
+		void GetLightmapDimensions(int* w, int* h) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void MatrixMode(MaterialMatrixMode_t mode) override;
-		void PushMatrix() override;
-		void PopMatrix() override;
-		void LoadMatrix(float* m) override;
-		void MultMatrix(float* m) override;
-		void MultMatrixLocal(float* m) override;
-		void GetMatrix(MaterialMatrixMode_t matrixMode, float* dst) override;
-		void LoadIdentity() override;
-		void LoadCameraToWorld() override;
-		void Ortho(double left, double right, double bottom, double top, double zNear, double zFar) override;
-		void PerspectiveX(double fovX, double aspect, double zNear, double zFar) override;
+		void MatrixMode(MaterialMatrixMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
+		void PushMatrix() override { NOT_IMPLEMENTED_FUNC(); }
+		void PopMatrix() override { NOT_IMPLEMENTED_FUNC(); }
+		void LoadMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
+		void MultMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
+		void MultMatrixLocal(float* m) override { NOT_IMPLEMENTED_FUNC(); }
+		void GetMatrix(MaterialMatrixMode_t matrixMode, float* dst) override { NOT_IMPLEMENTED_FUNC(); }
+		void LoadIdentity() override { NOT_IMPLEMENTED_FUNC(); }
+		void LoadCameraToWorld() override { NOT_IMPLEMENTED_FUNC(); }
+		void Ortho(double left, double right, double bottom, double top, double zNear, double zFar) override { NOT_IMPLEMENTED_FUNC(); }
+		void PerspectiveX(double fovX, double aspect, double zNear, double zFar) override { NOT_IMPLEMENTED_FUNC(); }
 		void PerspectiveOffCenterX(double fovX, double aspect, double zNear, double zFar,
-			double bottom, double top, double left, double right) override;
-		void PickMatrix(int x, int y, int width, int height) override;
-		void Rotate(float angle, float x, float y, float z) override;
-		void Translate(float x, float y, float z) override;
-		void Scale(float x, float y, float z) override;
-		void ScaleXY(float x, float y) override;
+			double bottom, double top, double left, double right) override { NOT_IMPLEMENTED_FUNC(); }
+		void PickMatrix(int x, int y, int width, int height) override { NOT_IMPLEMENTED_FUNC(); }
+		void Rotate(float angle, float x, float y, float z) override { NOT_IMPLEMENTED_FUNC(); }
+		void Translate(float x, float y, float z) override { NOT_IMPLEMENTED_FUNC(); }
+		void Scale(float x, float y, float z) override { NOT_IMPLEMENTED_FUNC(); }
+		void ScaleXY(float x, float y) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void Color3f(float r, float g, float b) override;
-		void Color3fv(const float* rgb) override;
-		void Color4f(float r, float g, float b, float a) override;
-		void Color4fv(const float* rgba) override;
+		void Color3f(float r, float g, float b) override { NOT_IMPLEMENTED_FUNC(); }
+		void Color3fv(const float* rgb) override { NOT_IMPLEMENTED_FUNC(); }
+		void Color4f(float r, float g, float b, float a) override { NOT_IMPLEMENTED_FUNC(); }
+		void Color4fv(const float* rgba) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void Color3ub(uint8_t r, uint8_t g, uint8_t b) override;
-		void Color3ubv(const uint8_t* rgb) override;
-		void Color4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override;
-		void Color4ubv(const uint8_t* rgba) override;
+		void Color3ub(uint8_t r, uint8_t g, uint8_t b) override { NOT_IMPLEMENTED_FUNC(); }
+		void Color3ubv(const uint8_t* rgb) override { NOT_IMPLEMENTED_FUNC(); }
+		void Color4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override { NOT_IMPLEMENTED_FUNC(); }
+		void Color4ubv(const uint8_t* rgba) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetVertexShaderConstant(int var, const float* vec, int numConst, bool force) override;
-		void SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force) override;
-		void SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force) override;
-		void SetPixelShaderConstant(int var, const float* vec, int numConst, bool force) override;
-		void SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force) override;
-		void SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force) override;
+		void SetVertexShaderConstant(int var, const float* vec, int numConst, bool force) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetPixelShaderConstant(int var, const float* vec, int numConst, bool force) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetWorldSpaceCameraPosition(float* pos) const override;
+		void GetWorldSpaceCameraPosition(float* pos) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		int GetCurrentLightCombo() const override;
+		int GetCurrentLightCombo() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected) override;
-		void DisableTextureTransform(TextureStage_t stage) override;
-		void SetBumpEnvMatrix(TextureStage_t stage, float m00, float m01, float m10, float m11) override;
+		void SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected) override { NOT_IMPLEMENTED_FUNC(); }
+		void DisableTextureTransform(TextureStage_t stage) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetBumpEnvMatrix(TextureStage_t stage, float m00, float m01, float m10, float m11) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetVertexShaderIndex(int index) override;
-		void SetPixelShaderIndex(int index) override;
+		void SetVertexShaderIndex(int index) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetPixelShaderIndex(int index) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetBackBufferDimensions(int& width, int& height) const override;
+		int GetMaxLights() const override { NOT_IMPLEMENTED_FUNC(); }
+		const LightDesc_t& GetLight(int lightNum) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		int GetMaxLights() const override;
-		const LightDesc_t& GetLight(int lightNum) const override;
+		void SetVertexShaderStateAmbientLightCube() override { NOT_IMPLEMENTED_FUNC(); }
+		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override { NOT_IMPLEMENTED_FUNC(); }
+		void CommitPixelShaderLighting(int pshReg) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetVertexShaderStateAmbientLightCube() override;
-		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override;
-		void CommitPixelShaderLighting(int pshReg) override;
+		CMeshBuilder* GetVertexModifyBuilder() override { NOT_IMPLEMENTED_FUNC(); }
+		bool InFlashlightMode() const override { NOT_IMPLEMENTED_FUNC(); }
+		bool InEditorMode() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		CMeshBuilder* GetVertexModifyBuilder() override;
-		bool InFlashlightMode() const override;
-		bool InEditorMode() const override;
+		MorphFormat_t GetBoundMorphFormat() override { NOT_IMPLEMENTED_FUNC(); }
 
-		MorphFormat_t GetBoundMorphFormat() override;
-
-		void ClearBuffersObeyStencil(bool clearColor, bool clearDepth) override;
-		void ClearBuffersObeyStencilEx(bool clearColor, bool clearAlpha, bool clearDepth) override;
+		void ClearBuffersObeyStencil(bool clearColor, bool clearDepth) override { NOT_IMPLEMENTED_FUNC(); }
+		void ClearBuffersObeyStencilEx(bool clearColor, bool clearAlpha, bool clearDepth) override { NOT_IMPLEMENTED_FUNC(); }
 		void ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight) override;
 
-		void BindVertexShader(VertexShaderHandle_t vtxShader) override;
-		void BindGeometryShader(GeometryShaderHandle_t geoShader) override;
-		void BindPixelShader(PixelShaderHandle_t pixShader) override;
+		void BindVertexShader(VertexShaderHandle_t vtxShader) override { NOT_IMPLEMENTED_FUNC(); }
+		void BindGeometryShader(GeometryShaderHandle_t geoShader) override { NOT_IMPLEMENTED_FUNC(); }
+		void BindPixelShader(PixelShaderHandle_t pixShader) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetRasterState(const ShaderRasterState_t& state) override;
+		void SetRasterState(const ShaderRasterState_t& state) override { NOT_IMPLEMENTED_FUNC(); }
 
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
 
@@ -155,13 +153,13 @@ namespace
 		void TexMagFilter(ShaderAPITextureHandle_t tex, ShaderTexFilterMode_t mode) override;
 		void TexWrap(ShaderAPITextureHandle_t tex, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode) override;
 
-		void CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle) override;
+		void CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle) override { NOT_IMPLEMENTED_FUNC(); }
 		void CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID,
-			const Rect_t* srcRect, const Rect_t* dstRect) override;
+			const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
 		void CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t texHandle,
-			const Rect_t* srcRect, const Rect_t* dstRect) override;
+			const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
 		void CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
-			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override;
+			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void FlushBufferedPrimitives() override;
 
@@ -178,44 +176,45 @@ namespace
 		VertexFormat_t ComputeVertexFormat(int snapshotCount, StateSnapshot_t* ids) const override;
 		VertexFormat_t ComputeVertexUsage(int snapshotCount, StateSnapshot_t* ids) const override;
 
-		void BeginPass(StateSnapshot_t snapshot) override;
-		void RenderPass(int passID, int passCount) override;
-		bool IsInPass() const override;
-		void BeginFrame() override;
-		bool IsInFrame() const override;
-		void EndFrame() override;
+		void BeginPass(StateSnapshot_t snapshot) override { NOT_IMPLEMENTED_FUNC(); }
+		void RenderPass(int passID, int passCount) override { NOT_IMPLEMENTED_FUNC(); }
+		bool IsInPass() const override { NOT_IMPLEMENTED_FUNC(); }
+		void BeginFrame() override { NOT_IMPLEMENTED_FUNC(); }
+		bool IsInFrame() const override { NOT_IMPLEMENTED_FUNC(); }
+		void EndFrame() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void FlushHardware() override;
-		void ForceHardwareSync() override;
+		void FlushHardware() override { NOT_IMPLEMENTED_FUNC(); }
+		void ForceHardwareSync() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetNumBoneWeights(int boneCount) override;
+		void SetNumBoneWeights(int boneCount) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetLight(int light, const LightDesc_t& desc) override;
-		void SetLightingOrigin(Vector lightingOrigin) override;
-		void SetAmbientLight(float r, float g, float b) override;
-		void SetAmbientLightCube(Vector4D cube[6]) override;
+		void SetLight(int light, const LightDesc_t& desc) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetLightingOrigin(Vector lightingOrigin) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetAmbientLight(float r, float g, float b) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetAmbientLightCube(Vector4D cube[6]) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ShadeMode(ShaderShadeMode_t mode) override;
+		void ShadeMode(ShaderShadeMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void CullMode(MaterialCullMode_t mode) override;
+		void CullMode(MaterialCullMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ForceDepthFuncEquals(bool enable) override;
+		void ForceDepthFuncEquals(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void OverrideDepthEnable(bool enable, bool depthEnable) override;
+		void OverrideDepthEnable(bool enable, bool depthEnable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetHeightClipZ(float z) override;
-		void SetHeightClipMode(MaterialHeightClipMode_t mode) override;
+		void SetHeightClipZ(float z) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetHeightClipMode(MaterialHeightClipMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetClipPlane(int index, const float* plane) override;
-		void EnableClipPlane(int index, bool enable) override;
+		void SetClipPlane(int index, const float* plane) override { NOT_IMPLEMENTED_FUNC(); }
+		void EnableClipPlane(int index, bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetSkinningMatrices() override;
+		void SetSkinningMatrices() override { NOT_IMPLEMENTED_FUNC(); }
 
 		ImageFormat GetNearestSupportedFormat(ImageFormat fmt, bool filteringRequired) const override;
 		ImageFormat GetNearestRenderTargetFormat(ImageFormat fmt) const override;
 
 		bool DoRenderTargetsNeedSeparateDepthBuffer() const override;
 
+		IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI) override;
 		ShaderAPITextureHandle_t CreateTexture(int width, int height, int depth, ImageFormat dstImgFormat,
 			int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName) override;
 		void CreateTextures(ShaderAPITextureHandle_t* handles, int count, int width, int height, int depth,
@@ -223,10 +222,10 @@ namespace
 			const char* texGroupName) override;
 		void DeleteTexture(ShaderAPITextureHandle_t tex) override;
 		bool IsTexture(ShaderAPITextureHandle_t tex) override;
-		bool IsTextureResident(ShaderAPITextureHandle_t tex) override;
+		bool IsTextureResident(ShaderAPITextureHandle_t tex) override { NOT_IMPLEMENTED_FUNC(); }
 
-		ShaderAPITextureHandle_t CreateDepthTexture(
-			ImageFormat rtFormat, int width, int height, const char* dbgName, bool texture) override;
+		ShaderAPITextureHandle_t CreateDepthTexture( ImageFormat rtFormat, int width,
+			int height, const char* dbgName, bool texture) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int ivtfFrame) override;
 
@@ -234,12 +233,12 @@ namespace
 			size_t count) override;
 
 		bool TexLock(int level, int cubeFaceID, int xOffset, int yOffset,
-			int width, int height, CPixelWriter& writer) override;
-		void TexUnlock() override;
+			int width, int height, CPixelWriter& writer) override { NOT_IMPLEMENTED_FUNC(); }
+		void TexUnlock() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void TexSetPriority(int priority) override;
+		void TexSetPriority(int priority) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle) override;
+		void BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetRenderTarget(ShaderAPITextureHandle_t colTexHandle,
 			ShaderAPITextureHandle_t depthTexHandle) override;
@@ -247,140 +246,140 @@ namespace
 			ShaderAPITextureHandle_t depthTex) override;
 
 		void ReadPixels(int x, int y, int width, int height, unsigned char* data,
-			ImageFormat dstFormat) override;
+			ImageFormat dstFormat) override { NOT_IMPLEMENTED_FUNC(); }
 		void ReadPixels(Rect_t* srcRect, Rect_t* dstRect, unsigned char* data,
-			ImageFormat dstFormat, int dstStride) override;
+			ImageFormat dstFormat, int dstStride) override { NOT_IMPLEMENTED_FUNC(); }
 
-		int SelectionMode(bool selectionMode) override;
-		void SelectionBuffer(unsigned int* buf, int size) override;
-		void ClearSelectionNames() override;
-		void LoadSelectionName(int name) override;
-		void PushSelectionName(int name) override;
-		void PopSelectionName() override;
+		int SelectionMode(bool selectionMode) override { NOT_IMPLEMENTED_FUNC(); }
+		void SelectionBuffer(unsigned int* buf, int size) override { NOT_IMPLEMENTED_FUNC(); }
+		void ClearSelectionNames() override { NOT_IMPLEMENTED_FUNC(); }
+		void LoadSelectionName(int name) override { NOT_IMPLEMENTED_FUNC(); }
+		void PushSelectionName(int name) override { NOT_IMPLEMENTED_FUNC(); }
+		void PopSelectionName() override { NOT_IMPLEMENTED_FUNC(); }
 
 		void ClearSnapshots() override;
 
-		void FogStart(float start) override;
-		void FogEnd(float end) override;
-		void SetFogZ(float fogZ) override;
-		void SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b) override;
-		void GetSceneFogColor(unsigned char* rgb) override;
-		void SceneFogMode(MaterialFogMode_t mode) override;
-		void GetFogDistances(float* start, float* end, float* fogZ) override;
-		void FogMaxDensity(float maxDensity) override;
-		MaterialFogMode_t GetSceneFogMode() override;
-		void SetPixelShaderFogParams(int reg) override;
-		MaterialFogMode_t GetCurrentFogType() const override;
+		void FogStart(float start) override { NOT_IMPLEMENTED_FUNC(); }
+		void FogEnd(float end) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetFogZ(float fogZ) override { NOT_IMPLEMENTED_FUNC(); }
+		void SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b) override { NOT_IMPLEMENTED_FUNC(); }
+		void GetSceneFogColor(unsigned char* rgb) override { NOT_IMPLEMENTED_FUNC(); }
+		void SceneFogMode(MaterialFogMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
+		void GetFogDistances(float* start, float* end, float* fogZ) override { NOT_IMPLEMENTED_FUNC(); }
+		void FogMaxDensity(float maxDensity) override { NOT_IMPLEMENTED_FUNC(); }
+		MaterialFogMode_t GetSceneFogMode() override { NOT_IMPLEMENTED_FUNC(); }
+		void SetPixelShaderFogParams(int reg) override { NOT_IMPLEMENTED_FUNC(); }
+		MaterialFogMode_t GetCurrentFogType() const override { NOT_IMPLEMENTED_FUNC(); }
 
 		bool CanDownloadTextures() const override;
 
 		void ResetRenderState(bool fullReset) override;
 
-		int GetCurrentDynamicVBSize() override;
-		void DestroyVertexBuffers(bool exitingLevel) override;
+		int GetCurrentDynamicVBSize() override { NOT_IMPLEMENTED_FUNC(); }
+		void DestroyVertexBuffers(bool exitingLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void EvictManagedResources() override;
 
-		void SyncToken(const char* token) override;
+		void SyncToken(const char* token) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetStandardVertexShaderConstants(float overbright) override;
 
-		ShaderAPIOcclusionQuery_t CreateOcclusionQueryObject() override;
-		void DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query) override;
-		void BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override;
-		void EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override;
-		int OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush) override;
+		ShaderAPIOcclusionQuery_t CreateOcclusionQueryObject() override { NOT_IMPLEMENTED_FUNC(); }
+		void DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query) override { NOT_IMPLEMENTED_FUNC(); }
+		void BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override { NOT_IMPLEMENTED_FUNC(); }
+		void EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override { NOT_IMPLEMENTED_FUNC(); }
+		int OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush) override { NOT_IMPLEMENTED_FUNC(); }
 
-		const FlashlightState_t& GetFlashlightState(VMatrix& worldToTexture) const override;
+		const FlashlightState_t& GetFlashlightState(VMatrix& worldToTexture) const override { NOT_IMPLEMENTED_FUNC(); }
 		const FlashlightState_t& GetFlashlightStateEx(VMatrix& worldToTexture,
-			ITexture** flashlightDepthTex) const override;
-		void SetFlashlightState(const FlashlightState_t& state, const VMatrix& worldToTexture) override;
+			ITexture** flashlightDepthTex) const override { NOT_IMPLEMENTED_FUNC(); }
+		void SetFlashlightState(const FlashlightState_t& state, const VMatrix& worldToTexture) override { NOT_IMPLEMENTED_FUNC(); }
 		void SetFlashlightStateEx(const FlashlightState_t& state, const VMatrix& worldToTexture,
-			ITexture* flashlightDepthTex) override;
+			ITexture* flashlightDepthTex) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ClearVertexAndPixelShaderRefCounts() override;
-		void PurgeUnusedVertexAndPixelShaders() override;
+		void ClearVertexAndPixelShaderRefCounts() override { NOT_IMPLEMENTED_FUNC(); }
+		void PurgeUnusedVertexAndPixelShaders() override { NOT_IMPLEMENTED_FUNC(); }
 
 		void DXSupportLevelChanged() override;
 
-		void EnableUserClipTransformOverride(bool enable) override;
-		void UserClipTransform(const VMatrix& worldToView) override;
+		void EnableUserClipTransformOverride(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
+		void UserClipTransform(const VMatrix& worldToView) override { NOT_IMPLEMENTED_FUNC(); }
 
 		MorphFormat_t ComputeMorphFormat(int snapshots, StateSnapshot_t* ids) const override;
 
-		void HandleDeviceLost() override;
+		void HandleDeviceLost() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void EnableLinearColorSpaceFrameBuffer(bool enable) override;
+		void EnableLinearColorSpaceFrameBuffer(bool enable) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 
-		void SetFloatRenderingParameter(RenderParamFloat_t param, float value) override;
-		void SetIntRenderingParameter(RenderParamInt_t param, int value) override;
-		void SetVectorRenderingParameter(RenderParamVector_t param, const Vector& value) override;
+		void SetFloatRenderingParameter(RenderParamFloat_t param, float value) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetIntRenderingParameter(RenderParamInt_t param, int value) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetVectorRenderingParameter(RenderParamVector_t param, const Vector& value) override { NOT_IMPLEMENTED_FUNC(); }
 
-		float GetFloatRenderingParameter(RenderParamFloat_t param) const override;
-		int GetIntRenderingParameter(RenderParamInt_t param) const override;
-		Vector GetVectorRenderingParameter(RenderParamVector_t param) const override;
+		float GetFloatRenderingParameter(RenderParamFloat_t param) const override { NOT_IMPLEMENTED_FUNC(); }
+		int GetIntRenderingParameter(RenderParamInt_t param) const override { NOT_IMPLEMENTED_FUNC(); }
+		Vector GetVectorRenderingParameter(RenderParamVector_t param) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetFastClipPlane(const float* plane) override;
-		void EnableFastClip(bool enable) override;
+		void SetFastClipPlane(const float* plane) override { NOT_IMPLEMENTED_FUNC(); }
+		void EnableFastClip(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetMaxToRender(IMesh* mesh, bool maxUntilFlush, int* maxVerts, int* maxIndices) override;
+		void GetMaxToRender(IMesh* mesh, bool maxUntilFlush, int* maxVerts, int* maxIndices) override { NOT_IMPLEMENTED_FUNC(); }
 
-		int GetMaxVerticesToRender(IMaterial* material) override;
-		int GetMaxIndicesToRender() override;
+		int GetMaxVerticesToRender(IMaterial* material) override { NOT_IMPLEMENTED_FUNC(); }
+		int GetMaxIndicesToRender() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetStencilEnable(bool enabled) override;
-		void SetStencilFailOperation(StencilOperation_t op) override;
-		void SetStencilZFailOperation(StencilOperation_t op) override;
-		void SetStencilPassOperation(StencilOperation_t op) override;
-		void SetStencilCompareFunction(StencilComparisonFunction_t fn) override;
-		void SetStencilReferenceValue(int ref) override;
-		void SetStencilTestMask(uint32 mask) override;
-		void SetStencilWriteMask(uint32 mask) override;
-		void ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value) override;
+		void SetStencilEnable(bool enabled) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilFailOperation(StencilOperation_t op) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilZFailOperation(StencilOperation_t op) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilPassOperation(StencilOperation_t op) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilCompareFunction(StencilComparisonFunction_t fn) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilReferenceValue(int ref) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilTestMask(uint32 mask) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetStencilWriteMask(uint32 mask) override { NOT_IMPLEMENTED_FUNC(); }
+		void ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void DisableAllLocalLights() override;
-		int CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs) override;
+		void DisableAllLocalLights() override { NOT_IMPLEMENTED_FUNC(); }
+		int CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs) override { NOT_IMPLEMENTED_FUNC(); }
 
-		IMesh* GetFlexMesh() override;
+		IMesh* GetFlexMesh() override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool SupportsMSAAMode(int msaaMode) override;
+		bool SupportsMSAAMode(int msaaMode) override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool OwnGPUResources(bool enable) override;
+		bool OwnGPUResources(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BeginPIXEvent(unsigned long color, const char* szName) override;
-		void EndPIXEvent() override;
-		void SetPIXMarker(unsigned long color, const char* szName) override;
+		void BeginPIXEvent(unsigned long color, const char* szName) override { NOT_IMPLEMENTED_FUNC(); }
+		void EndPIXEvent() override { NOT_IMPLEMENTED_FUNC(); }
+		void SetPIXMarker(unsigned long color, const char* szName) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void EnableAlphaToCoverage() override;
-		void DisableAlphaToCoverage() override;
+		void EnableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
+		void DisableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const override;
+		void ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool SupportsShadowDepthTextures() override;
+		bool SupportsShadowDepthTextures() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetDisallowAccess(bool disallowed) override;
-		void EnableShaderShaderMutex(bool enabled) override;
+		void SetDisallowAccess(bool disallowed) override { NOT_IMPLEMENTED_FUNC(); }
+		void EnableShaderShaderMutex(bool enabled) override { NOT_IMPLEMENTED_FUNC(); }
 		void ShaderLock() override;
 		void ShaderUnlock() override;
 
-		ImageFormat GetShadowDepthTextureFormat() override;
+		ImageFormat GetShadowDepthTextureFormat() override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool SupportsFetch4() override;
-		void SetShadowDepthBiasFactors(float slopeScaleDepthBias, float shadowDepthBias) override;
+		bool SupportsFetch4() override { NOT_IMPLEMENTED_FUNC(); }
+		void SetShadowDepthBiasFactors(float slopeScaleDepthBias, float shadowDepthBias) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void BindVertexBuffer(int streamID, IVertexBuffer* vtxBuf, int byteOffset, int firstVertex, int vtxCount,
-			VertexFormat_t fmt, int repetitions) override;
-		void BindIndexBuffer(IIndexBuffer* indexBuf, int offsetInBytes) override;
-		void Draw(MaterialPrimitiveType_t type, int firstIndex, int indexCount) override;
+			VertexFormat_t fmt, int repetitions) override { NOT_IMPLEMENTED_FUNC(); }
+		void BindIndexBuffer(IIndexBuffer* indexBuf, int offsetInBytes) override { NOT_IMPLEMENTED_FUNC(); }
+		void Draw(MaterialPrimitiveType_t type, int firstIndex, int indexCount) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void PerformFullScreenStencilOperation() override;
+		void PerformFullScreenStencilOperation() override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetScissorRect(const int left, const int top, const int right, const int bottom,
-			const bool enableScissor) override;
+			const bool enableScissor) override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool SupportsCSAAMode(int numSamples, int qualityLevel) override;
+		bool SupportsCSAAMode(int numSamples, int qualityLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void InvalidateDelayedShaderConstants() override;
+		void InvalidateDelayedShaderConstants() override { NOT_IMPLEMENTED_FUNC(); }
 
 		float GammaToLinear_HardwareSpecific(float gamma) const override;
 		float LinearToGamma_HardwareSpecific(float linear) const override;
@@ -388,99 +387,104 @@ namespace
 		void SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgbWriteEnabledTex,
 			ShaderAPITextureHandle_t identityTex) override;
 
-		ImageFormat GetNullTextureFormat() override;
+		ImageFormat GetNullTextureFormat() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BindVertexTexture(VertexTextureSampler_t sampler, ShaderAPITextureHandle_t tex) override;
+		void BindVertexTexture(VertexTextureSampler_t sampler, ShaderAPITextureHandle_t tex) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void EnableHWMorphing(bool enabled) override;
+		void EnableHWMorphing(bool enabled) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetFlexWeights(int firstWeight, int count, const MorphWeight_t* weights) override;
+		void SetFlexWeights(int firstWeight, int count, const MorphWeight_t* weights) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void AcquireThreadOwnership() override;
-		void ReleaseThreadOwnership() override;
+		void AcquireThreadOwnership() override { NOT_IMPLEMENTED_FUNC(); }
+		void ReleaseThreadOwnership() override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool SupportsNormalMapCompression() const override;
+		bool SupportsNormalMapCompression() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void EnableBuffer2FramesAhead(bool enable) override;
+		void EnableBuffer2FramesAhead(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale) override;
+		void SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void PrintfVA(char* fmt, va_list vargs) override;
-		void Printf(PRINTF_FORMAT_STRING const char* fmt, ...) override;
-		float Knob(char* knobName, float* setValue) override;
+		void PrintfVA(char* fmt, va_list vargs) override { NOT_IMPLEMENTED_FUNC(); }
+		void Printf(PRINTF_FORMAT_STRING const char* fmt, ...) override { NOT_IMPLEMENTED_FUNC(); }
+		float Knob(char* knobName, float* setValue) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) override;
-		void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) override;
+		void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) override { NOT_IMPLEMENTED_FUNC(); }
+		void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void LockRect(void** outBits, int* outPitch, ShaderAPITextureHandle_t tex, int mipLevel,
-			int x, int y, int w, int h, bool write, bool read) override;
-		void UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel) override;
+			int x, int y, int w, int h, bool write, bool read) override { NOT_IMPLEMENTED_FUNC(); }
+		void UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override;
-		void BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id) override;
+		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
+		void BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
 
-		ITexture* GetRenderTargetEx(int renderTargetID) override;
+		ITexture* GetRenderTargetEx(int renderTargetID) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetToneMappingScaleLinear(const Vector& scale) override;
-		const Vector& GetToneMappingScaleLinear() const override;
-		float GetLightMapScaleFactor() const override;
+		void SetToneMappingScaleLinear(const Vector& scale) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
+		const Vector& GetToneMappingScaleLinear() const override { NOT_IMPLEMENTED_FUNC(); }
+		float GetLightMapScaleFactor() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void LoadBoneMatrix(int boneIndex, const float* m) override;
+		void LoadBoneMatrix(int boneIndex, const float* m) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended) override;
+		void GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended) override { NOT_IMPLEMENTED_FUNC(); }
 
-		float GetAmbientLightCubeLuminance() override;
+		float GetAmbientLightCubeLuminance() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetDX9LightState(LightState_t* state) const override;
-		int GetPixelFogCombo() override;
+		void GetDX9LightState(LightState_t* state) const override { NOT_IMPLEMENTED_FUNC(); }
+		int GetPixelFogCombo() override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool IsHWMorphingEnabled() const override;
+		bool IsHWMorphingEnabled() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id) override;
+		void GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool ShouldWriteDepthToDestAlpha() const override;
+		bool ShouldWriteDepthToDestAlpha() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void PushDeformation(const DeformationBase_t* deformation) override;
-		void PopDeformation() override;
-		int GetNumActiveDeformations() const override;
+		void PushDeformation(const DeformationBase_t* deformation) override { NOT_IMPLEMENTED_FUNC(); }
+		void PopDeformation() override { NOT_IMPLEMENTED_FUNC(); }
+		int GetNumActiveDeformations() const override { NOT_IMPLEMENTED_FUNC(); }
 
 		int GetPackedDeformationInformation(int maxOfUnderstoodDeformations, float* constantValuesOut,
-			int bufSize, int maxDeformations, int* numDefsOut) const override;
+			int bufSize, int maxDeformations, int* numDefsOut) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords) override;
+		void MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ExecuteCommandBuffer(uint8* cmdBuf) override;
+		void ExecuteCommandBuffer(uint8* cmdBuf) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex) override;
-		void GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info) override;
+		void GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetPSNearAndFarZ(int psRegister) override;
+		void SetPSNearAndFarZ(int psRegister) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void TexLodClamp(int something) override;
 		void TexLodBias(float bias) override;
 
 		void CopyTextureToTexture(int something1, int something2) override { NOT_IMPLEMENTED_FUNC(); }
 
-		bool GetTextureSize(ShaderAPITextureHandle_t texID,
-			uint_fast32_t& width, uint_fast32_t& height) const override;
+		const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const override;
 
 	private:
 		mutable std::recursive_mutex m_ShaderLock;
 
 		std::atomic<ShaderAPITextureHandle_t> m_NextTextureHandle = 1;
 
-		struct ShaderSampler
+		struct ShaderTexture : IShaderAPITexture
 		{
-		};
-		std::unordered_map<SamplerSettingsDynamic, ShaderSampler> m_ShaderSamplers;
+			ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
+				const vk::ImageCreateInfo& ci, vma::AllocatedImage&& img);
 
-		struct ShaderTexture
-		{
 			std::string m_DebugName;
 			vk::ImageCreateInfo m_CreateInfo;
 			vma::AllocatedImage m_Image;
+			ShaderAPITextureHandle_t m_Handle;
+			std::unordered_map<vk::ImageViewCreateInfo, vk::UniqueImageView> m_ImageViews;
 
 			SamplerSettingsDynamic m_SamplerSettings;
+
+			std::string_view GetDebugName() const override { return m_DebugName; }
+			const vk::Image& GetImage() const override { return m_Image.m_Image; }
+			const vk::ImageCreateInfo& GetImageCreateInfo() const override { return m_CreateInfo; }
+			const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override;
+			ShaderAPITextureHandle_t GetHandle() const override { return m_Handle; }
 		};
 		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
 
@@ -495,301 +499,8 @@ namespace
 static ShaderAPI s_ShaderAPI;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderAPI, SHADERAPI_INTERFACE_VERSION, s_ShaderAPI);
 
-IStateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
+IShaderAPI_StateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
 IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
-
-int ShaderAPI::GetViewports(ShaderViewport_t* viewports, int max) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-double ShaderAPI::CurrentTime() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0;
-}
-
-void ShaderAPI::GetLightmapDimensions(int* w, int* h)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-MaterialFogMode_t ShaderAPI::GetSceneFogMode()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return MaterialFogMode_t();
-}
-
-void ShaderAPI::MatrixMode(MaterialMatrixMode_t mode)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PushMatrix()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PopMatrix()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::LoadMatrix(float* m)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::MultMatrix(float* m)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::MultMatrixLocal(float* m)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetMatrix(MaterialMatrixMode_t matrixMode, float* dst)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::LoadIdentity()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::LoadCameraToWorld()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Ortho(double left, double right, double bottom, double top, double zNear, double zFar)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PerspectiveX(double fovX, double aspect, double zNear, double zFar)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PerspectiveOffCenterX(double fovX, double aspect, double zNear, double zFar, double bottom, double top, double left, double right)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PickMatrix(int x, int y, int width, int height)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Rotate(float angle, float x, float y, float z)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Translate(float x, float y, float z)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Scale(float x, float y, float z)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ScaleXY(float x, float y)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color3f(float r, float g, float b)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color3fv(const float* rgb)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color4f(float r, float g, float b, float a)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color4fv(const float* rgba)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color3ub(uint8_t r, uint8_t g, uint8_t b)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color3ubv(const uint8_t* rgb)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Color4ubv(const uint8_t* rgba)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetVertexShaderConstant(int var, const float* vec, int numConst, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetPixelShaderConstant(int var, const float* vec, int numConst, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetWorldSpaceCameraPosition(float* pos) const
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::GetCurrentLightCombo() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-MaterialFogMode_t ShaderAPI::GetCurrentFogType() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return MaterialFogMode_t();
-}
-
-void ShaderAPI::SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::DisableTextureTransform(TextureStage_t stage)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetBumpEnvMatrix(TextureStage_t stage, float m00, float m01, float m10, float m11)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetVertexShaderIndex(int index)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetPixelShaderIndex(int index)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetBackBufferDimensions(int& width, int& height) const
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::GetMaxLights() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-const LightDesc_t& ShaderAPI::GetLight(int lightNum) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	// TODO: insert return statement here
-	static const LightDesc_t s_TempLightDesc{};
-	return s_TempLightDesc;
-}
-
-void ShaderAPI::SetPixelShaderFogParams(int reg)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetVertexShaderStateAmbientLightCube()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::CommitPixelShaderLighting(int pshReg)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-CMeshBuilder* ShaderAPI::GetVertexModifyBuilder()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
-}
-
-bool ShaderAPI::InFlashlightMode() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-bool ShaderAPI::InEditorMode() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-MorphFormat_t ShaderAPI::GetBoundMorphFormat()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return MorphFormat_t();
-}
-
-void ShaderAPI::ClearBuffersObeyStencil(bool clearColor, bool clearDepth)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ClearBuffersObeyStencilEx(bool clearColor, bool clearAlpha, bool clearDepth)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
 
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
@@ -825,29 +536,8 @@ void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil
 	g_ShadowStateManager.ApplyCurrentState(*cmdBuf);
 	cmdBuf->clearAttachments(att, rect);
 
+	cmdBuf->endRenderPass();
 	queue.EndAndSubmit(cmdBuf.get());
-
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindVertexShader(VertexShaderHandle_t vtxShader)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindGeometryShader(GeometryShaderHandle_t geoShader)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindPixelShader(PixelShaderHandle_t pixShader)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetRasterState(const ShaderRasterState_t& state)
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 bool ShaderAPI::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
@@ -907,31 +597,9 @@ void ShaderAPI::TexWrap(ShaderAPITextureHandle_t texHandle, ShaderTexCoordCompon
 	}
 }
 
-void ShaderAPI::CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID, const Rect_t* srcRect, const Rect_t* dstRect)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t texHandle, const Rect_t* srcRect, const Rect_t* dstRect)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT, ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::FlushBufferedPrimitives()
 {
-	LOG_FUNC();
-	// TODO
-	//NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount,
@@ -1056,106 +724,6 @@ VertexFormat_t ShaderAPI::ComputeVertexUsage(int snapshotCount, StateSnapshot_t*
 	return ComputeVertexFormat(snapshotCount, ids);
 }
 
-void ShaderAPI::BeginPass(StateSnapshot_t snapshot)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::RenderPass(int passID, int passCount)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BeginFrame()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EndFrame()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::FlushHardware()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ForceHardwareSync()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetNumBoneWeights(int boneCount)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetLight(int light, const LightDesc_t& desc)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetLightingOrigin(Vector lightingOrigin)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetAmbientLight(float r, float g, float b)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetAmbientLightCube(Vector4D cube[6])
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ShadeMode(ShaderShadeMode_t mode)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::CullMode(MaterialCullMode_t mode)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ForceDepthFuncEquals(bool enable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::OverrideDepthEnable(bool enable, bool depthEnable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetHeightClipZ(float z)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetHeightClipMode(MaterialHeightClipMode_t mode)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetClipPlane(int index, const float* plane)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EnableClipPlane(int index, bool enable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetSkinningMatrices()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 ImageFormat ShaderAPI::GetNearestSupportedFormat(ImageFormat fmt, bool filteringRequired) const
 {
 	LOG_FUNC();
@@ -1172,6 +740,19 @@ bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
 {
 	LOG_FUNC();
 	return false;
+}
+
+IShaderAPITexture& ShaderAPI::CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI)
+{
+	LOG_FUNC();
+
+	vma::AllocationCreateInfo allocCreateInfo;
+	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+	auto createdImg = g_ShaderDevice.GetVulkanAllocator().createImageUnique(imgCI, allocCreateInfo);
+
+	const auto handle = m_NextTextureHandle++;
+	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, imgCI, std::move(createdImg) }).first->second;
 }
 
 ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int depth,
@@ -1199,16 +780,9 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
 	createInfo.mipLevels = uint32_t(mipLevelCount);
 	createInfo.format = ConvertImageFormat(dstImgFormat);
-	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment;
 
-	vma::AllocationCreateInfo allocCreateInfo;
-	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-	auto createdImg = g_ShaderDevice.GetVulkanAllocator().createImageUnique(createInfo, allocCreateInfo);
-
-	const auto handle = m_NextTextureHandle++;
-	m_Textures[handle] = { dbgName, std::move(createInfo), std::move(createdImg) };
-	return handle;
+	return CreateTexture(dbgName, createInfo).GetHandle();
 }
 
 void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count, int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName)
@@ -1220,6 +794,31 @@ void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count, int
 		handles[i] = CreateTexture(width, height, depth, dstImgFormat,
 			mipLevelCount, copyCount, flags, dbgName, texGroupName);
 	}
+}
+
+const vk::ImageView& ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageViewCreateInfo& viewCreateInfo)
+{
+	auto& imgViews = m_ImageViews;
+
+	if (auto found = imgViews.find(viewCreateInfo); found != imgViews.end())
+		return found->second.get();
+
+	// Not found, create now
+	const auto& result = (imgViews[viewCreateInfo] = g_ShaderDevice.GetVulkanDevice().createImageViewUnique(viewCreateInfo));
+	g_ShaderDevice.SetDebugName(result, m_DebugName.c_str());
+
+	return result.get();
+}
+
+const IShaderAPITexture& ShaderAPI::GetTexture(ShaderAPITextureHandle_t texID) const
+{
+	if (texID == 0)
+	{
+		assert(m_Textures.find(texID) == m_Textures.end());
+		return g_ShaderDevice.GetBackBufferColorTexture();
+	}
+
+	return m_Textures.at(size_t(texID));
 }
 
 void ShaderAPI::DeleteTexture(ShaderAPITextureHandle_t tex)
@@ -1240,18 +839,6 @@ bool ShaderAPI::IsTexture(ShaderAPITextureHandle_t tex)
 	bool found = m_Textures.find(tex) != m_Textures.end();
 	assert(found);
 	return found;
-}
-
-bool ShaderAPI::IsTextureResident(ShaderAPITextureHandle_t tex)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-ShaderAPITextureHandle_t ShaderAPI::CreateDepthTexture(ImageFormat rtFormat, int width, int height, const char* dbgName, bool texture)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return ShaderAPITextureHandle_t();
 }
 
 void ShaderAPI::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int frameIndex)
@@ -1415,27 +1002,6 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 	return true;
 }
 
-bool ShaderAPI::TexLock(int level, int cubeFaceID, int xOffset, int yOffset, int width, int height, CPixelWriter& writer)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::TexUnlock()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::TexSetPriority(int priority)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::SetRenderTarget(ShaderAPITextureHandle_t colTexHandle, ShaderAPITextureHandle_t depthTexHandle)
 {
 	LOG_FUNC();
@@ -1448,93 +1014,12 @@ void ShaderAPI::SetRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t c
 	return g_ShadowStateManager.SetRenderTargetEx(renderTargetID, colTex, depthTex);
 }
 
-void ShaderAPI::ReadPixels(int x, int y, int width, int height, unsigned char* data, ImageFormat dstFormat)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ReadPixels(Rect_t* srcRect, Rect_t* dstRect, unsigned char* data, ImageFormat dstFormat, int dstStride)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::SelectionMode(bool selectionMode)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-void ShaderAPI::SelectionBuffer(unsigned int* buf, int size)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ClearSelectionNames()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::LoadSelectionName(int name)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PushSelectionName(int name)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PopSelectionName()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::ClearSnapshots()
 {
 	LOG_FUNC();
 	// We never want to clear "snapshots" (graphics pipelines) on vulkan
 
 	FlushBufferedPrimitives(); // This is a side effect of this function
-}
-
-void ShaderAPI::FogStart(float start)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::FogEnd(float end)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetFogZ(float fogZ)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetSceneFogColor(unsigned char* rgb)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SceneFogMode(MaterialFogMode_t mode)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetFogDistances(float* start, float* end, float* fogZ)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::FogMaxDensity(float maxDensity)
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 bool ShaderAPI::CanDownloadTextures() const
@@ -1548,26 +1033,10 @@ void ShaderAPI::ResetRenderState(bool fullReset)
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
-int ShaderAPI::GetCurrentDynamicVBSize()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-void ShaderAPI::DestroyVertexBuffers(bool exitingLevel)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::EvictManagedResources()
 {
 	LOG_FUNC();
 	// Nothing to do here (for now...)
-}
-
-void ShaderAPI::SyncToken(const char* token)
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 void ShaderAPI::SetStandardVertexShaderConstants(float overbright)
@@ -1576,83 +1045,10 @@ void ShaderAPI::SetStandardVertexShaderConstants(float overbright)
 	g_StateManagerDynamic.SetOverbright(overbright);
 }
 
-ShaderAPIOcclusionQuery_t ShaderAPI::CreateOcclusionQueryObject()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return ShaderAPIOcclusionQuery_t();
-}
-
-void ShaderAPI::DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-const FlashlightState_t& ShaderAPI::GetFlashlightState(VMatrix& worldToTexture) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	// TODO: insert return statement here
-	static const FlashlightState_t s_TempFlashlightState{};
-	return s_TempFlashlightState;
-}
-
-const FlashlightState_t& ShaderAPI::GetFlashlightStateEx(VMatrix& worldToTexture, ITexture** flashlightDepthTex) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	// TODO: insert return statement here
-	static const FlashlightState_t s_TempFlashlightState{};
-	return s_TempFlashlightState;
-}
-
-void ShaderAPI::SetFlashlightState(const FlashlightState_t& state, const VMatrix& worldToTexture)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetFlashlightStateEx(const FlashlightState_t& state, const VMatrix& worldToTexture, ITexture* flashlightDepthTex)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ClearVertexAndPixelShaderRefCounts()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PurgeUnusedVertexAndPixelShaders()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::DXSupportLevelChanged()
 {
 	LOG_FUNC();
 	// We don't care
-}
-
-void ShaderAPI::EnableUserClipTransformOverride(bool enable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::UserClipTransform(const VMatrix& worldToView)
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 MorphFormat_t ShaderAPI::ComputeMorphFormat(int snapshots, StateSnapshot_t* ids) const
@@ -1665,196 +1061,6 @@ MorphFormat_t ShaderAPI::ComputeMorphFormat(int snapshots, StateSnapshot_t* ids)
 	return fmt;
 }
 
-void ShaderAPI::HandleDeviceLost()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EnableLinearColorSpaceFrameBuffer(bool enable)
-{
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
-}
-
-void ShaderAPI::SetFloatRenderingParameter(RenderParamFloat_t param, float value)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetIntRenderingParameter(RenderParamInt_t param, int value)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetVectorRenderingParameter(RenderParamVector_t param, const Vector& value)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-float ShaderAPI::GetFloatRenderingParameter(RenderParamFloat_t param) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0f;
-}
-
-int ShaderAPI::GetIntRenderingParameter(RenderParamInt_t param) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-Vector ShaderAPI::GetVectorRenderingParameter(RenderParamVector_t param) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return Vector();
-}
-
-void ShaderAPI::SetFastClipPlane(const float* plane)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EnableFastClip(bool enable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetMaxToRender(IMesh* mesh, bool maxUntilFlush, int* maxVerts, int* maxIndices)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::GetMaxVerticesToRender(IMaterial* material)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-int ShaderAPI::GetMaxIndicesToRender()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-void ShaderAPI::SetStencilEnable(bool enabled)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilFailOperation(StencilOperation_t op)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilZFailOperation(StencilOperation_t op)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilPassOperation(StencilOperation_t op)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilCompareFunction(StencilComparisonFunction_t fn)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilReferenceValue(int ref)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilTestMask(uint32 mask)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetStencilWriteMask(uint32 mask)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::DisableAllLocalLights()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-IMesh* ShaderAPI::GetFlexMesh()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
-}
-
-bool ShaderAPI::SupportsMSAAMode(int msaaMode)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-bool ShaderAPI::OwnGPUResources(bool enable)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::BeginPIXEvent(unsigned long color, const char* szName)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EndPIXEvent()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetPIXMarker(unsigned long color, const char* szName)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EnableAlphaToCoverage()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::DisableAlphaToCoverage()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-bool ShaderAPI::SupportsShadowDepthTextures()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::SetDisallowAccess(bool disallowed)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EnableShaderShaderMutex(bool enabled)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::ShaderLock()
 {
 	LOG_FUNC();
@@ -1865,59 +1071,6 @@ void ShaderAPI::ShaderUnlock()
 {
 	LOG_FUNC();
 	m_ShaderLock.unlock();
-}
-
-ImageFormat ShaderAPI::GetShadowDepthTextureFormat()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return ImageFormat();
-}
-
-bool ShaderAPI::SupportsFetch4()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::SetShadowDepthBiasFactors(float slopeScaleDepthBias, float shadowDepthBias)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindVertexBuffer(int streamID, IVertexBuffer* vtxBuf, int byteOffset, int firstVertex, int vtxCount, VertexFormat_t fmt, int repetitions)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindIndexBuffer(IIndexBuffer* indexBuf, int offsetInBytes)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Draw(MaterialPrimitiveType_t type, int firstIndex, int indexCount)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PerformFullScreenStencilOperation()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetScissorRect(const int left, const int top, const int right, const int bottom, const bool enableScissor)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-bool ShaderAPI::SupportsCSAAMode(int numSamples, int qualityLevel)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::InvalidateDelayedShaderConstants()
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 float ShaderAPI::GammaToLinear_HardwareSpecific(float gamma) const
@@ -1939,213 +1092,10 @@ void ShaderAPI::SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgb
 	m_L2GConvTex_Identity = identityTex;
 }
 
-ImageFormat ShaderAPI::GetNullTextureFormat()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return ImageFormat();
-}
-
-void ShaderAPI::BindVertexTexture(VertexTextureSampler_t sampler, ShaderAPITextureHandle_t tex)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::EnableHWMorphing(bool enabled)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetFlexWeights(int firstWeight, int count, const MorphWeight_t* weights)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::AcquireThreadOwnership()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ReleaseThreadOwnership()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-bool ShaderAPI::SupportsNormalMapCompression() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::EnableBuffer2FramesAhead(bool enable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PrintfVA(char* fmt, va_list vargs)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::Printf(PRINTF_FORMAT_STRING const char* fmt, ...)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-float ShaderAPI::Knob(char* knobName, float* setValue)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0f;
-}
-
-void ShaderAPI::OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::LockRect(void** outBits, int* outPitch, ShaderAPITextureHandle_t tex, int mipLevel, int x, int y, int w, int h, bool write, bool read)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindStandardTexture(Sampler_t sampler, StandardTextureId_t id)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-ITexture* ShaderAPI::GetRenderTargetEx(int renderTargetID)
-{
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
-}
-
-void ShaderAPI::SetToneMappingScaleLinear(const Vector& scale)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-const Vector& ShaderAPI::GetToneMappingScaleLinear() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	// TODO: insert return statement here
-	return vec3_origin;
-}
-
-float ShaderAPI::GetLightMapScaleFactor() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0f;
-}
-
-void ShaderAPI::LoadBoneMatrix(int boneIndex, const float* m)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-float ShaderAPI::GetAmbientLightCubeLuminance()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0.0f;
-}
-
-void ShaderAPI::GetDX9LightState(LightState_t* state) const
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::GetPixelFogCombo()
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-bool ShaderAPI::IsHWMorphingEnabled() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-bool ShaderAPI::ShouldWriteDepthToDestAlpha() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-void ShaderAPI::PushDeformation(const DeformationBase_t* deformation)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::PopDeformation()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-int ShaderAPI::GetNumActiveDeformations() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-int ShaderAPI::GetPackedDeformationInformation(int maxOfUnderstoodDeformations, float* constantValuesOut, int bufSize, int maxDeformations, int* numDefsOut) const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-void ShaderAPI::MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void ShaderAPI::SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC();
 	m_StdTextures.at(id) = tex;
-}
-
-void ShaderAPI::GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShaderAPI::SetPSNearAndFarZ(int psRegister)
-{
-	NOT_IMPLEMENTED_FUNC();
 }
 
 void ShaderAPI::TexLodClamp(int something)
@@ -2164,31 +1114,8 @@ void ShaderAPI::TexLodBias(float bias)
 		NOT_IMPLEMENTED_FUNC();
 }
 
-bool ShaderAPI::IsInPass() const
+ShaderAPI::ShaderTexture::ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
+	const vk::ImageCreateInfo& ci, vma::AllocatedImage&& img) :
+	m_DebugName(std::move(debugName)), m_Handle(handle), m_CreateInfo(ci), m_Image(std::move(img))
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-bool ShaderAPI::IsInFrame() const
-{
-	NOT_IMPLEMENTED_FUNC();
-	return false;
-}
-
-bool ShaderAPI::GetTextureSize(ShaderAPITextureHandle_t texID,
-	uint_fast32_t& width, uint_fast32_t& height) const
-{
-	std::lock_guard lock(m_ShaderLock);
-
-	if (auto found = m_Textures.find(texID); found != m_Textures.end())
-	{
-		auto& extent = found->second.m_CreateInfo.extent;
-		width = extent.width;
-		height = extent.height;
-		return true;
-	}
-
-	assert(!"Invalid texture");
-	return false;
 }

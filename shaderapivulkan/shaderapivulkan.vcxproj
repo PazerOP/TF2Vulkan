@@ -51,6 +51,7 @@
     <Import Project="..\stdshader_dx9_tf2vulkan\stdshader_dx9_tf2vulkan_Link.props" />
     <Import Project="shaderapivulkan_Shared_Project.props" />
     <Import Project="..\spirv-cross-project\spirv-cross_Link.props" />
+    <Import Project="..\TF2Vulkan_Release_Solution.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -98,6 +99,7 @@
     <ClInclude Include="src\stdafx.h" />
     <ClInclude Include="src\TF2Vulkan\FormatConversion.h" />
     <ClInclude Include="src\TF2Vulkan\GraphicsPipeline.h" />
+    <ClInclude Include="src\TF2Vulkan\IShaderAPITexture.h" />
     <ClInclude Include="src\TF2Vulkan\IVulkanQueue.h" />
     <ClInclude Include="src\TF2Vulkan\LogicalState.h" />
     <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h" />
@@ -112,6 +114,7 @@
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.h" />
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.hpp" />
     <ClInclude Include="src\TF2Vulkan\VulkanMesh.h" />
+    <ClInclude Include="src\TF2Vulkan\VulkanUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\TF2Vulkan\Exceptions.cpp" />

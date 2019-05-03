@@ -1,6 +1,6 @@
 #include "common_vs_fxc.hlsli"
 
-cbuffer VertexShaderCustomConstants
+[[vk::binding(BINDING_CBUF_VS_CUSTOM)]] cbuffer VertexShaderCustomConstants
 {
 	float4 cBaseTexCoordTransform[2];
 	float cSeamlessScale;
@@ -10,8 +10,8 @@ cbuffer VertexShaderCustomConstants
 	float4 cMorphSubrect;
 };
 
-[[vk::binding(1)]] SamplerState morphSampler;
-[[vk::binding(1)]] Texture2D morphTexture;
+SamplerState morphSampler;
+Texture2D morphTexture;
 
 #define SEAMLESS_SCALE (cSeamlessScale.x)
 

@@ -26,7 +26,7 @@ struct LightInfo
 	float4 atten;
 };
 
-cbuffer VertexShaderStandardConstants
+[[vk::binding(BINDING_CBUF_VS_STANDARD)]] cbuffer VertexShaderStandardConstants
 {
 	float4 cConstants1;
 	bool4 g_bLightEnabled;
@@ -42,12 +42,13 @@ cbuffer VertexShaderStandardConstants
 
 	float4 cFogParams;
 
-	float4x3 cModel[53];
 	LightInfo cLightInfo[4];
 
 	float3 cAmbientCubeX[2];
 	float3 cAmbientCubeY[2];
 	float3 cAmbientCubeZ[2];
+
+	float4x3 cModel[53];
 };
 
 #define cOOGamma            cConstants1.x

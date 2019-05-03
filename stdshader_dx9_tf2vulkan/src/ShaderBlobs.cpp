@@ -8,6 +8,8 @@ using namespace TF2Vulkan;
 
 namespace
 {
+#include "Generated/bik.vert.h"
+#include "Generated/bik.frag.h"
 #include "Generated/vertexlit_and_unlit_generic.vert.h"
 #include "Generated/vertexlit_and_unlit_generic.frag.h"
 }
@@ -28,6 +30,8 @@ bool TF2Vulkan::GetShaderBlob(ShaderBlob type, const void*& data, size_t& size)
 		assert(!"Unknown blob type");
 		return false;
 
+		SHADER_CASE(Bik_VS, bik_vert_spirv);
+		SHADER_CASE(Bik_PS, bik_frag_spirv);
 		SHADER_CASE(VertexLitAndUnlitGeneric_VS, vertexlit_and_unlit_generic_vert_spirv);
 		SHADER_CASE(VertexLitAndUnlitGeneric_PS, vertexlit_and_unlit_generic_frag_spirv);
 	}

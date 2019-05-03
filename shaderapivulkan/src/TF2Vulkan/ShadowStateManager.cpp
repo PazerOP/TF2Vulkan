@@ -12,7 +12,7 @@ void ShadowStateManager::ApplyState(LogicalShadowStateID id, const vk::CommandBu
 	if (m_Dirty)
 	{
 		g_StateManagerVulkan.ApplyState(
-			id, GetState(id), g_StateManagerDynamic.GetDynamicState());
+			id, GetState(id), g_StateManagerDynamic.GetDynamicState(), buf);
 	}
 }
 

@@ -11,7 +11,7 @@
 
 namespace TF2Vulkan
 {
-	class IStateManagerDynamic : public IShaderAPIInternal
+	class IShaderAPI_StateManagerDynamic : public IShaderAPIInternal
 	{
 	public:
 		void ApplyState() const;
@@ -37,5 +37,5 @@ namespace TF2Vulkan
 		bool m_Dirty = true;
 	};
 
-	extern IStateManagerDynamic& g_StateManagerDynamic;
+	extern IShaderAPI_StateManagerDynamic& g_StateManagerDynamic;
 }

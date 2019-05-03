@@ -567,7 +567,8 @@ bool MaterialSystemHardwareConfig::GetHDREnabled() const
 
 void MaterialSystemHardwareConfig::SetHDREnabled(bool enabled)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_HDRType = enabled ? GetHardwareHDRType() : HDRType_t::HDR_TYPE_NONE;
 }
 
 bool MaterialSystemHardwareConfig::SupportsBorderColor() const
