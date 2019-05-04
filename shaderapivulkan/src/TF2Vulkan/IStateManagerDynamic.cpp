@@ -73,3 +73,52 @@ void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_BoundMaterial, material, m_Dirty);
 }
+
+void IShaderAPI_StateManagerDynamic::MatrixMode(MaterialMatrixMode_t mode)
+{
+	LOG_FUNC();
+
+	ENSURE(mode >= 0);
+	ENSURE(mode < NUM_MATRIX_MODES);
+
+	m_MatrixMode = mode;
+}
+
+void IShaderAPI_StateManagerDynamic::AssertMatrixMode()
+{
+	assert(m_MatrixMode >= 0);
+	assert(m_MatrixMode < NUM_MATRIX_MODES);
+}
+
+void IShaderAPI_StateManagerDynamic::PushMatrix()
+{
+	LOG_FUNC();
+
+	AssertMatrixMode();
+
+	auto& mat = m_State.m_Matrices[m_MatrixMode];
+	mat.emplace();
+	m_Dirty = true;
+}
+
+void IShaderAPI_StateManagerDynamic::PopMatrix()
+{
+	LOG_FUNC();
+
+	AssertMatrixMode();
+
+	auto& mat = m_State.m_Matrices[m_MatrixMode];
+	mat.pop();
+	m_Dirty = true;
+}
+
+void IShaderAPI_StateManagerDynamic::LoadIdentity()
+{
+	LOG_FUNC();
+
+	AssertMatrixMode();
+
+	auto& mat = m_State.m_Matrices[m_MatrixMode];
+	mat.top().Identity();
+	m_Dirty = true;
+}

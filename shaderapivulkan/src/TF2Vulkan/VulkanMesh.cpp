@@ -1,8 +1,13 @@
 #include "stdafx.h"
+#include "ShaderDevice.h"
+#include "ShadowStateManager.h"
+#include "VulkanFactories.h"
 #include "VulkanMesh.h"
 #include <TF2Vulkan/Util/FourCC.h>
 
 using namespace TF2Vulkan;
+
+static std::aligned_storage_t<256> s_FallbackMeshData;
 
 TF2Vulkan::VulkanMesh::VulkanMesh(const VertexFormat& fmt) :
 	m_VertexBuffer(fmt)
@@ -18,7 +23,70 @@ void VulkanMesh::SetPrimitiveType(MaterialPrimitiveType_t type)
 void VulkanMesh::Draw(int firstIndex, int indexCount)
 {
 	LOG_FUNC();
-	// TODO
+
+	if (!g_ShaderDevice.IsReady())
+	{
+		Warning(TF2VULKAN_PREFIX "Skipping mesh draw, shader device not ready yet\n");
+		return;
+	}
+
+	assert(indexCount >= 0);
+	if (indexCount == 0)
+	{
+		// Apparently, 0 means "draw everything"
+		indexCount = IndexCount();
+	}
+
+	auto& q = g_ShaderDevice.GetGraphicsQueue();
+	auto cmdBuf = q.CreateCmdBufferAndBegin();
+
+	auto indexBuf = Factories::BufferFactory{}
+		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer)
+		.SetInitialData(m_IndexBuffer.IndexData(), m_IndexBuffer.IndexDataSize() * IndexCount())
+		.SetDebugName(__FUNCTION__ "(): Test index buffer")
+		.Create();
+
+	auto vertexBuf = Factories::BufferFactory{}
+		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+		.SetInitialData(m_VertexBuffer.VertexData(), m_VertexBuffer.VertexDataSize() * VertexCount())
+		.SetDebugName(__FUNCTION__ "(): Test vertex buffer")
+		.Create();
+
+	auto dummyVertexBuf = Factories::BufferFactory{}
+		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+		.SetSize(sizeof(s_FallbackMeshData))
+		.SetDebugName(__FUNCTION__ "(): Dummy vertex buffer (unused attributes)")
+		.Create();
+
+	g_ShadowStateManager.ApplyCurrentState(cmdBuf.get());
+
+	assert(firstIndex == -1);
+
+	cmdBuf->bindIndexBuffer(indexBuf.GetBuffer(), 0, vk::IndexType::eUint16);
+
+	// Bind vertex buffers
+	{
+		const vk::Buffer vtxBufs[] =
+		{
+			vertexBuf.GetBuffer(),
+			dummyVertexBuf.GetBuffer(),
+		};
+		const vk::DeviceSize offsets[] =
+		{
+			0,
+			0,
+		};
+		static_assert(std::size(vtxBufs) == std::size(offsets));
+		cmdBuf->bindVertexBuffers(0, Util::to_array_proxy(vtxBufs), Util::to_array_proxy(offsets));
+	}
+
+	cmdBuf->drawIndexed(
+		Util::SafeConvert<uint32_t>(indexCount),
+		1,
+		0, // Util::SafeConvert<uint32_t>(firstIndex),
+		0, 0);
+
+	q.EndAndSubmit(cmdBuf.get());
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
@@ -223,8 +291,8 @@ int VulkanMesh::GetRoomRemaining() const
 
 int VulkanIndexBuffer::IndexCount() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return m_Indices.size();
 }
 
 MaterialIndexFormat_t VulkanIndexBuffer::IndexFormat() const
@@ -301,6 +369,16 @@ void VulkanIndexBuffer::ValidateData(int indexCount, const IndexDesc_t& desc)
 	NOT_IMPLEMENTED_FUNC();
 }
 
+const unsigned short* VulkanIndexBuffer::IndexData() const
+{
+	return m_Indices.data();
+}
+
+size_t VulkanIndexBuffer::IndexDataSize() const
+{
+	return m_Indices.size() * sizeof(m_Indices[0]);
+}
+
 VulkanVertexBuffer::VulkanVertexBuffer(const VertexFormat& format) :
 	m_Format(format)
 {
@@ -308,8 +386,8 @@ VulkanVertexBuffer::VulkanVertexBuffer(const VertexFormat& format) :
 
 int VulkanVertexBuffer::VertexCount() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return Util::SafeConvert<int>(m_VertexCount);
 }
 
 VertexFormat_t VulkanVertexBuffer::GetVertexFormat() const
@@ -340,7 +418,6 @@ int VulkanVertexBuffer::GetRoomRemaining() const
 	return 0;
 }
 
-static std::aligned_storage_t<256> s_FallbackMeshData;
 bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 {
 	LOG_FUNC();
@@ -372,7 +449,8 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 	const auto vtxElemsCount = uncompressedFormat.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
-	m_DataBuffer.resize(totalVtxSize * vertexCount);
+	Util::SafeConvert(vertexCount, m_VertexCount);
+	m_DataBuffer.resize(totalVtxSize * m_VertexCount);
 
 	Util::SafeConvert(totalVtxSize, desc.m_ActualVertexSize);
 	desc.m_CompressionType = uncompressedFormat.GetCompressionType();
@@ -424,4 +502,15 @@ void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)
 void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)
 {
 	NOT_IMPLEMENTED_FUNC();
+}
+
+const std::byte* VulkanVertexBuffer::VertexData() const
+{
+	return m_DataBuffer.data();
+}
+
+size_t VulkanVertexBuffer::VertexDataSize() const
+{
+	static_assert(sizeof(m_DataBuffer[0]) == 1);
+	return m_DataBuffer.size();
 }

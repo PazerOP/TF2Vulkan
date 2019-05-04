@@ -17,7 +17,7 @@ namespace TF2Vulkan
 #define SET_DEBUG_NAME_FN(type) \
 	inline void SetDebugName(const vk:: ## type & obj, const char* name) \
 	{ \
-		return SetDebugName((Vk ## type)obj, vk::ObjectType::e ## type, name); \
+		return SetDebugName((uint64_t)(Vk ## type)obj, vk::ObjectType::e ## type, name); \
 	}
 
 	class IShaderDeviceInternal : public IShaderDevice
@@ -53,13 +53,20 @@ namespace TF2Vulkan
 
 		virtual bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) = 0;
 
+		SET_DEBUG_NAME_FN(Buffer);
+		SET_DEBUG_NAME_FN(CommandBuffer);
+		SET_DEBUG_NAME_FN(CommandPool);
+		SET_DEBUG_NAME_FN(Device);
 		SET_DEBUG_NAME_FN(DescriptorSetLayout);
+		SET_DEBUG_NAME_FN(Fence);
 		SET_DEBUG_NAME_FN(Framebuffer);
 		SET_DEBUG_NAME_FN(Image);
 		SET_DEBUG_NAME_FN(ImageView);
 		SET_DEBUG_NAME_FN(Pipeline);
 		SET_DEBUG_NAME_FN(PipelineLayout);
+		SET_DEBUG_NAME_FN(Queue);
 		SET_DEBUG_NAME_FN(RenderPass);
+		SET_DEBUG_NAME_FN(Semaphore);
 		SET_DEBUG_NAME_FN(ShaderModule);
 		SET_DEBUG_NAME_FN(SwapchainKHR);
 		template<typename Type, typename Dispatch>
@@ -79,6 +86,8 @@ namespace TF2Vulkan
 			Util::SafeConvert(uwidth, width);
 			Util::SafeConvert(uheight, height);
 		}
+
+		virtual bool IsReady() const = 0;
 	};
 
 	extern IShaderDeviceInternal& g_ShaderDevice;

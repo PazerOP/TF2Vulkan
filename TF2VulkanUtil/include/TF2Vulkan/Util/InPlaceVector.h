@@ -1,8 +1,8 @@
 #pragma once
 
+#include "std_algorithm.h"
 #include "std_utility.h"
 
-#include <algorithm>
 #include <compare>
 #include <stdexcept>
 #include <type_traits>
@@ -13,7 +13,12 @@ namespace Util
 	class InPlaceVector final
 	{
 	public:
+		using value_type = T;
 		using size_type = size_t;
+		using reference = std::add_lvalue_reference_t<T>;
+		using const_reference = std::add_lvalue_reference_t<std::add_const_t<T>>;
+		using iterator = std::add_pointer_t<T>;
+		using const_iterator = std::add_pointer_t<std::add_const_t<T>>;
 
 		constexpr InPlaceVector() = default;
 		InPlaceVector(const std::initializer_list<T>& values)
@@ -129,6 +134,11 @@ namespace Util
 		size_type size() const { return m_Elements; }
 		static constexpr size_type max_size() { return maxSize; }
 
+		T& front() { return at(0); }
+		const T& front() const { return at(0); }
+		T& back() { return at(size() - 1); }
+		const T& back() const { return at(size() - 1); }
+
 		void push_back(const T& val)
 		{
 			check_overflow(1);
@@ -138,6 +148,28 @@ namespace Util
 		{
 			check_overflow(1);
 			data()[m_Elements++] = std::move(val);
+		}
+
+		void erase(const_iterator pos)
+		{
+			assert(size() > 0);
+			assert(pos >= begin());
+			assert(pos < end());
+
+			std::move<iterator, iterator>(const_cast<iterator>(pos + 1), end(), const_cast<iterator>(pos));
+			m_Elements--;
+		}
+
+		void pop_back()
+		{
+			erase(end() - 1);
+		}
+
+		template<typename... TArgs>
+		T& emplace_back(TArgs&&... args)
+		{
+			push_back(T{ std::forward<TArgs>(args)... });
+			return back();
 		}
 
 		void clear()

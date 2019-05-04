@@ -37,10 +37,11 @@ namespace
 	};
 }
 
-void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line)
+void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line,
+	const std::string_view& msg)
 {
 	const FnSigComponents comps(fnSig);
-	Msg("[TF2Vulkan] %.*s\n", PRINTF_SV(fnSig));
+	Msg("[TF2Vulkan] %.*s%s%.*s\n", PRINTF_SV(fnSig), msg.empty() ? "" : ": ", PRINTF_SV(msg));
 }
 
 void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line)

@@ -5,6 +5,11 @@
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 
+#include <tier0/icommandline.h>
+#include <tier1/tier1.h>
+#include <tier2/tier2.h>
+#include <tier3/tier3.h>
+
 #include <optional>
 #include <vector>
 
@@ -278,6 +283,17 @@ vk::PhysicalDevice ShaderDeviceMgr::GetAdapterByIndex(size_t index) const
 bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 {
 	LOG_FUNC();
+
+	ConnectTier1Libraries(&factory, 1);
+	ConnectTier2Libraries(&factory, 1);
+	ConnectTier3Libraries(&factory, 1);
+
+	if (!CommandLine()->CheckParm("-insecure"))
+	{
+		Error("TF2Vulkan is likely to trigger VAC. For this reason, you MUST use -insecure"
+			" on the command line (advanced options) to disable access to VAC-secured servers.");
+	}
+
 	return true;
 }
 

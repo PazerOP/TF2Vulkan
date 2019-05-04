@@ -85,7 +85,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
-    <ClInclude Include="include\TF2Vulkan\Util\ClassPrefabs.h" />
     <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Enums.h" />
     <ClInclude Include="include\TF2Vulkan\Util\FourCC.h" />
@@ -96,14 +95,17 @@
     <ClInclude Include="include\TF2Vulkan\Util\KeyValues.h" />
     <ClInclude Include="include\TF2Vulkan\Util\MemoryPool.h" />
     <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\std_stack.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_array.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_charconv.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_compare.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\std_string.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_type_traits.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Templates.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\UniqueObject.h" />
     <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
   </ItemGroup>
   <ItemGroup>
@@ -112,8 +114,12 @@
     <ClCompile Include="src\TF2Vulkan\Util\Macros.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\interface.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\KeyValues.cpp" />
+    <ClCompile Include="src\TF2Vulkan\Util\std_string.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\std_utility.cpp" />
     <ClCompile Include="src\TF2Vulkan\Util\utlsymbol.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="include\TF2Vulkan\Util\std_string.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

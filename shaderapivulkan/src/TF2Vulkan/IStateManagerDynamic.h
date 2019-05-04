@@ -9,6 +9,8 @@
 #include <shaderapi/ishaderapi.h>
 #include <shaderapi/ishaderdynamic.h>
 
+#include <stack>
+
 namespace TF2Vulkan
 {
 	class IShaderAPI_StateManagerDynamic : public IShaderAPIInternal
@@ -27,12 +29,21 @@ namespace TF2Vulkan
 		int GetCurrentNumBones() const override final;
 		void Bind(IMaterial* material) override final;
 
+		void MatrixMode(MaterialMatrixMode_t mode) override final;
+		void PushMatrix() override final;
+		void PopMatrix() override final;
+		void LoadIdentity() override final;
+
 		// Helpers
 		void SetOverbright(float overbright);
 
 		const LogicalDynamicState& GetDynamicState() const { return m_State; }
 
 	private:
+		void AssertMatrixMode();
+
+		MaterialMatrixMode_t m_MatrixMode = {};
+
 		LogicalDynamicState m_State;
 		bool m_Dirty = true;
 	};

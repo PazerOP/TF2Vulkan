@@ -375,7 +375,10 @@ static PipelineLayout CreatePipelineLayout(const PipelineLayoutKey& key)
 		AttachVector(ci.pSetLayouts, ci.setLayoutCount, setLayouts);
 		AttachVector(ci.pPushConstantRanges, ci.pushConstantRangeCount, retVal.m_PushConstantRanges);
 		retVal.m_Layout = g_ShaderDevice.GetVulkanDevice().createPipelineLayoutUnique(ci);
-		g_ShaderDevice.SetDebugName(retVal.m_Layout, "test pipeline layout");
+
+		char buf[128];
+		sprintf_s(buf, "TF2Vulkan Pipeline Layout 0x%zX", Util::hash_value(key));
+		g_ShaderDevice.SetDebugName(retVal.m_Layout, buf);
 	}
 
 	return retVal;
@@ -400,10 +403,10 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 				att.initialLayout = vk::ImageLayout::eUndefined;
 				att.finalLayout = vk::ImageLayout::ePresentSrcKHR;
 				att.samples = vk::SampleCountFlagBits::e1;
-				att.loadOp = vk::AttachmentLoadOp::eDontCare;
+				att.loadOp = vk::AttachmentLoadOp::eLoad;
 				att.storeOp = vk::AttachmentStoreOp::eStore;
-				att.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-				att.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+				att.stencilLoadOp = vk::AttachmentLoadOp::eLoad;
+				att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
 				const auto& tex = g_ShaderAPIInternal.GetTexture(colorID);
 				att.format = tex.GetImageCreateInfo().format;
@@ -427,9 +430,9 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 				att.initialLayout = vk::ImageLayout::eUndefined;
 				att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 				att.samples = vk::SampleCountFlagBits::e1;
-				att.loadOp = vk::AttachmentLoadOp::eDontCare;
+				att.loadOp = vk::AttachmentLoadOp::eLoad;
 				att.storeOp = vk::AttachmentStoreOp::eStore;
-				att.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+				att.stencilLoadOp = vk::AttachmentLoadOp::eLoad;
 				att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
 				att.format = tex.GetImageCreateInfo().format;
@@ -460,7 +463,10 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 		AttachVector(ci.pSubpasses, ci.subpassCount, subpassTemp);
 
 		retVal.m_RenderPass = g_ShaderDevice.GetVulkanDevice().createRenderPassUnique(ci);
-		g_ShaderDevice.SetDebugName(retVal.m_RenderPass, "test render pass");
+
+		char buf[128];
+		sprintf_s(buf, "TF2Vulkan Render Pass 0x%zX", Util::hash_value(key));
+		g_ShaderDevice.SetDebugName(retVal.m_RenderPass, buf);
 	}
 
 	return retVal;
@@ -673,7 +679,10 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 
 		// ci.subpass = 0;
 		retVal.m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(nullptr, ci);
-		g_ShaderDevice.SetDebugName(retVal.m_Pipeline, "Test pipeline");
+
+		char buf[128];
+		sprintf_s(buf, "TF2Vulkan Graphics Pipeline 0x%zX", Util::hash_value(key));
+		g_ShaderDevice.SetDebugName(retVal.m_Pipeline, buf);
 	}
 
 	return retVal;
@@ -688,6 +697,7 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 	uint32_t height = width;
 
 	std::string debugName = "COL{ ";
+	// Color attachments
 	{
 		bool debugNameFirst = true;
 
@@ -727,9 +737,22 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 				height = std::min(height, ci.extent.height);
 			}
 		}
+		debugName += " }";
 	}
 
-	debugName += " }";
+	// (Optional) depth attachment
+	if (key.m_OMDepthRT >= 0)
+	{
+		auto& tex = key.m_OMDepthRT == 0 ?
+			g_ShaderDevice.GetBackBufferDepthTexture() :
+			g_ShaderAPIInternal.GetTexture(key.m_OMDepthRT);
+
+		retVal.m_Attachments.push_back(tex.FindOrCreateView());
+
+		debugName += " DEPTH { ";
+		debugName += tex.GetDebugName();
+		debugName += " }";
+	}
 
 	// Framebuffer
 	{
@@ -771,6 +794,11 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const vk::CommandBuffer& b
 
 	vk::RenderPassBeginInfo rpInfo;
 	rpInfo.renderPass = state.m_RenderPass->m_RenderPass.get();
+
+	vk::ClearValue clearVal;
+	clearVal.color = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 1.0f, 0.5f, 0.5f });
+	rpInfo.clearValueCount = 1;
+	rpInfo.pClearValues = &clearVal;
 
 	//state.m_RenderPass->m_CreateInfo.
 

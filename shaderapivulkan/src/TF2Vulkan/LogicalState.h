@@ -4,6 +4,7 @@
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/std_compare.h>
+#include <TF2Vulkan/Util/std_stack.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
 
 #include <shaderapi/ishaderapi.h>
@@ -21,6 +22,8 @@ namespace TF2Vulkan
 	{
 		constexpr LogicalDynamicState() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(LogicalDynamicState); // weak because we have floats
+
+		std::stack<VMatrix, Util::InPlaceVector<VMatrix, 32>> m_Matrices[NUM_MATRIX_MODES] = {};
 
 		IMaterial* m_BoundMaterial = nullptr;
 		int m_BoneCount = 0;

@@ -37,3 +37,12 @@ STD_HASH_DEFINITION(vk::ImageViewCreateInfo,
 	v.components,
 	v.subresourceRange
 );
+
+namespace Util
+{
+	template<typename T, size_t size>
+	inline vk::ArrayProxy<T> to_array_proxy(T(&array)[size])
+	{
+		return vk::ArrayProxy<T>(size, array);
+	}
+}

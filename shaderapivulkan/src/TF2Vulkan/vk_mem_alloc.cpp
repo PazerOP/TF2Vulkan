@@ -18,42 +18,14 @@ UniqueAllocator vma::createAllocatorUnique(const AllocatorCreateInfo& createInfo
 }
 
 UniqueAllocation::UniqueAllocation(VmaAllocator allocator, VmaAllocation allocation) :
-	m_Allocator(allocator), m_Allocation(allocation)
+	m_Allocation(allocation, allocator)
 {
-}
-
-UniqueAllocation::UniqueAllocation(UniqueAllocation&& other) noexcept
-{
-	m_Allocator = other.m_Allocator;
-	m_Allocation = other.m_Allocation;
-	other.m_Allocator = nullptr;
-	other.m_Allocation = nullptr;
-}
-
-UniqueAllocation& UniqueAllocation::operator=(UniqueAllocation&& other) noexcept
-{
-	m_Allocator = other.m_Allocator;
-	m_Allocation = other.m_Allocation;
-	other.m_Allocator = nullptr;
-	other.m_Allocation = nullptr;
-	return *this;
-}
-
-UniqueAllocation::~UniqueAllocation()
-{
-	assert(!m_Allocator == !m_Allocation);
-	if (m_Allocator)
-	{
-		vmaFreeMemory(m_Allocator, m_Allocation);
-		m_Allocator = nullptr;
-		m_Allocation = nullptr;
-	}
 }
 
 AllocationInfo UniqueAllocation::getAllocationInfo() const
 {
 	AllocationInfo retVal;
-	vmaGetAllocationInfo(m_Allocator, m_Allocation, &retVal);
+	vmaGetAllocationInfo(GetAllocator(), GetAllocation(), &retVal);
 	return retVal;
 }
 
@@ -84,11 +56,26 @@ MappedMemory UniqueAllocation::map()
 {
 	assert(!m_MappedData);
 
-	if (auto result = vk::Result(vmaMapMemory(m_Allocator, m_Allocation, &m_MappedData));
+	if (auto result = vk::Result(vmaMapMemory(GetAllocator(), GetAllocation(), &m_MappedData));
 		result != vk::Result::eSuccess)
 		throw TF2Vulkan::VulkanException(result, EXCEPTION_DATA());
 
 	return MappedMemory(this);
+}
+
+UniqueAllocation::operator bool() const
+{
+	return !!GetAllocation();
+}
+
+VmaAllocation UniqueAllocation::GetAllocation() const
+{
+	return m_Allocation.get();
+}
+
+VmaAllocator UniqueAllocation::GetAllocator() const
+{
+	return m_Allocation.get_deleter().m_Allocator;
 }
 
 UniqueAllocator::UniqueAllocator(VmaAllocator allocator) :
@@ -131,13 +118,43 @@ AllocatedImage UniqueAllocator::createImageUnique(const vk::ImageCreateInfo& img
 }
 
 AllocatedBuffer::AllocatedBuffer(VkBuffer buf, UniqueAllocation&& allocation) :
-	m_Buffer(vk::Buffer(buf)), m_Allocation(std::move(allocation))
+	m_Buffer(vk::Buffer(buf), std::move(allocation))
 {
 }
 
-AllocatedImage::AllocatedImage(VkImage img, UniqueAllocation&& allocation) :
-	m_Image(vk::Image(img)), m_Allocation(std::move(allocation))
+const vk::Buffer& AllocatedBuffer::GetBuffer() const
 {
+	return m_Buffer.get();
+}
+
+UniqueAllocation& AllocatedBuffer::GetAllocation()
+{
+	return const_cast<UniqueAllocation&>(std::as_const(*this).GetAllocation());
+}
+
+const UniqueAllocation& AllocatedBuffer::GetAllocation() const
+{
+	return m_Buffer.get_deleter().m_Allocation;
+}
+
+AllocatedImage::AllocatedImage(VkImage img, UniqueAllocation&& allocation) :
+	m_Image(vk::Image(img), std::move(allocation))
+{
+}
+
+const vk::Image& AllocatedImage::GetImage() const
+{
+	return m_Image.get();
+}
+
+UniqueAllocation& AllocatedImage::GetAllocation()
+{
+	return const_cast<UniqueAllocation&>(std::as_const(*this).GetAllocation());
+}
+
+const UniqueAllocation& AllocatedImage::GetAllocation() const
+{
+	return m_Image.get_deleter().m_Allocation;
 }
 
 void detail::Deleter::operator()(VmaAllocator allocator) const
@@ -149,6 +166,37 @@ void detail::Deleter::operator()(VmaAllocator allocator) const
 void MappedMemory::Unmapper::operator()(UniqueAllocation* alloc) const
 {
 	assert(alloc->m_MappedData);
-	vmaUnmapMemory(alloc->m_Allocator, alloc->m_Allocation);
+	vmaUnmapMemory(alloc->m_Allocation.get_deleter().m_Allocator, alloc->m_Allocation.get());
 	alloc->m_MappedData = nullptr;
+}
+
+void detail::AllocatedObjectDeleter::operator()(vk::Image& image) noexcept
+{
+	if (image)
+	{
+		vmaDestroyImage(m_Allocation.GetAllocator(), (VkImage)image, m_Allocation.GetAllocation());
+		image = nullptr;
+		m_Allocation.m_Allocation.release(); // The vmaDestroyImage call deletes this
+	}
+}
+
+detail::AllocatedObjectDeleter::AllocatedObjectDeleter(UniqueAllocation&& allocation) :
+	m_Allocation(std::move(allocation))
+{
+}
+
+void detail::AllocatedObjectDeleter::operator()(vk::Buffer& buffer) noexcept
+{
+	if (buffer)
+	{
+		vmaDestroyBuffer(m_Allocation.GetAllocator(), (VkBuffer)buffer, m_Allocation.GetAllocation());
+		buffer = nullptr;
+		m_Allocation.m_Allocation.release(); // The vmaDestroyImage call deletes this
+	}
+}
+
+void detail::AllocationDeleter::operator()(VmaAllocation allocation) const noexcept
+{
+	if (allocation)
+		vmaFreeMemory(m_Allocator, allocation);
 }

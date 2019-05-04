@@ -36,10 +36,14 @@ namespace TF2Vulkan
 
 		void ValidateData(int vertexCount, const VertexDesc_t& desc) override;
 
+		const std::byte* VertexData() const;
+		size_t VertexDataSize() const;
+
 	private:
 		VertexFormat m_Format;
 
 		std::vector<std::byte> m_DataBuffer;
+		size_t m_VertexCount = 0;
 	};
 
 	class VulkanIndexBuffer final : public IIndexBuffer
@@ -64,6 +68,9 @@ namespace TF2Vulkan
 		void Spew(int indexCount, const IndexDesc_t& desc) override;
 
 		void ValidateData(int indexCount, const IndexDesc_t& desc) override;
+
+		const unsigned short* IndexData() const;
+		size_t IndexDataSize() const;
 
 	private:
 		std::vector<unsigned short> m_Indices;

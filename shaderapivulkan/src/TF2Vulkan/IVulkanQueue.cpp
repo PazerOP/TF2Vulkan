@@ -1,7 +1,12 @@
 #include "stdafx.h"
+#include "ShaderDevice.h"
 #include "IVulkanQueue.h"
 
+#include <atomic>
+
 using namespace TF2Vulkan;
+
+static std::atomic<size_t> s_CmdBufIndex = 1;
 
 vk::UniqueCommandBuffer IVulkanQueue::CreateCmdBuffer() const
 {
@@ -11,6 +16,14 @@ vk::UniqueCommandBuffer IVulkanQueue::CreateCmdBuffer() const
 	allocInfo.commandBufferCount = 1;
 
 	auto allocated = GetDevice().allocateCommandBuffersUnique(allocInfo);
+
+	for (auto& newBuf : allocated)
+	{
+		char nameBuf[128];
+		sprintf_s(nameBuf, "TF2Vulkan Command Buffer %zu", s_CmdBufIndex++);
+		g_ShaderDevice.SetDebugName(newBuf, nameBuf);
+	}
+
 	ENSURE(!allocated.empty());
 	return std::move(allocated[0]);
 }

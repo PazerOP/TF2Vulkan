@@ -1,7 +1,7 @@
 #pragma once
 
 #include <TF2Vulkan/Util/Checked.h>
-#include <TF2Vulkan/Util/ClassPrefabs.h>
+#include <TF2Vulkan/Util/UniqueObject.h>
 
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.h"
@@ -13,6 +13,82 @@ namespace vma
 		struct Deleter
 		{
 			void operator()(VmaAllocator allocator) const;
+		};
+
+		struct AllocationDeleter
+		{
+			AllocationDeleter(VmaAllocator allocator = nullptr) : m_Allocator(allocator) {}
+			void operator()(VmaAllocation allocation) const noexcept;
+			VmaAllocator m_Allocator;
+		};
+	}
+
+	class UniqueAllocation;
+
+	class MappedMemory final
+	{
+	public:
+		void Write(const void* srcData, size_t srcSize, size_t dstOffset = 0);
+		void Read(void* dstData, size_t srcSize) const;
+
+	private:
+		MappedMemory(UniqueAllocation* allocation);
+		struct Unmapper
+		{
+			void operator()(UniqueAllocation* alloc) const;
+		};
+
+		std::unique_ptr<UniqueAllocation, Unmapper> m_Allocation;
+		friend class UniqueAllocation;
+	};
+
+	struct AllocationInfo : public VmaAllocationInfo
+	{
+		constexpr AllocationInfo() :
+			VmaAllocationInfo{}
+		{
+		}
+	};
+
+	namespace detail
+	{
+		struct AllocatedObjectDeleter;
+	}
+
+	class UniqueAllocation final
+	{
+	public:
+		UniqueAllocation() = default;
+		UniqueAllocation(VmaAllocator allocator, VmaAllocation allocation);
+
+		AllocationInfo getAllocationInfo() const;
+
+		[[nodiscard]] MappedMemory map();
+
+		operator bool() const;
+
+		VmaAllocation GetAllocation() const;
+		VmaAllocator GetAllocator() const;
+
+		void ReleaseAllocation();
+
+	private:
+		friend class MappedMemory;
+		friend struct detail::AllocatedObjectDeleter;
+		void* m_MappedData = nullptr;
+
+		std::unique_ptr<std::remove_pointer_t<VmaAllocation>, detail::AllocationDeleter> m_Allocation;
+	};
+
+	namespace detail
+	{
+		struct AllocatedObjectDeleter
+		{
+			AllocatedObjectDeleter() = default;
+			AllocatedObjectDeleter(UniqueAllocation&& allocation);
+			void operator()(vk::Buffer& buffer) noexcept;
+			void operator()(vk::Image& image) noexcept;
+			UniqueAllocation m_Allocation;
 		};
 	}
 
@@ -32,61 +108,17 @@ namespace vma
 		}
 	};
 
-	struct AllocationInfo : public VmaAllocationInfo
-	{
-		constexpr AllocationInfo() :
-			VmaAllocationInfo{}
-		{
-		}
-	};
-
-	class UniqueAllocation;
-
-	class MappedMemory final : Util::DisableCopy
-	{
-	public:
-		void Write(const void* srcData, size_t srcSize, size_t dstOffset = 0);
-		void Read(void* dstData, size_t srcSize) const;
-
-	private:
-		MappedMemory(UniqueAllocation* allocation);
-		struct Unmapper
-		{
-			void operator()(UniqueAllocation* alloc) const;
-		};
-
-		std::unique_ptr<UniqueAllocation, Unmapper> m_Allocation;
-		friend class UniqueAllocation;
-	};
-
-	class UniqueAllocation final : Util::DisableCopy
-	{
-	public:
-		UniqueAllocation() = default;
-		UniqueAllocation(VmaAllocator allocator, VmaAllocation allocation);
-		UniqueAllocation(UniqueAllocation&& other) noexcept;
-		UniqueAllocation& operator=(UniqueAllocation&& other) noexcept;
-		~UniqueAllocation();
-
-		AllocationInfo getAllocationInfo() const;
-
-		[[nodiscard]] MappedMemory map();
-
-	private:
-		friend class MappedMemory;
-		void* m_MappedData = nullptr;
-
-		VmaAllocator m_Allocator;
-		VmaAllocation m_Allocation;
-	};
-
 	struct AllocatedBuffer final
 	{
 		AllocatedBuffer() = default;
 		AllocatedBuffer(VkBuffer buf, UniqueAllocation&& allocation);
 
-		vk::Buffer m_Buffer;
-		UniqueAllocation m_Allocation;
+		const vk::Buffer& GetBuffer() const;
+		UniqueAllocation& GetAllocation();
+		const UniqueAllocation& GetAllocation() const;
+
+	private:
+		Util::UniqueObject<vk::Buffer, detail::AllocatedObjectDeleter> m_Buffer;
 	};
 
 	struct AllocatedImage final
@@ -94,8 +126,12 @@ namespace vma
 		AllocatedImage() = default;
 		AllocatedImage(VkImage img, UniqueAllocation&& allocation);
 
-		vk::Image m_Image;
-		UniqueAllocation m_Allocation;
+		const vk::Image& GetImage() const;
+		UniqueAllocation& GetAllocation();
+		const UniqueAllocation& GetAllocation() const;
+
+	private:
+		Util::UniqueObject<vk::Image, detail::AllocatedObjectDeleter> m_Image;
 	};
 
 	class UniqueAllocator final

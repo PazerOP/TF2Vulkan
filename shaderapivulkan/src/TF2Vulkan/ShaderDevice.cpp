@@ -34,8 +34,22 @@ namespace
 		vk::UniqueSurfaceKHR m_Surface;
 		vk::SwapchainCreateInfoKHR m_SwapChainCreateInfo;
 		vk::UniqueSwapchainKHR m_SwapChain;
-		std::vector<vk::Image> m_Images;
-		std::vector<vk::UniqueImageView> m_ImageViews;
+
+		struct PerImage
+		{
+			vk::Image m_Image;
+			vk::UniqueImageView m_ImageView;
+
+			vk::UniqueSemaphore m_ImageAvailableSemaphore;
+			vk::UniqueSemaphore m_RenderFinishedSemaphore;
+			vk::UniqueFence m_InFlightFence;
+
+			vk::UniqueCommandBuffer m_PrimaryCmdBuf;
+		};
+
+		std::vector<PerImage> m_Images;
+
+		uint32_t m_CurrentFrame = 0;
 	};
 
 	class ShaderDevice final : public IShaderDeviceInternal
@@ -111,7 +125,9 @@ namespace
 		void SetDebugName(uint64_t obj, vk::ObjectType type, const char* name) override;
 
 		const IShaderAPITexture& GetBackBufferColorTexture() const override { return m_BackbufferColorTexture; }
-		const IShaderAPITexture& GetBackBufferDepthTexture() const override { return *m_Data.m_DepthTexture;  }
+		const IShaderAPITexture& GetBackBufferDepthTexture() const override;
+
+		bool IsReady() const override;
 
 	private:
 		// In a struct so we can easily reset all the vulkan-related stuff on shutdown
@@ -204,7 +220,48 @@ bool ShaderDevice::IsAAEnabled() const
 
 void ShaderDevice::Present()
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+
+	// TODO: What is this function actually even doing
+	auto& scData = m_Data.m_SwapChain;
+	auto& sc = scData.m_SwapChain.get();
+	auto& currentFrame = scData.m_CurrentFrame;
+	auto& curImg = scData.m_Images.at(currentFrame);
+	auto& device = GetVulkanDevice();
+
+	constexpr auto timeout = std::numeric_limits<uint32_t>::max();
+
+	device.waitForFences(curImg.m_InFlightFence.get(), true, timeout);
+	device.resetFences(curImg.m_InFlightFence.get());
+
+	const auto [acquireResult, acquireImageIndex] = device.acquireNextImageKHR(sc,
+		std::numeric_limits<uint64_t>::max(), curImg.m_ImageAvailableSemaphore.get(),
+		nullptr);
+
+	auto& q = m_Data.m_GraphicsQueue.m_Queue;
+	{
+		vk::SubmitInfo submitInfo;
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &curImg.m_ImageAvailableSemaphore.get();
+
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &curImg.m_RenderFinishedSemaphore.get();
+
+		const vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		submitInfo.pWaitDstStageMask = &waitStages;
+
+		q.submit(submitInfo, curImg.m_InFlightFence.get());
+	}
+
+	vk::PresentInfoKHR pInfo;
+
+	pInfo.pImageIndices = &currentFrame;
+	pInfo.pSwapchains = &sc;
+	pInfo.swapchainCount = 1;
+
+	q.presentKHR(pInfo);
+
+	currentFrame = (currentFrame + 1) % scData.m_Images.size();
 }
 
 void ShaderDevice::GetWindowSize(int& width, int& height) const
@@ -358,15 +415,22 @@ static vk::UniqueCommandPool CreateCommandPool(const vk::Device& device, uint32_
 	return result;
 }
 
-static VulkanQueue CreateQueueWrapper(const vk::Device& device, uint32_t queueFamily)
+static VulkanQueue CreateQueueWrapper(const vk::Device& device, uint32_t queueFamily, const char* queueType)
 {
 	VulkanQueue retVal;
 
 	retVal.m_Queue = device.getQueue(queueFamily, 0);
 	if (!retVal.m_Queue)
-		Error(TF2VULKAN_PREFIX "Failed to retrieve queue from index %u\n", queueFamily);
+		Error(TF2VULKAN_PREFIX "Failed to retrieve %s queue from index %u\n", queueType, queueFamily);
 
 	retVal.m_CommandPool = CreateCommandPool(device, queueFamily);
+
+	char buf[128];
+	sprintf_s(buf, "TF2Vulkan Queue (%s)", queueType);
+	g_ShaderDevice.SetDebugName(retVal.m_Queue, buf);
+
+	sprintf_s(buf, "TF2Vulkan Queue Command Pool (%s)", queueType);
+	g_ShaderDevice.SetDebugName(retVal.m_CommandPool, buf);
 
 	return retVal;
 }
@@ -378,12 +442,14 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 	auto& device = m_Data.m_Device;
 	m_Data.m_Allocator = CreateAllocator(device.get());
 
-	m_Data.m_GraphicsQueue = CreateQueueWrapper(device.get(), m_Data.m_GraphicsQueueIndex);
+	m_Data.m_DynamicLoader.init(g_ShaderDeviceMgr.GetInstance(), m_Data.m_Device.get());
+
+	SetDebugName(m_Data.m_Device, "TF2Vulkan Device");
+
+	m_Data.m_GraphicsQueue = CreateQueueWrapper(device.get(), m_Data.m_GraphicsQueueIndex, "Graphics");
 
 	if (m_Data.m_TransferQueueIndex)
-		m_Data.m_TransferQueue = CreateQueueWrapper(device.get(), m_Data.m_TransferQueueIndex.value());
-
-	m_Data.m_DynamicLoader.init(g_ShaderDeviceMgr.GetInstance(), m_Data.m_Device.get());
+		m_Data.m_TransferQueue = CreateQueueWrapper(device.get(), m_Data.m_TransferQueueIndex.value(), "Transfer");
 }
 
 const vk::Device& ShaderDevice::GetVulkanDevice()
@@ -458,29 +524,59 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 
 	// Swap chain images and image views
 	{
-		newSwapChain.m_Images = m_Data.m_Device->getSwapchainImagesKHR(newSwapChain.m_SwapChain.get());
-
-		auto& scCI = newSwapChain.m_SwapChainCreateInfo;
-		vk::ImageViewCreateInfo ci;
-
-		ci.format = scCI.imageFormat;
-		ci.subresourceRange.layerCount = 1;
-		ci.subresourceRange.levelCount = 1;
-		ci.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-		ci.viewType = vk::ImageViewType::e2D;
+		const auto images = m_Data.m_Device->getSwapchainImagesKHR(newSwapChain.m_SwapChain.get());
 
 		size_t index = 0;
-		for (const auto& img : newSwapChain.m_Images)
+		for (auto& img : images)
 		{
+			auto& perImg = newSwapChain.m_Images.emplace_back();
+			perImg.m_Image = img;
+
+			auto& scCI = newSwapChain.m_SwapChainCreateInfo;
+			vk::ImageViewCreateInfo ci;
+
+			ci.format = scCI.imageFormat;
+			ci.subresourceRange.layerCount = 1;
+			ci.subresourceRange.levelCount = 1;
+			ci.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+			ci.viewType = vk::ImageViewType::e2D;
+
 			ci.image = img;
-			auto& newImgView = newSwapChain.m_ImageViews.emplace_back(m_Data.m_Device->createImageViewUnique(ci));
+			perImg.m_ImageView = m_Data.m_Device->createImageViewUnique(ci);
 
 			char buf[128];
+			sprintf_s(buf, "TF2Vulkan Swap Chain Image View #%zu", index);
+			SetDebugName(perImg.m_ImageView, buf);
 			sprintf_s(buf, "TF2Vulkan Swap Chain Image #%zu", index);
 			SetDebugName(img, buf);
 
-			sprintf_s(buf, "TF2Vulkan Swap Chain Image View #%zu", index);
-			SetDebugName(newImgView, buf);
+
+			index++;
+		}
+	}
+
+	// Synchronization objects
+	{
+		vk::SemaphoreCreateInfo sCI;
+
+		vk::FenceCreateInfo fCI;
+		fCI.flags = vk::FenceCreateFlagBits::eSignaled;
+
+		size_t index = 0;
+		for (auto& img : newSwapChain.m_Images)
+		{
+			char buf[128];
+			img.m_ImageAvailableSemaphore = m_Data.m_Device->createSemaphoreUnique(sCI);
+			sprintf_s(buf, "TF2Vulkan Image Available Semaphore #%zu", index);
+			SetDebugName(img.m_ImageAvailableSemaphore, buf);
+
+			img.m_RenderFinishedSemaphore = m_Data.m_Device->createSemaphoreUnique(sCI);
+			sprintf_s(buf, "TF2Vulkan Render Finished Semaphore #%zu", index);
+			SetDebugName(img.m_RenderFinishedSemaphore, buf);
+
+			img.m_InFlightFence = m_Data.m_Device->createFenceUnique(fCI);
+			sprintf_s(buf, "TF2Vulkan In Flight Fence #%zu", index);
+			SetDebugName(img.m_InFlightFence, buf);
 
 			index++;
 		}
@@ -525,12 +621,14 @@ void ShaderDevice::SetDebugName(uint64_t obj, vk::ObjectType type, const char* n
 
 const vk::Image& ShaderDevice::BackbufferColorTexture::GetImage() const
 {
-	return s_Device.m_Data.m_SwapChain.m_Images.at(0);
+	auto& sc = s_Device.m_Data.m_SwapChain;
+	return sc.m_Images.at(sc.m_CurrentFrame).m_Image;
 }
 
 const vk::ImageView& ShaderDevice::BackbufferColorTexture::FindOrCreateView()
 {
-	return s_Device.m_Data.m_SwapChain.m_ImageViews.at(0).get();
+	auto& sc = s_Device.m_Data.m_SwapChain;
+	return sc.m_Images.at(sc.m_CurrentFrame).m_ImageView.get();
 }
 
 const vk::ImageCreateInfo& ShaderDevice::BackbufferColorTexture::GetImageCreateInfo() const
@@ -549,4 +647,19 @@ const vk::ImageCreateInfo& ShaderDevice::BackbufferColorTexture::GetImageCreateI
 	s_BBIC.sharingMode = scci.imageSharingMode;
 
 	return s_BBIC;
+}
+
+const IShaderAPITexture& ShaderDevice::GetBackBufferDepthTexture() const
+{
+	assert(IsReady());
+
+	const auto& tex = m_Data.m_DepthTexture;
+	assert(tex);
+	return *tex;
+}
+
+bool ShaderDevice::IsReady() const
+{
+	// TODO: Is this a safe way to check we've been initialized?
+	return !!m_Data.m_DepthTexture;
 }

@@ -8,7 +8,7 @@
 
 namespace Util
 {
-	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line);
+	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
 	[[noreturn]] void EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line);
 	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
 }
@@ -18,9 +18,11 @@ namespace Util
 #define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 
 #ifdef TF2VULKAN_ENABLE_FUNCTION_LOGGING
-#define LOG_FUNC() { ASSERT_MAIN_THREAD(); ::Util::LogFunctionCall(__FUNCSIG__, __FILE__, __LINE__); }
+#define LOG_FUNC() LOG_FUNC_MSG(std::string_view{})
+#define LOG_FUNC_MSG(msg) { ASSERT_MAIN_THREAD(); ::Util::LogFunctionCall(__FUNCSIG__, __FILE__, __LINE__, (msg)); }
 #else
 #define LOG_FUNC()
+#define LOG_FUNC_MSG(msg)
 #endif
 
 #define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }

@@ -3,12 +3,14 @@
 #include "ShaderDevice.h"
 #include "ShadowStateManager.h"
 #include "TF2Vulkan/TextureData.h"
+#include "VulkanFactories.h"
 #include "VulkanMesh.h"
 
 #include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/ImageManip.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
+#include <TF2Vulkan/Util/std_string.h>
 #include <TF2Vulkan/Util/std_utility.h>
 
 #include <Color.h>
@@ -20,6 +22,12 @@
 #include <unordered_map>
 
 using namespace TF2Vulkan;
+
+#define LOG_FUNC_TEX_NAME(texHandle, texName) \
+	LOG_FUNC_MSG(texName)
+
+#define LOG_FUNC_TEX(texHandle) \
+	LOG_FUNC_TEX_NAME((texHandle), (m_Textures.at(texHandle).GetDebugName()))
 
 namespace
 {
@@ -73,14 +81,10 @@ namespace
 
 		void GetLightmapDimensions(int* w, int* h) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void MatrixMode(MaterialMatrixMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
-		void PushMatrix() override { NOT_IMPLEMENTED_FUNC(); }
-		void PopMatrix() override { NOT_IMPLEMENTED_FUNC(); }
 		void LoadMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
 		void MultMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
 		void MultMatrixLocal(float* m) override { NOT_IMPLEMENTED_FUNC(); }
 		void GetMatrix(MaterialMatrixMode_t matrixMode, float* dst) override { NOT_IMPLEMENTED_FUNC(); }
-		void LoadIdentity() override { NOT_IMPLEMENTED_FUNC(); }
 		void LoadCameraToWorld() override { NOT_IMPLEMENTED_FUNC(); }
 		void Ortho(double left, double right, double bottom, double top, double zNear, double zFar) override { NOT_IMPLEMENTED_FUNC(); }
 		void PerspectiveX(double fovX, double aspect, double zNear, double zFar) override { NOT_IMPLEMENTED_FUNC(); }
@@ -481,7 +485,7 @@ namespace
 			SamplerSettingsDynamic m_SamplerSettings;
 
 			std::string_view GetDebugName() const override { return m_DebugName; }
-			const vk::Image& GetImage() const override { return m_Image.m_Image; }
+			const vk::Image& GetImage() const override { return m_Image.GetImage(); }
 			const vk::ImageCreateInfo& GetImageCreateInfo() const override { return m_CreateInfo; }
 			const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override;
 			ShaderAPITextureHandle_t GetHandle() const override { return m_Handle; }
@@ -744,14 +748,17 @@ bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
 
 IShaderAPITexture& ShaderAPI::CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI)
 {
-	LOG_FUNC();
+	const auto handle = m_NextTextureHandle++;
+	LOG_FUNC_TEX_NAME(handle, dbgName);
 
 	vma::AllocationCreateInfo allocCreateInfo;
 	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 
 	auto createdImg = g_ShaderDevice.GetVulkanAllocator().createImageUnique(imgCI, allocCreateInfo);
 
-	const auto handle = m_NextTextureHandle++;
+	dbgName = Util::string::concat("[", handle, "] ", std::move(dbgName));
+	g_ShaderDevice.SetDebugName(createdImg.GetImage(), Util::string::concat("Texture: ", dbgName).c_str());
+
 	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, imgCI, std::move(createdImg) }).first->second;
 }
 
@@ -774,11 +781,11 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 	else
 		createInfo.imageType = vk::ImageType::e3D;
 
-	createInfo.extent.width = uint32_t(width);
-	createInfo.extent.height = uint32_t(height);
-	createInfo.extent.depth = uint32_t(depth);
+	Util::SafeConvert(width, createInfo.extent.width);
+	Util::SafeConvert(height, createInfo.extent.height);
+	Util::SafeConvert(depth, createInfo.extent.depth);
 	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
-	createInfo.mipLevels = uint32_t(mipLevelCount);
+	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
 	createInfo.format = ConvertImageFormat(dstImgFormat);
 	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment;
 
@@ -805,7 +812,7 @@ const vk::ImageView& ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageV
 
 	// Not found, create now
 	const auto& result = (imgViews[viewCreateInfo] = g_ShaderDevice.GetVulkanDevice().createImageViewUnique(viewCreateInfo));
-	g_ShaderDevice.SetDebugName(result, m_DebugName.c_str());
+	g_ShaderDevice.SetDebugName(result, Util::string::concat("ImageView: ", m_DebugName).c_str());
 
 	return result.get();
 }
@@ -823,18 +830,31 @@ const IShaderAPITexture& ShaderAPI::GetTexture(ShaderAPITextureHandle_t texID) c
 
 void ShaderAPI::DeleteTexture(ShaderAPITextureHandle_t tex)
 {
-	LOG_FUNC();
+	LOG_FUNC_TEX(tex);
 
-#ifdef _DEBUG
-	[[maybe_unused]] auto realTex = m_Textures.find(tex);
-#endif
+	auto& realTex = m_Textures.at(tex);
+
+	// Update debug name
+	{
+		const auto dbgName = realTex.GetDebugName();
+
+		char buf[128];
+		sprintf_s(buf, "[DELETED] Texture: %.*s", PRINTF_SV(dbgName));
+		g_ShaderDevice.SetDebugName(realTex.m_Image.GetImage(), buf);
+
+		for (auto& iv : realTex.m_ImageViews)
+		{
+			sprintf_s(buf, "[DELETED] ImageView: %.*s", PRINTF_SV(dbgName));
+			g_ShaderDevice.SetDebugName(iv.second, buf);
+		}
+	}
 
 	m_Textures.erase(tex);
 }
 
 bool ShaderAPI::IsTexture(ShaderAPITextureHandle_t tex)
 {
-	LOG_FUNC();
+	LOG_FUNC_TEX(tex);
 
 	bool found = m_Textures.find(tex) != m_Textures.end();
 	assert(found);
@@ -843,7 +863,7 @@ bool ShaderAPI::IsTexture(ShaderAPITextureHandle_t tex)
 
 void ShaderAPI::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int frameIndex)
 {
-	LOG_FUNC();
+	LOG_FUNC_TEX(texHandle);
 
 	const auto mipCount = vtf->MipCount();
 	ENSURE(mipCount > 0);
@@ -944,7 +964,8 @@ static void CopyBufferToImage(const vk::Buffer& buf, const vk::Image& img, uint3
 
 bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data, size_t count)
 {
-	LOG_FUNC();
+	LOG_FUNC_TEX(texHandle);
+
 	auto& tex = m_Textures.at(texHandle);
 
 	auto& device = g_ShaderDevice.GetVulkanDevice();
@@ -962,23 +983,18 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 		}
 
 		// Allocate staging buffer
-		{
-			vk::BufferCreateInfo stagingBufCreateInfo;
-			stagingBufCreateInfo.usage = vk::BufferUsageFlagBits::eTransferSrc;
-			stagingBufCreateInfo.size = totalSize;
-
-			vma::AllocationCreateInfo transferBufAllocInfo;
-			transferBufAllocInfo.requiredFlags = VkMemoryPropertyFlags(
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-
-			stagingBuf = alloc.createBufferUnique(stagingBufCreateInfo, transferBufAllocInfo);
-		}
+		stagingBuf = Factories::BufferFactory{}
+			.SetSize(totalSize)
+			.SetUsage(vk::BufferUsageFlagBits::eTransferSrc)
+			.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+			.SetDebugName(Util::string::concat(tex.m_DebugName, ": UpdateTexture() staging buffer"))
+			.Create();
 
 		// Copy the data into the staging buffer
 		size_t currentOffset = 0;
 		for (size_t i = 0; i < count; i++)
 		{
-			stagingBuf.m_Allocation.map().Write(data[i].m_Data, data[i].m_DataLength, currentOffset);
+			stagingBuf.GetAllocation().map().Write(data[i].m_Data, data[i].m_DataLength, currentOffset);
 			currentOffset += data[i].m_DataLength;
 		}
 	}
@@ -987,13 +1003,13 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 	{
 		auto cmdBuffer = queue.CreateCmdBufferAndBegin();
 
-		TransitionImageLayout(tex.m_Image.m_Image, tex.m_CreateInfo.format,
+		TransitionImageLayout(tex.m_Image.GetImage(), tex.m_CreateInfo.format,
 			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, cmdBuffer.get(), 0);
 
-		CopyBufferToImage(stagingBuf.m_Buffer, tex.m_Image.m_Image, tex.m_CreateInfo.extent.width,
+		CopyBufferToImage(stagingBuf.GetBuffer(), tex.m_Image.GetImage(), tex.m_CreateInfo.extent.width,
 			tex.m_CreateInfo.extent.height, cmdBuffer.get());
 
-		TransitionImageLayout(tex.m_Image.m_Image, tex.m_CreateInfo.format,
+		TransitionImageLayout(tex.m_Image.GetImage(), tex.m_CreateInfo.format,
 			vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, cmdBuffer.get(), 0);
 
 		queue.EndAndSubmit(cmdBuffer.get());
