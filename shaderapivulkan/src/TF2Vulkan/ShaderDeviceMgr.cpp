@@ -41,7 +41,8 @@ namespace
 		int GetAdapterIndex() const override;
 		vk::PhysicalDevice GetAdapter() override;
 
-		vk::Instance GetInstance() override;
+		const vk::Instance& GetInstance() const override;
+		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override;
 
 	private:
 		vk::PhysicalDevice GetAdapterByIndex(uint32_t index) const;
@@ -59,6 +60,9 @@ namespace
 
 		vk::UniqueInstance m_Instance;
 		vk::PhysicalDevice m_Adapter;
+
+		vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> m_DebugMessenger;
+		vk::DispatchLoaderDynamic m_InstanceDynDisp;
 
 		bool m_HasBeenInit = false;
 		int m_AdapterIndex = -1;
@@ -297,10 +301,79 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 	return true;
 }
 
+static vk::Bool32 DebugUtilsMessengerCallback(
+	const vk::DebugUtilsMessageSeverityFlagsEXT& severity,
+	const vk::DebugUtilsMessageTypeFlagsEXT& types,
+	const vk::DebugUtilsMessengerCallbackDataEXT& data)
+{
+	bool shouldBreak = false;
+	auto msgFunc = &Msg;
+	using Severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+	using Type = vk::DebugUtilsMessageTypeFlagBitsEXT;
+	if (severity & (Severity::eError | Severity::eWarning))
+	{
+		msgFunc = &Warning;
+		shouldBreak = !!(types & Type::eValidation);
+	}
+
+	msgFunc(
+		"[TF2Vulkan] Debug Message:\n"
+		"\tSeverity:   %s\n"
+		"\tTypes:      %s\n"
+		"\tMessage ID: %s (%i)\n"
+		"\tMessage:    %s\n"
+		"\n",
+		vk::to_string(severity).c_str(),
+		vk::to_string(types).c_str(),
+		data.pMessageIdName, data.messageIdNumber,
+		data.pMessage);
+
+	if (shouldBreak)
+		__debugbreak();
+
+	return true;
+}
+
 InitReturnVal_t ShaderDeviceMgr::Init()
 {
 	LOG_FUNC();
 	m_Instance = CreateInstance();
+
+	m_InstanceDynDisp.init(m_Instance.get());
+
+	// Debug messenger
+	{
+		vk::DebugUtilsMessengerCreateInfoEXT dbgCI;
+
+		using Severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
+		using Type = vk::DebugUtilsMessageTypeFlagBitsEXT;
+
+		dbgCI.messageSeverity =
+			Severity::eVerbose |
+			//Severity::eInfo |
+			Severity::eWarning |
+			Severity::eError;
+
+		dbgCI.messageType =
+			Type::eGeneral |
+			Type::ePerformance |
+			Type::eValidation;
+
+		dbgCI.pfnUserCallback = [](
+			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+			VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+			const VkDebugUtilsMessengerCallbackDataEXT * callbackData,
+			void* userData) -> VkBool32
+		{
+			assert(callbackData);
+			return (VkBool32)DebugUtilsMessengerCallback(
+				(vk::DebugUtilsMessageSeverityFlagsEXT)messageSeverity,
+				(vk::DebugUtilsMessageTypeFlagsEXT)messageTypes,
+				*callbackData);
+		};
+
+		//m_DebugMessenger = m_Instance->createDebugUtilsMessengerEXTUnique(dbgCI, nullptr, m_InstanceDynDisp);
+	}
 
 	auto physicalDevices = m_Instance->enumeratePhysicalDevices();
 	if (physicalDevices.size() < Util::SafeConvert<size_t>(m_AdapterIndex))
@@ -451,8 +524,14 @@ vk::PhysicalDevice ShaderDeviceMgr::GetAdapter()
 	return m_Adapter;
 }
 
-vk::Instance ShaderDeviceMgr::GetInstance()
+const vk::Instance& ShaderDeviceMgr::GetInstance() const
 {
 	assert(m_Instance);
 	return m_Instance.get();
+}
+
+const vk::DispatchLoaderDynamic& ShaderDeviceMgr::GetDynamicDispatch() const
+{
+	assert(m_Instance);
+	return m_InstanceDynDisp;
 }

@@ -19,7 +19,8 @@ namespace TF2Vulkan
 
 		virtual vk::PhysicalDevice GetAdapter() = 0;
 
-		virtual vk::Instance GetInstance() = 0;
+		virtual const vk::Instance& GetInstance() const = 0;
+		virtual const vk::DispatchLoaderDynamic& GetDynamicDispatch() const = 0;
 	};
 
 	extern IShaderDeviceMgrInternal& g_ShaderDeviceMgr;

@@ -23,12 +23,24 @@ namespace TF2Vulkan{ namespace Factories
 
 		vma::AllocatedBuffer Create() const;
 
-		vk::BufferUsageFlags m_Usage{};
-		vk::MemoryPropertyFlags m_MemoryRequiredFlags;
-		size_t m_Size = 0;
+		vk::BufferCreateInfo m_CreateInfo;
+		vma::AllocationCreateInfo m_AllocInfo;
+
 		const void* m_InitialData = nullptr;
 		size_t m_InitialDataSize = 0;
 		size_t m_InitialDataWriteOffset = 0;
 	};
 
+	struct ImageFactory : FactoryBase<ImageFactory>
+	{
+		ImageFactory() = default;
+
+		ImageFactory& SetMemoryUsage(VmaMemoryUsage usage);
+		ImageFactory& SetCreateInfo(const vk::ImageCreateInfo& createInfo);
+
+		vma::AllocatedImage Create() const;
+
+		vk::ImageCreateInfo m_CreateInfo;
+		vma::AllocationCreateInfo m_AllocInfo;
+	};
 } }

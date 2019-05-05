@@ -62,7 +62,7 @@ namespace Util
 		}
 
 		template<size_type otherMaxSize>
-		__declspec(noinline) bool operator==(const InPlaceVector<T, otherMaxSize>& other) const
+		__declspec(noinline) bool operator==(const InPlaceVector<T, otherMaxSize>& other) const noexcept
 		{
 			if (size() != other.size())
 				return false;
@@ -70,13 +70,13 @@ namespace Util
 			return std::equal(begin(), end(), other.begin());
 		}
 		template<size_type otherMaxSize>
-		__declspec(noinline)bool operator!=(const InPlaceVector<T, otherMaxSize>& other) const
+		__declspec(noinline)bool operator!=(const InPlaceVector<T, otherMaxSize>& other) const noexcept
 		{
 			return !operator==(other);
 		}
 
 		template<size_type otherMaxSize>
-		bool operator<(const InPlaceVector<T, otherMaxSize>& other) const
+		bool operator<(const InPlaceVector<T, otherMaxSize>& other) const noexcept
 		{
 			return std::lexicographical_compare(
 				begin(), end(),
@@ -85,9 +85,9 @@ namespace Util
 #ifdef __INTELLISENSE__
 
 #else
-		template<size_type otherMaxSize>
-		auto operator<=>(const InPlaceVector<T, otherMaxSize>& other) const ->
-			decltype(std::declval<T>() <=> other.data()[0])
+		template<size_type otherMaxSize, typename ResultType = Util::threeway_compare_result_t<T>,
+		typename = std::enable_if_t<Util::is_ordering_v<ResultType>>>
+		ResultType operator<=>(const InPlaceVector<T, otherMaxSize>& other) const noexcept
 		{
 			if (auto result = size() <=> other.size(); !std::is_eq(result))
 				return result;
@@ -99,13 +99,19 @@ namespace Util
 					return result;
 			}
 
-			return std::strong_ordering::equal;
+			return Util::strongest_equal_v<ResultType>;
 		}
-		template<size_type otherMaxSize>
-		auto operator<=>(const InPlaceVector<T, otherMaxSize>& other) const ->
-			decltype(std::declval<T>() == other.data()[0], std::strong_equality::equal)
+		template<size_type otherMaxSize,
+			typename = std::enable_if_t<std::is_same_v<Util::threeway_compare_result_t<T>, std::strong_equality>>>
+			std::strong_equality operator<=>(const InPlaceVector<T, otherMaxSize>& other) const noexcept
 		{
 			return operator==(other) ? std::strong_equality::equal : std::strong_equality::nonequal;
+		}
+		template<size_type otherMaxSize,
+			typename = std::enable_if_t<std::is_same_v<Util::threeway_compare_result_t<T>, std::weak_equality>>>
+			std::weak_equality operator<=>(const InPlaceVector<T, otherMaxSize>& other) const noexcept
+		{
+			return operator==(other) ? std::weak_equality::equivalent : std::weak_equality::nonequivalent;
 		}
 #endif
 		T& at(size_type i)

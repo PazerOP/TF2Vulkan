@@ -37,13 +37,6 @@ namespace
 	};
 }
 
-void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line,
-	const std::string_view& msg)
-{
-	const FnSigComponents comps(fnSig);
-	Msg("[TF2Vulkan] %.*s%s%.*s\n", PRINTF_SV(fnSig), msg.empty() ? "" : ": ", PRINTF_SV(msg));
-}
-
 void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line)
 {
 	Warning("[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n", condition, fnSig, file, line);
@@ -54,4 +47,30 @@ void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const
 void Util::FunctionNotImplemented(const char* fnSig, const char* file, int line)
 {
 	Warning("[TF2Vulkan] %s in %s:%i not implemented\n", fnSig, file, line);
+}
+
+static thread_local int s_LogFunctionCallIndentation = 0;
+static constexpr const char LOG_FN_INDENT_CHARS[] =
+	"                                                            ";
+Util::LogFunctionCallScope::LogFunctionCallScope(const std::string_view& fnSig,
+	const std::string_view& file, int line, const std::string_view& msg)
+{
+	LogFunctionCall(fnSig, file, line, msg);
+	s_LogFunctionCallIndentation++;
+}
+
+void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line,
+	const std::string_view& msg)
+{
+	ASSERT_MAIN_THREAD();
+	const FnSigComponents comps(fnSig);
+
+	Msg("[TF2Vulkan] %.*s%.*s%s%.*s\n",
+		s_LogFunctionCallIndentation, LOG_FN_INDENT_CHARS,
+		PRINTF_SV(fnSig), msg.empty() ? "" : ": ", PRINTF_SV(msg));
+}
+
+Util::LogFunctionCallScope::~LogFunctionCallScope()
+{
+	s_LogFunctionCallIndentation--;
 }

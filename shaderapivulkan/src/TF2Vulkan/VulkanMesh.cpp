@@ -9,7 +9,7 @@ using namespace TF2Vulkan;
 
 static std::aligned_storage_t<256> s_FallbackMeshData;
 
-TF2Vulkan::VulkanMesh::VulkanMesh(const VertexFormat& fmt) :
+VulkanMesh::VulkanMesh(const VertexFormat& fmt) :
 	m_VertexBuffer(fmt)
 {
 }
@@ -38,7 +38,9 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 	}
 
 	auto& q = g_ShaderDevice.GetGraphicsQueue();
-	auto cmdBuf = q.CreateCmdBufferAndBegin();
+	auto cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();//q.CreateCmdBufferAndBegin();
+
+	PixScope pixScope(cmdBuf, Color(128, 255, 128), "VulkanMesh::Draw(%i, %i)", firstIndex, indexCount);
 
 	auto indexBuf = Factories::BufferFactory{}
 		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer)
@@ -58,11 +60,11 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		.SetDebugName(__FUNCTION__ "(): Dummy vertex buffer (unused attributes)")
 		.Create();
 
-	g_ShadowStateManager.ApplyCurrentState(cmdBuf.get());
+	g_ShadowStateManager.ApplyCurrentState(cmdBuf);
 
 	assert(firstIndex == -1);
 
-	cmdBuf->bindIndexBuffer(indexBuf.GetBuffer(), 0, vk::IndexType::eUint16);
+	cmdBuf.bindIndexBuffer(indexBuf.GetBuffer(), 0, vk::IndexType::eUint16);
 
 	// Bind vertex buffers
 	{
@@ -77,16 +79,14 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 			0,
 		};
 		static_assert(std::size(vtxBufs) == std::size(offsets));
-		cmdBuf->bindVertexBuffers(0, Util::to_array_proxy(vtxBufs), Util::to_array_proxy(offsets));
+		cmdBuf.bindVertexBuffers(0, TF2Vulkan::to_array_proxy(vtxBufs), TF2Vulkan::to_array_proxy(offsets));
 	}
 
-	cmdBuf->drawIndexed(
+	cmdBuf.drawIndexed(
 		Util::SafeConvert<uint32_t>(indexCount),
 		1,
 		0, // Util::SafeConvert<uint32_t>(firstIndex),
 		0, 0);
-
-	q.EndAndSubmit(cmdBuf.get());
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)

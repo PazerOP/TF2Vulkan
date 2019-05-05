@@ -32,8 +32,11 @@ vk::UniqueCommandBuffer IVulkanQueue::CreateCmdBufferAndBegin(const vk::CommandB
 {
 	auto buf = CreateCmdBuffer();
 
+	vk::CommandBufferInheritanceInfo inheritInfo;
+
 	vk::CommandBufferBeginInfo beginInfo;
 	beginInfo.flags = beginFlags;
+	beginInfo.pInheritanceInfo = &inheritInfo;
 
 	buf->begin(beginInfo);
 

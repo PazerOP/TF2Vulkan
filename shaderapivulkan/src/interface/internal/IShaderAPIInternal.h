@@ -2,8 +2,10 @@
 
 #include "TF2Vulkan/ShaderDevice.h"
 #include "TF2Vulkan/IShaderAPI_DSA.h"
-#include "TF2Vulkan/IShaderAPITexture.h"
+#include "interface/internal/IShaderAPITexture.h"
 #include <TF2Vulkan/Util/ImageManip.h>
+
+#include <Color.h>
 
 enum RenderParamFloat_t;
 enum RenderParamInt_t;
@@ -82,7 +84,19 @@ namespace TF2Vulkan
 		virtual bool IsInFrame() const = 0;
 		virtual bool IsInPass() const = 0;
 
-		virtual const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const = 0;
+		virtual const IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID) const = 0;
+		IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID)
+		{
+			return const_cast<IShaderAPITexture*>(std::as_const(*this).TryGetTexture(texID));
+		}
+		const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const
+		{
+			auto found = TryGetTexture(texID);
+			if (!found)
+				throw VulkanException("TryGetTexture returned nullptr", EXCEPTION_DATA());
+
+			return *found;
+		}
 		IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID)
 		{
 			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetTexture(texID));
@@ -99,6 +113,14 @@ namespace TF2Vulkan
 		{
 			LOG_FUNC();
 			return g_ShaderDevice.GetBackBufferDimensions(width, height);
+		}
+
+		virtual void SetPIXMarker(const Color& color, const char* name) = 0;
+		[[deprecated]] void SetPIXMarker(unsigned long color, const char* name) override final
+		{
+			Color col;
+			col.SetRawColor(color);
+			return SetPIXMarker(col, name);
 		}
 	};
 

@@ -105,6 +105,9 @@ AllocatedImage UniqueAllocator::createImageUnique(const vk::ImageCreateInfo& img
 {
 	auto cImgCreateInfo = (VkImageCreateInfo)imgCreateInfo;
 
+	[[maybe_unused]] auto flags = (vk::ImageCreateFlagBits)(VkImageCreateFlags)imgCreateInfo.flags;
+	[[maybe_unused]] auto usage = (vk::ImageUsageFlagBits)(VkImageUsageFlags)imgCreateInfo.usage;
+
 	VkImage outImg;
 	VmaAllocation outAllocation;
 	if (auto result = vk::Result(vmaCreateImage(m_Allocator.get(), &cImgCreateInfo,

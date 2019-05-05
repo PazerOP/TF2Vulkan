@@ -8,9 +8,11 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>RAD_TELEMETRY_DISABLED;CUSTOM_CREATEINTERFACE_FN;_CRT_SECURE_NO_WARNINGS;_PREFAST_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RAD_TELEMETRY_DISABLED;CUSTOM_CREATEINTERFACE_FN;_CRT_SECURE_NO_WARNINGS;_PREFAST_;TF2VULKAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatSpecificWarningsAsErrors>4473;4477;%(TreatSpecificWarningsAsErrors)</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <AdditionalDependencies>legacy_stdio_definitions.lib;appframework.lib;mathlib.lib;tier0.lib;tier1.lib;tier2.lib;tier3.lib;vstdlib.lib;steam_api.lib;bitmap.lib;%(AdditionalDependencies)</AdditionalDependencies>

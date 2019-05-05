@@ -1,4 +1,4 @@
-#include "interface/internal/IShaderAPIInternal.h"
+ #include "interface/internal/IShaderAPIInternal.h"
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"
@@ -6,6 +6,7 @@
 #include "shaders/VulkanShaderManager.h"
 
 #include <TF2Vulkan/Util/MemoryPool.h>
+#include <TF2Vulkan/Util/std_array.h>
 
 #include <stdshader_dx9_tf2vulkan/ShaderShared.h>
 
@@ -19,63 +20,27 @@ using namespace TF2Vulkan;
 
 namespace
 {
-	struct PipelineKey final
+	struct RenderPassKey
 	{
-		constexpr PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
-		DEFAULT_WEAK_EQUALITY_OPERATOR(PipelineKey);
+		constexpr RenderPassKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		DEFAULT_STRONG_ORDERING_OPERATOR(RenderPassKey);
 
-		CUtlSymbolDbg m_VSName;
-		int m_VSStaticIndex;
-		VertexFormat m_VSVertexFormat;
-
-		CUtlSymbolDbg m_PSName;
-		int m_PSStaticIndex;
-
-		ShaderDepthFunc_t m_DepthCompareFunc;
-		bool m_DepthTest;
-		bool m_DepthWrite;
-
-		bool m_RSBackFaceCulling;
-		ShaderPolyMode_t m_RSPolyMode;
-
-		ShaderBlendFactor_t m_OMSrcFactor;
-		ShaderBlendFactor_t m_OMDstFactor;
 		ShaderAPITextureHandle_t m_OMDepthRT;
-		ShaderAPITextureHandle_t m_OMColorRTs[4];
-
-		Util::InPlaceVector<ShaderViewport_t, 4> m_Viewports;
+		std::array<ShaderAPITextureHandle_t, 4> m_OMColorRTs;
 	};
 }
 
-STD_HASH_DEFINITION(PipelineKey,
-	v.m_VSName,
-	v.m_VSStaticIndex,
-	v.m_VSVertexFormat,
-
-	v.m_PSName,
-	v.m_PSStaticIndex,
-
-	v.m_DepthCompareFunc,
-	v.m_DepthTest,
-	v.m_DepthWrite,
-
-	v.m_RSBackFaceCulling,
-	v.m_RSPolyMode,
-
-	v.m_OMSrcFactor,
-	v.m_OMDstFactor,
+STD_HASH_DEFINITION(RenderPassKey,
 	v.m_OMDepthRT,
-	v.m_OMColorRTs,
-
-	v.m_Viewports
+	v.m_OMColorRTs
 );
 
 namespace
 {
-	struct PipelineLayoutKey final
+	struct PipelineLayoutKey
 	{
 		constexpr PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
-		DEFAULT_WEAK_EQUALITY_OPERATOR(PipelineLayoutKey);
+		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineLayoutKey);
 
 		CUtlSymbolDbg m_VSName;
 		int m_VSStaticIndex;
@@ -97,19 +62,40 @@ STD_HASH_DEFINITION(PipelineLayoutKey,
 
 namespace
 {
-	struct RenderPassKey final
+	struct PipelineKey final : RenderPassKey, PipelineLayoutKey
 	{
-		constexpr RenderPassKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
-		DEFAULT_WEAK_EQUALITY_OPERATOR(RenderPassKey);
+		constexpr PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineKey);
 
-		ShaderAPITextureHandle_t m_OMDepthRT;
-		ShaderAPITextureHandle_t m_OMColorRTs[4];
+		ShaderDepthFunc_t m_DepthCompareFunc;
+		bool m_DepthTest;
+		bool m_DepthWrite;
+
+		bool m_RSBackFaceCulling;
+		ShaderPolyMode_t m_RSPolyMode;
+
+		ShaderBlendFactor_t m_OMSrcFactor;
+		ShaderBlendFactor_t m_OMDstFactor;
+
+		Util::InPlaceVector<ShaderViewport_t, 4> m_Viewports;
 	};
 }
 
-STD_HASH_DEFINITION(RenderPassKey,
-	v.m_OMDepthRT,
-	v.m_OMColorRTs
+STD_HASH_DEFINITION(PipelineKey,
+	static_cast<const RenderPassKey&>(v),
+	static_cast<const PipelineLayoutKey&>(v),
+
+	v.m_DepthCompareFunc,
+	v.m_DepthTest,
+	v.m_DepthWrite,
+
+	v.m_RSBackFaceCulling,
+	v.m_RSPolyMode,
+
+	v.m_OMSrcFactor,
+	v.m_OMDstFactor,
+
+	v.m_Viewports
 );
 
 namespace
@@ -117,21 +103,33 @@ namespace
 	struct RenderPass;
 	struct FramebufferKey final
 	{
-		constexpr FramebufferKey(const RenderPass& rp);
-		DEFAULT_WEAK_EQUALITY_OPERATOR(FramebufferKey);
+		FramebufferKey(const RenderPass& rp);
+		DEFAULT_STRONG_ORDERING_OPERATOR(FramebufferKey);
 
-		ShaderAPITextureHandle_t m_OMDepthRT;
-		ShaderAPITextureHandle_t m_OMColorRTs[4];
+		struct RTRef
+		{
+			RTRef(IShaderAPITexture* tex);
+			DEFAULT_STRONG_ORDERING_OPERATOR(RTRef);
+			vk::ImageView m_ImageView;
+			vk::Extent2D m_Extent;
+			bool operator!() const { return !m_ImageView; }
+		};
+
+		RTRef m_OMDepthRT;
+		std::array<RTRef, 4> m_OMColorRTs;
 
 		const RenderPass* m_RenderPass;
 	};
 }
 
+STD_HASH_DEFINITION(FramebufferKey::RTRef,
+	v.m_ImageView,
+	v.m_Extent
+);
+
 STD_HASH_DEFINITION(FramebufferKey,
 	v.m_OMDepthRT,
-	v.m_OMColorRTs,
-
-	v.m_RenderPass
+	v.m_OMColorRTs
 );
 
 namespace
@@ -228,10 +226,7 @@ namespace
 		bool operator!() const { return !m_Pipeline; }
 		VulkanStateID m_ID;
 	};
-}
 
-namespace
-{
 	class StateManagerVulkan final : public IStateManagerVulkan
 	{
 	public:
@@ -242,15 +237,13 @@ namespace
 			const LogicalDynamicState& dynamicState);
 
 	private:
-		const PipelineLayout& FindOrCreatePipelineLayout(
-			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
-
-		const RenderPass& FindOrCreateRenderPass(
-			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
-
-		const Framebuffer& FindOrCreateFramebuffer(
-			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		const PipelineLayout& FindOrCreatePipelineLayout(const PipelineLayoutKey& key);
+		const RenderPass& FindOrCreateRenderPass(const RenderPassKey& key);
 		const Framebuffer& FindOrCreateFramebuffer(const FramebufferKey& key);
+
+		Pipeline CreatePipeline(const PipelineKey& key,
+			const PipelineLayout& layout,
+			const RenderPass& renderPass) const;
 
 		std::recursive_mutex m_Mutex;
 
@@ -384,65 +377,85 @@ static PipelineLayout CreatePipelineLayout(const PipelineLayoutKey& key)
 	return retVal;
 }
 
+static constexpr IShaderAPITexture* TryFindTexture(ShaderAPITextureHandle_t handle, bool depth = false)
+{
+	if (handle < 0)
+		return nullptr;
+
+	if (handle == 0)
+	{
+		if (!depth)
+			return &g_ShaderDevice.GetBackBufferColorTexture();
+		else
+			return &g_ShaderDevice.GetBackBufferDepthTexture();
+	}
+
+	return &g_ShaderAPIInternal.GetTexture(handle);
+}
+
+static IShaderAPITexture& FindTexture(ShaderAPITextureHandle_t handle, bool depth = false)
+{
+	auto found = TryFindTexture(handle, depth);
+	if (!found)
+		throw VulkanException("TryFindTexture returned nullptr", EXCEPTION_DATA());
+
+	return *found;
+}
+
 static RenderPass CreateRenderPass(const RenderPassKey& key)
 {
 	RenderPass retVal{ RenderPassKey(key) };
 
 	// Subpass 0
 	{
-		auto& sp = retVal.m_Subpasses.emplace_back();
+		Subpass& sp = retVal.m_Subpasses.emplace_back();
 
 		// Color attachments
 		{
-			for (auto& colorID : key.m_OMColorRTs)
+			for (auto& colorTexID : key.m_OMColorRTs)
 			{
-				if (colorID < 0)
+				if (colorTexID < 0)
 					continue;
 
-				auto& att = retVal.m_Attachments.emplace_back();
+				auto& colorTex = FindTexture(colorTexID);
+
+				vk::AttachmentDescription& att = retVal.m_Attachments.emplace_back();
 				att.initialLayout = vk::ImageLayout::eUndefined;
 				att.finalLayout = vk::ImageLayout::ePresentSrcKHR;
 				att.samples = vk::SampleCountFlagBits::e1;
-				att.loadOp = vk::AttachmentLoadOp::eLoad;
+				att.loadOp = vk::AttachmentLoadOp::eClear;
 				att.storeOp = vk::AttachmentStoreOp::eStore;
-				att.stencilLoadOp = vk::AttachmentLoadOp::eLoad;
+				att.stencilLoadOp = vk::AttachmentLoadOp::eClear;
 				att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
-				const auto& tex = g_ShaderAPIInternal.GetTexture(colorID);
-				att.format = tex.GetImageCreateInfo().format;
+				att.format = colorTex.GetImageCreateInfo().format;
 
-				auto& attRef = sp.m_ColorAttachments.emplace_back();
+				vk::AttachmentReference& attRef = sp.m_ColorAttachments.emplace_back();
 				attRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
 				Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
 			}
 		}
 
 		// Depth attachments
+		if (key.m_OMDepthRT >= 0)
 		{
-			if (key.m_OMDepthRT >= 0)
-			{
-				auto& att = retVal.m_Attachments.emplace_back();
+			vk::AttachmentDescription& att = retVal.m_Attachments.emplace_back();
 
-				auto& tex = (key.m_OMDepthRT == 0) ?
-					g_ShaderDevice.GetBackBufferDepthTexture() :
-					g_ShaderAPIInternal.GetTexture(key.m_OMDepthRT);
+			att.initialLayout = vk::ImageLayout::eUndefined;
+			att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+			att.samples = vk::SampleCountFlagBits::e1;
+			att.loadOp = vk::AttachmentLoadOp::eClear;
+			att.storeOp = vk::AttachmentStoreOp::eStore;
+			att.stencilLoadOp = vk::AttachmentLoadOp::eClear;
+			att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
-				att.initialLayout = vk::ImageLayout::eUndefined;
-				att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-				att.samples = vk::SampleCountFlagBits::e1;
-				att.loadOp = vk::AttachmentLoadOp::eLoad;
-				att.storeOp = vk::AttachmentStoreOp::eStore;
-				att.stencilLoadOp = vk::AttachmentLoadOp::eLoad;
-				att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
+			att.format = FindTexture(key.m_OMDepthRT).GetImageCreateInfo().format;
 
-				att.format = tex.GetImageCreateInfo().format;
+			vk::AttachmentReference& attRef = sp.m_DepthStencilAttachment;
+			attRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+			Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
 
-				auto& attRef = sp.m_DepthStencilAttachment;
-				attRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-				Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
-
-				sp.m_CreateInfo.pDepthStencilAttachment = &sp.m_DepthStencilAttachment;
-			}
+			sp.m_CreateInfo.pDepthStencilAttachment = &sp.m_DepthStencilAttachment;
 		}
 
 		AttachVector(sp.m_CreateInfo.pInputAttachments, sp.m_CreateInfo.inputAttachmentCount, sp.m_InputAttachments);
@@ -511,8 +524,8 @@ static vk::CompareOp ConvertCompareOp(ShaderDepthFunc_t op)
 	}
 }
 
-static Pipeline CreatePipeline(const PipelineKey& key,
-	const PipelineLayout& layout, const RenderPass& renderPass)
+Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const PipelineLayout& layout,
+	const RenderPass& renderPass) const
 {
 	Pipeline retVal;
 
@@ -580,25 +593,30 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 
 	// Viewport/scissor state
 	{
-		auto& ci = retVal.m_ViewportStateCI;
-		for (const auto& vpIn : key.m_Viewports)
+		// Viewport(s)
 		{
-			auto& vpOut = retVal.m_Viewports.emplace_back();
-			Util::SafeConvert(vpIn.m_nWidth, vpOut.width);
-			Util::SafeConvert(vpIn.m_nHeight, vpOut.height);
-			Util::SafeConvert(vpIn.m_nTopLeftX, vpOut.x);
-			Util::SafeConvert(vpIn.m_nTopLeftY, vpOut.y);
-			Util::SafeConvert(vpIn.m_flMinZ, vpOut.minDepth);
-			Util::SafeConvert(vpIn.m_flMaxZ, vpOut.maxDepth);
+			auto& ci = retVal.m_ViewportStateCI;
+			for (const auto& vpIn : key.m_Viewports)
+			{
+				auto& vpOut = retVal.m_Viewports.emplace_back();
+				Util::SafeConvert(vpIn.m_nWidth, vpOut.width);
+				Util::SafeConvert(vpIn.m_nHeight, vpOut.height);
+				Util::SafeConvert(vpIn.m_nTopLeftX, vpOut.x);
+				Util::SafeConvert(vpIn.m_nTopLeftY, vpOut.y);
+				Util::SafeConvert(vpIn.m_flMinZ, vpOut.minDepth);
+				Util::SafeConvert(vpIn.m_flMaxZ, vpOut.maxDepth);
+			}
+
+			AttachVector(ci.pViewports, ci.viewportCount, retVal.m_Viewports);
 		}
 
-		AttachVector(ci.pViewports, ci.viewportCount, retVal.m_Viewports);
-
-		auto& scissor = retVal.m_Scissor;
-		g_ShaderAPIInternal.GetTexture(key.m_OMColorRTs[0]).GetSize(scissor.extent.width, scissor.extent.height);
-
-		ci.pScissors = &scissor;
-		ci.scissorCount = 1;
+		// Scissor(s)
+		{
+			retVal.m_Scissor.extent.width = retVal.m_ViewportStateCI.pViewports[0].width;
+			retVal.m_Scissor.extent.height = retVal.m_ViewportStateCI.pViewports[0].height;
+			retVal.m_ViewportStateCI.pScissors = &retVal.m_Scissor;
+			retVal.m_ViewportStateCI.scissorCount = 1;
+		}
 	}
 
 	// Rasterization state create info
@@ -648,12 +666,11 @@ static Pipeline CreatePipeline(const PipelineKey& key,
 	}
 
 	// Depth stencil state
-	if (key.m_OMDepthRT >= 0)
 	{
 		auto& ci = retVal.m_DepthStencilStateCI;
 		retVal.m_CreateInfo.pDepthStencilState = &ci;
 
-		ci.depthTestEnable = key.m_DepthTest;
+		ci.depthTestEnable = false;// key.m_DepthTest;
 		ci.depthWriteEnable = key.m_DepthWrite;
 		ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
 	}
@@ -702,10 +719,9 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 		bool debugNameFirst = true;
 
 		auto& atts = retVal.m_Attachments;
-		for (size_t i = 0; i < std::size(key.m_OMColorRTs); i++)
+		for (auto& colorRT : key.m_OMColorRTs)
 		{
-			const auto rtID = key.m_OMColorRTs[i];
-			if (rtID < 0)
+			if (!colorRT)
 				continue;
 
 			if (debugNameFirst)
@@ -713,44 +729,25 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 			else
 				debugName += '/';
 
-			if (rtID == 0)
-			{
-				atts.push_back(g_ShaderDevice.GetBackBufferColorTexture().FindOrCreateView());
-				debugName += "<backbuffer>";
+			atts.push_back(colorRT.m_ImageView);
 
-				uint32_t localW, localH;
-				g_ShaderDevice.GetBackBufferDimensions(localW, localH);
-				width = std::min(width, localW);
-				height = std::min(height, localH);
-			}
-			else
-			{
-				auto& tex = g_ShaderAPIInternal.GetTexture(rtID);
-				atts.push_back(tex.FindOrCreateView());
+			debugName += '\'';
+			debugName += std::to_string((VkImageView)colorRT.m_ImageView);
+			debugName += '\'';
 
-				debugName += '\'';
-				debugName += tex.GetDebugName();
-				debugName += '\'';
-
-				const auto& ci = tex.GetImageCreateInfo();
-				width = std::min(width, ci.extent.width);
-				height = std::min(height, ci.extent.height);
-			}
+			width = std::min(width, colorRT.m_Extent.width);
+			height = std::min(height, colorRT.m_Extent.height);
 		}
 		debugName += " }";
 	}
 
 	// (Optional) depth attachment
-	if (key.m_OMDepthRT >= 0)
+	if (!!key.m_OMDepthRT)
 	{
-		auto& tex = key.m_OMDepthRT == 0 ?
-			g_ShaderDevice.GetBackBufferDepthTexture() :
-			g_ShaderAPIInternal.GetTexture(key.m_OMDepthRT);
-
-		retVal.m_Attachments.push_back(tex.FindOrCreateView());
+		retVal.m_Attachments.push_back(key.m_OMDepthRT.m_ImageView);
 
 		debugName += " DEPTH { ";
-		debugName += tex.GetDebugName();
+		debugName += std::to_string((VkImageView)key.m_OMDepthRT.m_ImageView);
 		debugName += " }";
 	}
 
@@ -759,11 +756,11 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 		auto& ci = retVal.m_CreateInfo;
 		ci.width = width;
 		ci.height = height;
+		ci.layers = 1;
 
 		AttachVector(ci.pAttachments, ci.attachmentCount, retVal.m_Attachments);
-		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
 
-		ci.layers = 1;
+		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
 
 		retVal.m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci);
 		g_ShaderDevice.SetDebugName(retVal.m_Framebuffer, debugName.c_str());
@@ -788,6 +785,8 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const vk::CommandBuffer& b
 	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
 
+	PixScope pixScope(buf, "StateManagerVulkan::ApplyState(%zu)", Util::UValue(id));
+
 	const auto& state = *m_IDsToPipelines.at(size_t(id));
 
 	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, state.m_Pipeline.get());
@@ -795,10 +794,14 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const vk::CommandBuffer& b
 	vk::RenderPassBeginInfo rpInfo;
 	rpInfo.renderPass = state.m_RenderPass->m_RenderPass.get();
 
-	vk::ClearValue clearVal;
-	clearVal.color = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 1.0f, 0.5f, 0.5f });
-	rpInfo.clearValueCount = 1;
-	rpInfo.pClearValues = &clearVal;
+	vk::ClearValue clearVal[2];
+	clearVal[0].color = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 1.0f, 0.5f, 0.5f });
+	clearVal[0].depthStencil.depth = 1;
+	clearVal[0].depthStencil.stencil = 0;
+
+	std::fill(std::begin(clearVal) + 1, std::end(clearVal), clearVal[0]);
+	rpInfo.clearValueCount = std::size(clearVal);
+	rpInfo.pClearValues = clearVal;
 
 	//state.m_RenderPass->m_CreateInfo.
 
@@ -812,12 +815,10 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const vk::CommandBuffer& b
 	buf.beginRenderPass(rpInfo, vk::SubpassContents::eInline);
 }
 
-const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(
-	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
+const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(const RenderPassKey& key)
 {
 	std::lock_guard lock(m_Mutex);
 
-	const RenderPassKey key(staticState, dynamicState);
 	if (auto found = m_StatesToRenderPasses.find(key); found != m_StatesToRenderPasses.end())
 	{
 		assert(!!found->second);
@@ -827,12 +828,10 @@ const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(
 	return m_StatesToRenderPasses.emplace(key, CreateRenderPass(key)).first->second;
 }
 
-const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(
-	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
+const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const PipelineLayoutKey& key)
 {
 	std::lock_guard lock(m_Mutex);
 
-	const PipelineLayoutKey key(staticState, dynamicState);
 	auto& layout = m_StatesToLayouts[key];
 	if (!layout)
 		layout = CreatePipelineLayout(key);
@@ -850,8 +849,8 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticI
 	if (!pl)
 	{
 		pl = CreatePipeline(key,
-			FindOrCreatePipelineLayout(staticState, dynamicState),
-			FindOrCreateRenderPass(staticState, dynamicState));
+			FindOrCreatePipelineLayout(key),
+			FindOrCreateRenderPass(key));
 
 		Util::SafeConvert(m_IDsToPipelines.size(), pl.m_ID);
 		m_IDsToPipelines.push_back(&pl);
@@ -860,15 +859,11 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticI
 	return pl.m_ID;
 }
 
-constexpr PipelineKey::PipelineKey(const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState) :
+constexpr PipelineKey::PipelineKey(
+	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState) :
 
-	m_VSName(staticState.m_VSName),
-	m_VSStaticIndex(staticState.m_VSStaticIndex),
-	m_VSVertexFormat(staticState.m_VSVertexFormat),
-
-	m_PSName(staticState.m_PSName),
-	m_PSStaticIndex(staticState.m_PSStaticIndex),
+	RenderPassKey(staticState, dynamicState),
+	PipelineLayoutKey(staticState, dynamicState),
 
 	m_DepthCompareFunc(staticState.m_DepthCompareFunc),
 	m_DepthTest(staticState.m_DepthTest),
@@ -879,13 +874,19 @@ constexpr PipelineKey::PipelineKey(const LogicalShadowState& staticState,
 
 	m_OMSrcFactor(staticState.m_OMSrcFactor),
 	m_OMDstFactor(staticState.m_OMDstFactor),
-	m_OMColorRTs{ staticState.m_OMColorRTs[0], staticState.m_OMColorRTs[1], staticState.m_OMColorRTs[2], staticState.m_OMColorRTs[3] },
-	m_OMDepthRT(staticState.m_OMDepthRT),
 
 	m_Viewports(dynamicState.m_Viewports)
 {
 	assert((staticState.m_RSFrontFacePolyMode == staticState.m_RSBackFacePolyMode)
 		|| staticState.m_RSBackFaceCulling);
+
+	if (staticState.m_OMDepthRT < 0)
+	{
+		// Normalize all these so they don't affect the hash
+		m_DepthCompareFunc = SHADER_DEPTHFUNC_ALWAYS;
+		m_DepthTest = false;
+		m_DepthWrite = false;
+	}
 }
 
 constexpr PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
@@ -908,10 +909,21 @@ constexpr RenderPassKey::RenderPassKey(const LogicalShadowState& staticState,
 {
 }
 
-constexpr FramebufferKey::FramebufferKey(const RenderPass& rp) :
-	m_OMColorRTs{ rp.m_Key.m_OMColorRTs[0], rp.m_Key.m_OMColorRTs[1], rp.m_Key.m_OMColorRTs[2], rp.m_Key.m_OMColorRTs[3] },
-	m_OMDepthRT(rp.m_Key.m_OMDepthRT),
+FramebufferKey::RTRef::RTRef(IShaderAPITexture* tex) :
+	m_ImageView(tex ? tex->FindOrCreateView() : nullptr),
+	m_Extent(tex ? ToExtent2D(tex->GetImageCreateInfo().extent) : vk::Extent2D{})
+{
+}
 
+FramebufferKey::FramebufferKey(const RenderPass& rp) :
+	m_OMColorRTs
+	{
+		TryFindTexture(rp.m_Key.m_OMColorRTs[0]),
+		TryFindTexture(rp.m_Key.m_OMColorRTs[1]),
+		TryFindTexture(rp.m_Key.m_OMColorRTs[2]),
+		TryFindTexture(rp.m_Key.m_OMColorRTs[3]),
+	},
+	m_OMDepthRT(TryFindTexture(rp.m_Key.m_OMDepthRT, true)),
 	m_RenderPass(&rp)
 {
 }

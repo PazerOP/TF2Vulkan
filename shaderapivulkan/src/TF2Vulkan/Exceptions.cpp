@@ -44,7 +44,9 @@ std::string VulkanException::CreateFullMessage(const std::string& usrMsg,
 		data.m_FuncSig.c_str(), data.m_File.c_str(), data.m_Line);
 
 	Warning("%s\n", buf);
-	assert(false);
+
+	if (IsDebuggerPresent())
+		__debugbreak();
 
 	return std::string(buf);
 }

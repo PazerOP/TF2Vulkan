@@ -18,16 +18,17 @@ T& FactoryBase<T>::SetDebugName(const std::string_view& dbgName)
 }
 
 template struct FactoryBase<BufferFactory>;
+template struct FactoryBase<ImageFactory>;
 
 BufferFactory& BufferFactory::SetUsage(const vk::BufferUsageFlags& usage)
 {
-	m_Usage = usage;
+	m_CreateInfo.usage = usage;
 	return *this;
 }
 
 BufferFactory& BufferFactory::SetSize(size_t size)
 {
-	m_Size = size;
+	m_CreateInfo.size = size;
 	return *this;
 }
 
@@ -38,15 +39,15 @@ BufferFactory& BufferFactory::SetInitialData(const void* initialData, size_t ini
 	m_InitialDataSize = initialDataSize;
 	m_InitialDataWriteOffset = writeOffset;
 
-	if (m_Size == 0)
-		m_Size = m_InitialDataSize + m_InitialDataWriteOffset;
+	if (m_CreateInfo.size == 0)
+		m_CreateInfo.size = m_InitialDataSize + m_InitialDataWriteOffset;
 
 	return *this;
 }
 
 BufferFactory& BufferFactory::SetMemoryRequiredFlags(const vk::MemoryPropertyFlags& flags)
 {
-	m_MemoryRequiredFlags = flags;
+	m_AllocInfo.requiredFlags = (VkMemoryPropertyFlags)flags;
 	return *this;
 }
 
@@ -58,23 +59,19 @@ BufferFactory& BufferFactory::SetDebugName(std::string&& dbgName)
 
 vma::AllocatedBuffer BufferFactory::Create() const
 {
-	vk::BufferCreateInfo bufCI;
-	bufCI.usage = m_Usage;
-	bufCI.size = m_Size;
-
-	vma::AllocationCreateInfo allocCI;
-	allocCI.requiredFlags = (VkMemoryPropertyFlags)m_MemoryRequiredFlags;
-
 	const bool hasInitialData = m_InitialData && m_InitialDataSize > 0;
 
 	const auto mapRequiredFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 	const auto mapRequiredFlagsVk = VkMemoryPropertyFlags(mapRequiredFlags);
 
-	// TODO: Create a staging buffer etc right here
 	if (hasInitialData)
-		allocCI.requiredFlags |= mapRequiredFlagsVk;
+	{
+		// TODO: Create a staging buffer etc right here. For now, just make the output texture
+		// mappable directly, and map that.
+		const_cast<BufferFactory*>(this)->m_AllocInfo.requiredFlags |= mapRequiredFlagsVk;
+	}
 
-	auto created = g_ShaderDevice.GetVulkanAllocator().createBufferUnique(bufCI, allocCI);
+	auto created = g_ShaderDevice.GetVulkanAllocator().createBufferUnique(m_CreateInfo, m_AllocInfo);
 
 	if (!m_DebugName.empty())
 		g_ShaderDevice.SetDebugName(created.GetBuffer(), m_DebugName.c_str());
@@ -84,6 +81,28 @@ vma::AllocatedBuffer BufferFactory::Create() const
 		auto mapped = created.GetAllocation().map();
 		mapped.Write(m_InitialData, m_InitialDataSize, m_InitialDataWriteOffset);
 	}
+
+	return created;
+}
+
+ImageFactory& ImageFactory::SetMemoryUsage(VmaMemoryUsage usage)
+{
+	m_AllocInfo.usage = usage;
+	return *this;
+}
+
+ImageFactory& ImageFactory::SetCreateInfo(const vk::ImageCreateInfo& createInfo)
+{
+	m_CreateInfo = createInfo;
+	return *this;
+}
+
+vma::AllocatedImage ImageFactory::Create() const
+{
+	auto created = g_ShaderDevice.GetVulkanAllocator().createImageUnique(m_CreateInfo, m_AllocInfo);
+
+	if (!m_DebugName.empty())
+		g_ShaderDevice.SetDebugName(created.GetImage(), m_DebugName.c_str());
 
 	return created;
 }

@@ -7,8 +7,9 @@
 #include "VulkanMesh.h"
 
 #include <TF2Vulkan/Util/DirtyVar.h>
-#include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/ImageManip.h>
+#include <TF2Vulkan/Util/InPlaceVector.h>
+#include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 #include <TF2Vulkan/Util/std_string.h>
 #include <TF2Vulkan/Util/std_utility.h>
@@ -220,9 +221,9 @@ namespace
 
 		IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI) override;
 		ShaderAPITextureHandle_t CreateTexture(int width, int height, int depth, ImageFormat dstImgFormat,
-			int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName) override;
+			int mipLevelCount, int copyCount, CreateTextureFlags_t flags, const char* dbgName, const char* texGroupName) override;
 		void CreateTextures(ShaderAPITextureHandle_t* handles, int count, int width, int height, int depth,
-			ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName,
+			ImageFormat dstImgFormat, int mipLevelCount, int copyCount, CreateTextureFlags_t flags, const char* dbgName,
 			const char* texGroupName) override;
 		void DeleteTexture(ShaderAPITextureHandle_t tex) override;
 		bool IsTexture(ShaderAPITextureHandle_t tex) override;
@@ -352,7 +353,7 @@ namespace
 
 		void BeginPIXEvent(unsigned long color, const char* szName) override { NOT_IMPLEMENTED_FUNC(); }
 		void EndPIXEvent() override { NOT_IMPLEMENTED_FUNC(); }
-		void SetPIXMarker(unsigned long color, const char* szName) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetPIXMarker(const Color& color, const char* szName) override;
 
 		void EnableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
 		void DisableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
@@ -464,7 +465,7 @@ namespace
 
 		void CopyTextureToTexture(int something1, int something2) override { NOT_IMPLEMENTED_FUNC(); }
 
-		const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const override;
+		const IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID) const override;
 
 	private:
 		mutable std::recursive_mutex m_ShaderLock;
@@ -509,39 +510,50 @@ IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
 	LOG_FUNC();
+	auto cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
 
-	auto& queue = g_ShaderDevice.GetGraphicsQueue();
-	auto cmdBuf = queue.CreateCmdBufferAndBegin();
-	vk::ClearAttachment att;
+	PixScope pixScope(cmdBuf, "ShaderAPI::ClearBuffers(%s, %s, %s, %i, %i)",
+		PRINTF_BOOL(clearColor), PRINTF_BOOL(clearDepth), PRINTF_BOOL(clearStencil),
+		rtWidth, rtHeight);
+
+	g_ShadowStateManager.ApplyCurrentState(cmdBuf);
+
+	Util::InPlaceVector<vk::ClearAttachment, 2> atts;
+
+	vk::ClearRect rects[2];
+	{
+		Util::SafeConvert(rtWidth, rects[0].rect.extent.width);
+		Util::SafeConvert(rtHeight, rects[0].rect.extent.height);
+		rects[0].layerCount = 1;
+		rects[1] = rects[0];
+	}
 
 	if (clearColor)
 	{
+		auto& att = atts.emplace_back();
 		att.aspectMask |= vk::ImageAspectFlagBits::eColor;
 		Util::algorithm::copy(GetDynamicState().m_ClearColor, att.clearValue.color.float32);
 		att.colorAttachment = 0;
 	}
 
-	if (clearDepth)
+	if (clearDepth || clearStencil)
 	{
-		att.aspectMask |= vk::ImageAspectFlagBits::eDepth;
-		att.clearValue.depthStencil.depth = 0;
-	}
+		auto& att = atts.emplace_back();
 
-	if (clearStencil)
-	{
-		att.aspectMask |= vk::ImageAspectFlagBits::eStencil;
+		if (clearColor)
+			att = {};
+
+		if (clearDepth)
+			att.aspectMask |= vk::ImageAspectFlagBits::eDepth;
+
+		if (clearStencil)
+			att.aspectMask |= vk::ImageAspectFlagBits::eStencil;
+
+		att.clearValue.depthStencil.depth = 1;
 		att.clearValue.depthStencil.stencil = 0;
 	}
 
-	vk::ClearRect rect;
-	Util::SafeConvert(rtWidth, rect.rect.extent.width);
-	Util::SafeConvert(rtHeight, rect.rect.extent.height);
-
-	g_ShadowStateManager.ApplyCurrentState(*cmdBuf);
-	cmdBuf->clearAttachments(att, rect);
-
-	cmdBuf->endRenderPass();
-	queue.EndAndSubmit(cmdBuf.get());
+	cmdBuf.clearAttachments(atts.size(), atts.data(), atts.size(), rects);
 }
 
 bool ShaderAPI::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
@@ -604,6 +616,21 @@ void ShaderAPI::TexWrap(ShaderAPITextureHandle_t texHandle, ShaderTexCoordCompon
 void ShaderAPI::FlushBufferedPrimitives()
 {
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
+void ShaderAPI::SetPIXMarker(const Color& color, const char* name)
+{
+	vk::DebugUtilsLabelEXT label;
+
+	label.color[0] = color.r() / 255.0f;
+	label.color[1] = color.g() / 255.0f;
+	label.color[2] = color.b() / 255.0f;
+	label.color[3] = color.a() / 255.0f;
+
+	label.pLabelName = name;
+
+	// FIXME move to IVulkanQueue
+	g_ShaderDevice.GetGraphicsQueue().GetQueue().insertDebugUtilsLabelEXT(label, g_ShaderDevice.GetDynamicDispatch());
 }
 
 IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount,
@@ -751,19 +778,19 @@ IShaderAPITexture& ShaderAPI::CreateTexture(std::string&& dbgName, const vk::Ima
 	const auto handle = m_NextTextureHandle++;
 	LOG_FUNC_TEX_NAME(handle, dbgName);
 
-	vma::AllocationCreateInfo allocCreateInfo;
-	allocCreateInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-
-	auto createdImg = g_ShaderDevice.GetVulkanAllocator().createImageUnique(imgCI, allocCreateInfo);
-
 	dbgName = Util::string::concat("[", handle, "] ", std::move(dbgName));
-	g_ShaderDevice.SetDebugName(createdImg.GetImage(), Util::string::concat("Texture: ", dbgName).c_str());
+
+	auto createdImg = Factories::ImageFactory{}
+		.SetCreateInfo(imgCI)
+		.SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+		.SetDebugName(Util::string::concat("Texture: ", dbgName))
+		.Create();
 
 	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, imgCI, std::move(createdImg) }).first->second;
 }
 
 ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int depth,
-	ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags,
+	ImageFormat dstImgFormat, int mipLevelCount, int copyCount, CreateTextureFlags_t flags,
 	const char* dbgName, const char* texGroupName)
 {
 	LOG_FUNC();
@@ -784,15 +811,34 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 	Util::SafeConvert(width, createInfo.extent.width);
 	Util::SafeConvert(height, createInfo.extent.height);
 	Util::SafeConvert(depth, createInfo.extent.depth);
+
+	createInfo.format = ConvertImageFormat(dstImgFormat);
+
+	// Make sure it's a multiple of the block size
+	{
+		const auto blockSize = TF2Vulkan::GetBlockSize(createInfo.format);
+		const auto wDelta = createInfo.extent.width % blockSize.width;
+		const auto hDelta = createInfo.extent.height % blockSize.height;
+
+		createInfo.extent.width += (blockSize.width - wDelta) % blockSize.width;
+		createInfo.extent.height += (blockSize.height - hDelta) % blockSize.height;
+	}
+
 	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
 	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
-	createInfo.format = ConvertImageFormat(dstImgFormat);
-	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment;
+	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+
+	if (flags & TEXTURE_CREATE_RENDERTARGET)
+		createInfo.usage |= vk::ImageUsageFlagBits::eColorAttachment;
+	if (flags & TEXTURE_CREATE_DEPTHBUFFER)
+		createInfo.usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
 	return CreateTexture(dbgName, createInfo).GetHandle();
 }
 
-void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count, int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount, int copyCount, int flags, const char* dbgName, const char* texGroupName)
+void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count,
+	int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount,
+	int copyCount, CreateTextureFlags_t flags, const char* dbgName, const char* texGroupName)
 {
 	LOG_FUNC();
 
@@ -817,15 +863,12 @@ const vk::ImageView& ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageV
 	return result.get();
 }
 
-const IShaderAPITexture& ShaderAPI::GetTexture(ShaderAPITextureHandle_t texID) const
+const IShaderAPITexture* ShaderAPI::TryGetTexture(ShaderAPITextureHandle_t texID) const
 {
-	if (texID == 0)
-	{
-		assert(m_Textures.find(texID) == m_Textures.end());
-		return g_ShaderDevice.GetBackBufferColorTexture();
-	}
+	if (auto found = m_Textures.find(texID); found != m_Textures.end())
+		return &found->second;
 
-	return m_Textures.at(size_t(texID));
+	return nullptr;
 }
 
 void ShaderAPI::DeleteTexture(ShaderAPITextureHandle_t tex)
@@ -905,51 +948,6 @@ void ShaderAPI::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture*
 	UpdateTexture(texHandle, texDatas, arraySize);
 }
 
-static void TransitionImageLayout(const vk::Image& image, const vk::Format& format,
-	const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout,
-	vk::CommandBuffer cmdBuf, uint32_t mipLevel)
-{
-	vk::ImageMemoryBarrier barrier;
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-	barrier.image = image;
-
-	auto& srr = barrier.subresourceRange;
-	srr.aspectMask = vk::ImageAspectFlagBits::eColor;
-	srr.baseMipLevel = mipLevel;
-	srr.levelCount = 1;
-	srr.baseArrayLayer = 0;
-	srr.layerCount = 1;
-
-	vk::PipelineStageFlags srcStageMask;
-	vk::PipelineStageFlags dstStageMask;
-
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
-	{
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-
-		srcStageMask = vk::PipelineStageFlagBits::eTopOfPipe;
-		dstStageMask = vk::PipelineStageFlagBits::eTransfer;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
-	{
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
-		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-
-		srcStageMask = vk::PipelineStageFlagBits::eTransfer;
-		dstStageMask = vk::PipelineStageFlagBits::eFragmentShader;
-	}
-	else
-	{
-		throw VulkanException("Unsupported layout transition", EXCEPTION_DATA());
-	}
-
-	cmdBuf.pipelineBarrier(
-		srcStageMask,
-		dstStageMask,
-		vk::DependencyFlags{}, {}, {}, barrier);
-}
-
 static void CopyBufferToImage(const vk::Buffer& buf, const vk::Image& img, uint32_t width, uint32_t height,
 	vk::CommandBuffer cmdBuf)
 {
@@ -971,6 +969,8 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 	auto& device = g_ShaderDevice.GetVulkanDevice();
 	auto& alloc = g_ShaderDevice.GetVulkanAllocator();
 	auto& queue = g_ShaderDevice.GetGraphicsQueue();
+
+	PixScope pixScope(queue.GetQueue(), "ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
 	//const auto memReqs = device.getImageMemoryRequirements(tex.m_Image.m_Image.get());
 
 	// Prepare the staging buffer
@@ -1001,18 +1001,19 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 
 	// Copy staging buffer into destination texture
 	{
-		auto cmdBuffer = queue.CreateCmdBufferAndBegin();
+		auto uniqueCmdBuffer = queue.CreateCmdBufferAndBegin();
+		auto cmdBuffer = uniqueCmdBuffer.get();
 
 		TransitionImageLayout(tex.m_Image.GetImage(), tex.m_CreateInfo.format,
-			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, cmdBuffer.get(), 0);
+			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, cmdBuffer, 0);
 
 		CopyBufferToImage(stagingBuf.GetBuffer(), tex.m_Image.GetImage(), tex.m_CreateInfo.extent.width,
-			tex.m_CreateInfo.extent.height, cmdBuffer.get());
+			tex.m_CreateInfo.extent.height, cmdBuffer);
 
 		TransitionImageLayout(tex.m_Image.GetImage(), tex.m_CreateInfo.format,
-			vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, cmdBuffer.get(), 0);
+			vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, cmdBuffer, 0);
 
-		queue.EndAndSubmit(cmdBuffer.get());
+		queue.EndAndSubmit(cmdBuffer);
 	}
 
 	return true;

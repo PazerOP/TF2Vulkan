@@ -41,7 +41,7 @@ namespace TF2Vulkan
 		constexpr bool operator==(const VertexFormat& other) const { return m_BaseFmt == other.m_BaseFmt; }
 		constexpr bool operator!=(const VertexFormat& other) const { return !operator==(other); }
 #else
-		constexpr std::strong_equality operator<=>(const VertexFormat& other) const { return m_BaseFmt <=> other.m_BaseFmt; }
+		constexpr std::strong_ordering operator<=>(const VertexFormat& other) const { return m_BaseFmt <=> other.m_BaseFmt; }
 #endif
 
 		template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>

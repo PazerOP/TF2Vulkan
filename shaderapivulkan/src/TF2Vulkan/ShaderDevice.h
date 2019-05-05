@@ -35,6 +35,7 @@ namespace TF2Vulkan
 
 		virtual const vk::Device& GetVulkanDevice() = 0;
 		virtual vma::UniqueAllocator& GetVulkanAllocator() = 0;
+		virtual const vk::DispatchLoaderDynamic& GetDynamicDispatch() const = 0;
 
 		virtual const IVulkanQueue& GetGraphicsQueue() = 0;
 
@@ -50,6 +51,8 @@ namespace TF2Vulkan
 		{
 			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetBackBufferDepthTexture());
 		}
+
+		virtual const vk::CommandBuffer& GetPrimaryCmdBuf() const = 0;
 
 		virtual bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) = 0;
 

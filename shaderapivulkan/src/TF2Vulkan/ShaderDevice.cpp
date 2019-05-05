@@ -1,6 +1,6 @@
 #include "FormatConversion.h"
 #include "interface/internal/IShaderAPIInternal.h"
-#include "IShaderAPITexture.h"
+#include "interface/internal/IShaderAPITexture.h"
 #include "ShaderDevice.h"
 #include "ShaderDeviceMgr.h"
 
@@ -128,6 +128,8 @@ namespace
 		const IShaderAPITexture& GetBackBufferDepthTexture() const override;
 
 		bool IsReady() const override;
+		const vk::CommandBuffer& GetPrimaryCmdBuf() const override;
+		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override { return m_Data.m_DynamicLoader; }
 
 	private:
 		// In a struct so we can easily reset all the vulkan-related stuff on shutdown
@@ -229,6 +231,8 @@ void ShaderDevice::Present()
 	auto& curImg = scData.m_Images.at(currentFrame);
 	auto& device = GetVulkanDevice();
 
+	PixScope pixScope(curImg.m_PrimaryCmdBuf.get(), "ShaderDevice::Present()");
+
 	constexpr auto timeout = std::numeric_limits<uint32_t>::max();
 
 	device.waitForFences(curImg.m_InFlightFence.get(), true, timeout);
@@ -237,6 +241,13 @@ void ShaderDevice::Present()
 	const auto [acquireResult, acquireImageIndex] = device.acquireNextImageKHR(sc,
 		std::numeric_limits<uint64_t>::max(), curImg.m_ImageAvailableSemaphore.get(),
 		nullptr);
+
+	curImg.m_PrimaryCmdBuf->endRenderPass();
+
+	// Prepare swapchain for presentation
+	TransitionImageLayout(curImg.m_Image, scData.m_SwapChainCreateInfo.imageFormat,
+		vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR,
+		curImg.m_PrimaryCmdBuf.get(), 0);
 
 	auto& q = m_Data.m_GraphicsQueue.m_Queue;
 	{
@@ -250,16 +261,42 @@ void ShaderDevice::Present()
 		const vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		submitInfo.pWaitDstStageMask = &waitStages;
 
+		curImg.m_PrimaryCmdBuf->end();
+		submitInfo.pCommandBuffers = &curImg.m_PrimaryCmdBuf.get();
+		submitInfo.commandBufferCount = 1;
+
 		q.submit(submitInfo, curImg.m_InFlightFence.get());
+
+		device.waitForFences(curImg.m_InFlightFence.get(), true, timeout);
 	}
 
-	vk::PresentInfoKHR pInfo;
+	// Present
+	{
+		vk::PresentInfoKHR pInfo;
 
-	pInfo.pImageIndices = &currentFrame;
-	pInfo.pSwapchains = &sc;
-	pInfo.swapchainCount = 1;
+		pInfo.pWaitSemaphores = &curImg.m_RenderFinishedSemaphore.get();
+		pInfo.waitSemaphoreCount = 1;
 
-	q.presentKHR(pInfo);
+		pInfo.pSwapchains = &sc;
+		pInfo.swapchainCount = 1;
+
+		pInfo.pImageIndices = &currentFrame;
+
+		q.presentKHR(pInfo);
+
+		q.waitIdle();
+	}
+
+	// Reset the command buffer
+	{
+		vk::CommandBufferBeginInfo beginInfo;
+		beginInfo.flags |= vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+		curImg.m_PrimaryCmdBuf->begin(beginInfo);
+
+		TransitionImageLayout(curImg.m_Image, scData.m_SwapChainCreateInfo.imageFormat,
+			vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eColorAttachmentOptimal,
+			curImg.m_PrimaryCmdBuf.get(), 0);
+	}
 
 	currentFrame = (currentFrame + 1) % scData.m_Images.size();
 }
@@ -408,6 +445,9 @@ static vk::UniqueCommandPool CreateCommandPool(const vk::Device& device, uint32_
 {
 	vk::CommandPoolCreateInfo createInfo({}, queueFamily);
 
+	// Allow resetting command buffers
+	createInfo.flags |= vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+
 	auto result = device.createCommandPoolUnique(createInfo);
 	if (!result)
 		Error(TF2VULKAN_PREFIX "Failed to create command pool for queue %u\n", queueFamily);
@@ -550,6 +590,15 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 			sprintf_s(buf, "TF2Vulkan Swap Chain Image #%zu", index);
 			SetDebugName(img, buf);
 
+			perImg.m_PrimaryCmdBuf = GetGraphicsQueue().CreateCmdBufferAndBegin();
+
+			// Initially, images start in ePresentSrcKHR layout. We want them
+			// to be in eColorAttachmentOptimal, since that's what ::Present()
+			// is expecting, since that's what ::Present() leaves the swapchain
+			// images in after presentation.
+			TransitionImageLayout(img, ci.format,
+				vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eColorAttachmentOptimal,
+				perImg.m_PrimaryCmdBuf.get(), 0);
 
 			index++;
 		}
@@ -592,7 +641,6 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		ci.arrayLayers = 1;
 		ci.imageType = vk::ImageType::e2D;
 		ci.mipLevels = 1;
-		ci.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 		ci.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
 
 		assert(!m_Data.m_DepthTexture); // TODO
@@ -641,6 +689,7 @@ const vk::ImageCreateInfo& ShaderDevice::BackbufferColorTexture::GetImageCreateI
 	s_BBIC.format = scci.imageFormat;
 	s_BBIC.extent.width = scci.imageExtent.width;
 	s_BBIC.extent.height = scci.imageExtent.height;
+	s_BBIC.extent.depth = 1;
 	s_BBIC.mipLevels = 1;
 	s_BBIC.usage = scci.imageUsage;
 	s_BBIC.arrayLayers = scci.imageArrayLayers;
@@ -662,4 +711,10 @@ bool ShaderDevice::IsReady() const
 {
 	// TODO: Is this a safe way to check we've been initialized?
 	return !!m_Data.m_DepthTexture;
+}
+
+const vk::CommandBuffer& ShaderDevice::GetPrimaryCmdBuf() const
+{
+	auto& scData = m_Data.m_SwapChain;
+	return scData.m_Images[scData.m_CurrentFrame].m_PrimaryCmdBuf.get();
 }

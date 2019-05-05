@@ -314,6 +314,89 @@ vk::Format TF2Vulkan::PromoteToHardware(vk::Format format, FormatUsage usage, bo
 	}
 }
 
+vk::Extent2D TF2Vulkan::GetBlockSize(vk::Format format)
+{
+	switch (format)
+	{
+	case vk::Format::eBc1RgbSrgbBlock:
+	case vk::Format::eBc1RgbUnormBlock:
+
+	case vk::Format::eBc1RgbaSrgbBlock:
+	case vk::Format::eBc1RgbaUnormBlock:
+
+	case vk::Format::eBc3SrgbBlock:
+	case vk::Format::eBc3UnormBlock:
+		return vk::Extent2D(4, 4);
+
+	default:
+		assert(!"Unknown format");
+
+	case vk::Format::eR8Srgb:
+	case vk::Format::eR8Unorm:
+	case vk::Format::eR8Snorm:
+	case vk::Format::eR8Uscaled:
+	case vk::Format::eR8Sscaled:
+	case vk::Format::eR8Uint:
+	case vk::Format::eR8Sint:
+
+	case vk::Format::eR8G8B8A8Srgb:
+	case vk::Format::eR8G8B8A8Unorm:
+	case vk::Format::eR8G8B8A8Snorm:
+	case vk::Format::eR8G8B8A8Uscaled:
+	case vk::Format::eR8G8B8A8Sscaled:
+	case vk::Format::eR8G8B8A8Uint:
+	case vk::Format::eR8G8B8A8Sint:
+
+	case vk::Format::eB8G8R8A8Srgb:
+	case vk::Format::eB8G8R8A8Unorm:
+	case vk::Format::eB8G8R8A8Snorm:
+	case vk::Format::eB8G8R8A8Uint:
+	case vk::Format::eB8G8R8A8Sint:
+	case vk::Format::eB8G8R8A8Uscaled:
+	case vk::Format::eB8G8R8A8Sscaled:
+
+	case vk::Format::eR16G16B16A16Unorm:
+	case vk::Format::eR16G16B16A16Snorm:
+	case vk::Format::eR16G16B16A16Uscaled:
+	case vk::Format::eR16G16B16A16Sscaled:
+	case vk::Format::eR16G16B16A16Uint:
+	case vk::Format::eR16G16B16A16Sint:
+	case vk::Format::eR16G16B16A16Sfloat:
+		return vk::Extent2D(1, 1);
+	}
+}
+
+vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
+{
+	switch (format)
+	{
+	case vk::Format::eB8G8R8A8Srgb:
+	case vk::Format::eB8G8R8A8Unorm:
+	case vk::Format::eB8G8R8A8Snorm:
+	case vk::Format::eB8G8R8A8Uint:
+	case vk::Format::eB8G8R8A8Sint:
+	case vk::Format::eB8G8R8A8Uscaled:
+	case vk::Format::eB8G8R8A8Sscaled:
+
+	case vk::Format::eR16G16B16A16Unorm:
+	case vk::Format::eR16G16B16A16Snorm:
+	case vk::Format::eR16G16B16A16Uscaled:
+	case vk::Format::eR16G16B16A16Sscaled:
+	case vk::Format::eR16G16B16A16Uint:
+	case vk::Format::eR16G16B16A16Sint:
+	case vk::Format::eR16G16B16A16Sfloat:
+		return vk::ImageAspectFlagBits::eColor;
+
+	case vk::Format::eD24UnormS8Uint:
+	case vk::Format::eD16UnormS8Uint:
+	case vk::Format::eD32SfloatS8Uint:
+		return vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+	}
+
+	assert(!"Unknown/unsupported format");
+	return vk::ImageAspectFlags{};
+}
+
 static constexpr uint_fast32_t PackDataFormat(DataFormat fmt,
 	uint_fast8_t components, uint_fast8_t componentSize)
 {

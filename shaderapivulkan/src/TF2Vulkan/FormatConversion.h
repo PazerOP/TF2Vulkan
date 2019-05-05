@@ -20,6 +20,9 @@ namespace TF2Vulkan
 	bool HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering);
 	ImageFormat PromoteToHardware(ImageFormat format, FormatUsage usage, bool filtering);
 	vk::Format PromoteToHardware(vk::Format format, FormatUsage usage, bool filtering);
+	vk::Extent2D GetBlockSize(vk::Format format);
+
+	vk::ImageAspectFlags GetAspects(const vk::Format& format);
 
 	enum class DataFormat : uint_fast8_t
 	{
