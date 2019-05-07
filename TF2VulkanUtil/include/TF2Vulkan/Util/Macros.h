@@ -23,7 +23,7 @@ namespace Util
 
 #define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread())
 
-#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #ifdef TF2VULKAN_ENABLE_FUNCTION_LOGGING
 #define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __LINE__) (__FUNCSIG__, __FILE__, __LINE__, msg)
 #else

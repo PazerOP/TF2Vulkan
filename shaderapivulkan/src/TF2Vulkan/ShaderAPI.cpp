@@ -453,7 +453,7 @@ IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
 	LOG_FUNC();
-	//return;
+	return;
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
 
 	auto pixScope = cmdBuf.DebugRegionBegin("ShaderAPI::ClearBuffers(%s, %s, %s, %i, %i)",
@@ -1147,5 +1147,6 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 
 	g_StateManagerStatic.ApplyCurrentState(cmdBuf);
 
-	GetActiveMesh().m_Mesh->DrawInternal();
+	auto& activeMesh = GetActiveMesh();
+	activeMesh.m_Mesh->DrawInternal(cmdBuf, activeMesh.m_FirstIndex, activeMesh.m_IndexCount);
 }

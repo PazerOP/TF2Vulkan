@@ -65,7 +65,7 @@ void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view
 	ASSERT_MAIN_THREAD();
 	const FnSigComponents comps(fnSig);
 
-	Msg("[TF2Vulkan] %.*s%.*s%s%.*s\n",
+	Msg("[TF2Vulkan] -> %.*s%.*s%s%.*s\n",
 		s_LogFunctionCallIndentation, LOG_FN_INDENT_CHARS,
 		PRINTF_SV(fnSig), msg.empty() ? "" : ": ", PRINTF_SV(msg));
 }

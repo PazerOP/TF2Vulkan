@@ -37,6 +37,6 @@ float4 main(const PS_INPUT input) : SV_TARGET
 
 	float3 rgb = ConvertColorSpace601(y_cb_cr);
 
-	return float4(1, 0, 1, 1);
+	return float4(1, 1, 1, 1);
 	return float4(rgb, 1);
 }

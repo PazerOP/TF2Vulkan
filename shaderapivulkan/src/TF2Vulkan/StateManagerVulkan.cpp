@@ -619,13 +619,13 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 			attrs.emplace_back(VIAD(i, 0, vertexElement.m_Type->GetVKFormat(), vertexElement.m_Offset));
 		}
 
-		const auto maxVertexAttributes = g_MatSysConfig.MaxVertexAttributes();
-		for (size_t i = 0; i < maxVertexAttributes; i++)
+		const auto& vertexShader = g_ShaderManager.FindOrCreateShader(key.m_VSName, key.m_VSStaticIndex);
+		for (const auto& input : vertexShader.GetReflectionData().m_VertexInputs)
 		{
 			bool found = false;
 			for (auto& attr : attrs)
 			{
-				if (attr.location == i)
+				if (attr.location == input.m_Location)
 				{
 					found = true;
 					break;
@@ -636,7 +636,7 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 				continue;
 
 			// Otherwise, insert an empty one
-			attrs.emplace_back(VIAD(i, 1, vk::Format::eR32G32B32A32Sfloat));
+			attrs.emplace_back(VIAD(input.m_Location, 1, vk::Format::eR32G32B32A32Sfloat));
 		}
 
 		auto & binds = retVal.m_VertexInputBindingDescriptions;
@@ -1207,8 +1207,9 @@ PipelineKey::PipelineKey(
 		vp.Init(0, 0, bbWidth, bbHeight);
 	}
 
-	if (staticState.m_OMDepthRT < 0)
+	//if (staticState.m_OMDepthRT < 0 || (!m_DepthTest && !m_DepthWrite))
 	{
+		m_OMDepthRT = -1;
 		// Normalize all these so they don't affect the hash
 		m_DepthCompareFunc = SHADER_DEPTHFUNC_ALWAYS;
 		m_DepthTest = false;

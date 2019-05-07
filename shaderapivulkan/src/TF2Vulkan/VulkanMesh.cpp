@@ -52,13 +52,9 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 	internalMaterial->DrawMesh(VertexCompressionType_t::VERTEX_COMPRESSION_ON);
 }
 
-void VulkanMesh::DrawInternal()
+void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int indexCount)
 {
-	const auto& activeMesh = g_ShaderAPIInternal.GetActiveMesh();
-	assert(activeMesh.m_Mesh == this);
-
-	auto & q = g_ShaderDevice.GetGraphicsQueue();
-	auto & cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();//q.CreateCmdBufferAndBegin();
+	LOG_FUNC();
 
 	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
@@ -101,8 +97,8 @@ void VulkanMesh::DrawInternal()
 		cmdBuf.AddResource(std::move(dummyVertexBuf));
 	}
 
-	assert(activeMesh.m_FirstIndex == 0); // TODO: What happens when we actually have offsets?
-	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(activeMesh.m_IndexCount));
+	assert(firstIndex == 0); // TODO: What happens when we actually have offsets?
+	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(indexCount));
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
