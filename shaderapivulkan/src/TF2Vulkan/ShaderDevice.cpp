@@ -1,6 +1,7 @@
 #include "FormatConversion.h"
 #include "interface/internal/IShaderAPIInternal.h"
 #include "interface/internal/IShaderAPITexture.h"
+#include "VulkanCommandBufferBase.h"
 #include "ShaderDevice.h"
 #include "ShaderDeviceMgr.h"
 
@@ -44,7 +45,7 @@ namespace
 			vk::UniqueSemaphore m_RenderFinishedSemaphore;
 			vk::UniqueFence m_InFlightFence;
 
-			vk::UniqueCommandBuffer m_PrimaryCmdBuf;
+			std::unique_ptr<IVulkanCommandBuffer> m_PrimaryCmdBuf;
 		};
 
 		std::vector<PerImage> m_Images;
@@ -116,7 +117,7 @@ namespace
 
 		vma::UniqueAllocator& GetVulkanAllocator() override;
 
-		const IVulkanQueue& GetGraphicsQueue() override;
+		IVulkanQueue& GetGraphicsQueue() override;
 		Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() override;
 
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
@@ -128,7 +129,7 @@ namespace
 		const IShaderAPITexture& GetBackBufferDepthTexture() const override;
 
 		bool IsReady() const override;
-		const vk::CommandBuffer& GetPrimaryCmdBuf() const override;
+		IVulkanCommandBuffer& GetPrimaryCmdBuf() override;
 		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override { return m_Data.m_DynamicLoader; }
 
 	private:
@@ -231,7 +232,7 @@ void ShaderDevice::Present()
 	auto& curImg = scData.m_Images.at(currentFrame);
 	auto& device = GetVulkanDevice();
 
-	PixScope pixScope(curImg.m_PrimaryCmdBuf.get(), "ShaderDevice::Present()");
+	auto pixScope = curImg.m_PrimaryCmdBuf->DebugRegionBegin("ShaderDevice::Present()");
 
 	constexpr auto timeout = std::numeric_limits<uint32_t>::max();
 
@@ -242,12 +243,16 @@ void ShaderDevice::Present()
 		std::numeric_limits<uint64_t>::max(), curImg.m_ImageAvailableSemaphore.get(),
 		nullptr);
 
-	curImg.m_PrimaryCmdBuf->endRenderPass();
+#pragma warning(suppress : 4996)
+	auto& primaryCmdBuf = *curImg.m_PrimaryCmdBuf;
+	primaryCmdBuf.endRenderPass();
 
 	// Prepare swapchain for presentation
 	TransitionImageLayout(curImg.m_Image, scData.m_SwapChainCreateInfo.imageFormat,
 		vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR,
-		curImg.m_PrimaryCmdBuf.get(), 0);
+		primaryCmdBuf, 0);
+
+	primaryCmdBuf.end();
 
 	auto& q = m_Data.m_GraphicsQueue.m_Queue;
 	{
@@ -261,11 +266,7 @@ void ShaderDevice::Present()
 		const vk::PipelineStageFlags waitStages = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		submitInfo.pWaitDstStageMask = &waitStages;
 
-		curImg.m_PrimaryCmdBuf->end();
-		submitInfo.pCommandBuffers = &curImg.m_PrimaryCmdBuf.get();
-		submitInfo.commandBufferCount = 1;
-
-		q.submit(submitInfo, curImg.m_InFlightFence.get());
+		primaryCmdBuf.Submit(submitInfo, curImg.m_InFlightFence.get());
 
 		device.waitForFences(curImg.m_InFlightFence.get(), true, timeout);
 	}
@@ -291,11 +292,11 @@ void ShaderDevice::Present()
 	{
 		vk::CommandBufferBeginInfo beginInfo;
 		beginInfo.flags |= vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		curImg.m_PrimaryCmdBuf->begin(beginInfo);
+		primaryCmdBuf.begin(beginInfo);
 
 		TransitionImageLayout(curImg.m_Image, scData.m_SwapChainCreateInfo.imageFormat,
 			vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eColorAttachmentOptimal,
-			curImg.m_PrimaryCmdBuf.get(), 0);
+			primaryCmdBuf, 0);
 	}
 
 	currentFrame = (currentFrame + 1) % scData.m_Images.size();
@@ -504,7 +505,7 @@ vma::UniqueAllocator& ShaderDevice::GetVulkanAllocator()
 	return m_Data.m_Allocator;
 }
 
-const IVulkanQueue& ShaderDevice::GetGraphicsQueue()
+IVulkanQueue& ShaderDevice::GetGraphicsQueue()
 {
 	assert(m_Data.m_GraphicsQueue.m_Queue);
 	assert(m_Data.m_GraphicsQueue.m_CommandPool);
@@ -598,7 +599,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 			// images in after presentation.
 			TransitionImageLayout(img, ci.format,
 				vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eColorAttachmentOptimal,
-				perImg.m_PrimaryCmdBuf.get(), 0);
+				*perImg.m_PrimaryCmdBuf, 0);
 
 			index++;
 		}
@@ -713,8 +714,8 @@ bool ShaderDevice::IsReady() const
 	return !!m_Data.m_DepthTexture;
 }
 
-const vk::CommandBuffer& ShaderDevice::GetPrimaryCmdBuf() const
+IVulkanCommandBuffer& ShaderDevice::GetPrimaryCmdBuf()
 {
 	auto& scData = m_Data.m_SwapChain;
-	return scData.m_Images[scData.m_CurrentFrame].m_PrimaryCmdBuf.get();
+	return *scData.m_Images[scData.m_CurrentFrame].m_PrimaryCmdBuf;
 }

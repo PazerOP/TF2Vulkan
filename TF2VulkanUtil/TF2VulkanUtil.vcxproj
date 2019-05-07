@@ -95,6 +95,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\KeyValues.h" />
     <ClInclude Include="include\TF2Vulkan\Util\MemoryPool.h" />
     <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\ScopeFunc.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_stack.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_array.h" />
@@ -108,6 +109,8 @@
     <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />
     <ClInclude Include="include\TF2Vulkan\Util\UniqueObject.h" />
     <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\vector.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\vmatrix.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="include\TF2Vulkan\Util\ImageManip.cpp" />

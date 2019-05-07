@@ -99,4 +99,10 @@ namespace Util
 
 		return SetDirtyVar(targetArray[realIndex], newVal, dirtyVar);
 	}
+
+	template<typename T, typename T2, typename TIndex, size_t size>
+	inline void SetDirtyVar(std::array<T, size>& targetArray, const TIndex& index, const T2& newVal, bool& dirtyVar)
+	{
+		return SetDirtyVar(targetArray.at(Util::SafeConvert<size_t>(index)), newVal, dirtyVar);
+	}
 }

@@ -84,6 +84,7 @@ namespace TF2Vulkan
 		void SetPrimitiveType(MaterialPrimitiveType_t type) override;
 
 		void Draw(int firstIndex, int indexCount) override;
+		void DrawInternal();
 
 		void SetColorMesh(IMesh* colorMesh, int vertexOffset) override;
 

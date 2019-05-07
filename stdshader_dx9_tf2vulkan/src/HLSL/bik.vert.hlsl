@@ -1,6 +1,24 @@
 #include "common_vs_fxc.hlsli"
 
-float4 main( float4 pos : POSITION ) : SV_POSITION
+struct VS_INPUT
 {
-	return pos;
+	float4 pos : POSITION;
+	float2 texCoord : TEXCOORD0;
+};
+
+struct VS_OUTPUT
+{
+	float4 pos : POSITION;
+	float2 texCoord : TEXCOORD0;
+};
+
+VS_OUTPUT main( const VS_INPUT input )
+{
+	VS_OUTPUT output;
+
+	output.pos = input.pos;
+	output.pos.z = 0.5f;
+	output.texCoord = input.texCoord;
+
+	return output;
 }

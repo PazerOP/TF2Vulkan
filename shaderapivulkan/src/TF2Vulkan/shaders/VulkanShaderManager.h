@@ -8,6 +8,8 @@ namespace spirv_cross
 	struct Resource;
 }
 
+class IMaterial;
+
 namespace TF2Vulkan
 {
 	namespace ShaderReflection
@@ -132,6 +134,10 @@ namespace TF2Vulkan
 			virtual vk::ShaderModule GetModule() const = 0;
 			virtual const ShaderID& GetID() const = 0;
 			virtual const ShaderReflection::ReflectionData& GetReflectionData() const = 0;
+
+			//virtual void BindResources(IMaterial* pMaterial) const = 0;
+
+			//virtual ::IShader& GetValveShader() = 0;
 
 		protected:
 			virtual ~IShader() = default;

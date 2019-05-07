@@ -314,6 +314,11 @@ vk::Format TF2Vulkan::PromoteToHardware(vk::Format format, FormatUsage usage, bo
 	}
 }
 
+vk::Extent2D TF2Vulkan::GetBlockSize(ImageFormat format)
+{
+	return GetBlockSize(ConvertImageFormat(format));
+}
+
 vk::Extent2D TF2Vulkan::GetBlockSize(vk::Format format)
 {
 	switch (format)
@@ -370,6 +375,14 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 {
 	switch (format)
 	{
+	case vk::Format::eR8Unorm:
+	case vk::Format::eR8Snorm:
+	case vk::Format::eR8Uscaled:
+	case vk::Format::eR8Sscaled:
+	case vk::Format::eR8Uint:
+	case vk::Format::eR8Sint:
+	case vk::Format::eR8Srgb:
+
 	case vk::Format::eB8G8R8A8Srgb:
 	case vk::Format::eB8G8R8A8Unorm:
 	case vk::Format::eB8G8R8A8Snorm:
@@ -437,6 +450,28 @@ vk::Format TF2Vulkan::ConvertDataFormat(DataFormat fmt, uint_fast8_t components,
 
 	assert(!"Unknown/unsupported combination");
 	return vk::Format::eUndefined;
+}
+
+bool TF2Vulkan::IsCompressed(ImageFormat format)
+{
+	return IsCompressed(ConvertImageFormat(format));
+}
+
+bool TF2Vulkan::IsCompressed(vk::Format format)
+{
+	switch (format)
+	{
+	default:
+		assert(!"Unknown/unsupported format");
+	case vk::Format::eUndefined:
+		return false;
+
+	case vk::Format::eBc1RgbaSrgbBlock:
+	case vk::Format::eBc1RgbaUnormBlock:
+	case vk::Format::eBc1RgbSrgbBlock:
+	case vk::Format::eBc1RgbUnormBlock:
+		return true;
+	}
 }
 
 bool TF2Vulkan::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering)

@@ -4,8 +4,11 @@
 #include "TF2Vulkan/IShaderAPI_DSA.h"
 #include "interface/internal/IShaderAPITexture.h"
 #include <TF2Vulkan/Util/ImageManip.h>
+#include <TF2Vulkan/Util/ScopeFunc.h>
 
 #include <Color.h>
+
+#include <stack>
 
 enum RenderParamFloat_t;
 enum RenderParamInt_t;
@@ -14,6 +17,14 @@ enum RenderParamVector_t;
 namespace TF2Vulkan
 {
 	struct TextureData;
+	class VulkanMesh;
+
+	struct ActiveMeshData
+	{
+		VulkanMesh* m_Mesh;
+		int m_FirstIndex;
+		int m_IndexCount;
+	};
 
 	class IShaderAPIInternal : public IShaderAPI_DSA
 	{
@@ -85,9 +96,14 @@ namespace TF2Vulkan
 		virtual bool IsInPass() const = 0;
 
 		virtual const IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID) const = 0;
+		virtual const IShaderAPITexture& TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID) const = 0;
 		IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID)
 		{
 			return const_cast<IShaderAPITexture*>(std::as_const(*this).TryGetTexture(texID));
+		}
+		IShaderAPITexture& TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID)
+		{
+			return const_cast<IShaderAPITexture&>(std::as_const(*this).TryGetTexture(texID, fallbackID));
 		}
 		const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const
 		{
@@ -122,7 +138,33 @@ namespace TF2Vulkan
 			col.SetRawColor(color);
 			return SetPIXMarker(col, name);
 		}
+
+		virtual const ActiveMeshData& GetActiveMesh() = 0;
+		virtual void PushActiveMesh(const ActiveMeshData& mesh) = 0;
+		virtual void PopActiveMesh() = 0;
 	};
 
 	extern IShaderAPIInternal& g_ShaderAPIInternal;
+
+	namespace detail
+	{
+		struct ActiveMeshPusher final
+		{
+			constexpr ActiveMeshPusher(ActiveMeshData&& meshData) : m_MeshData(meshData) {}
+			ActiveMeshData m_MeshData;
+			void operator()() const
+			{
+				g_ShaderAPIInternal.PushActiveMesh(m_MeshData);
+			}
+		};
+		struct ActiveMeshPopper final
+		{
+			void operator()() const
+			{
+				g_ShaderAPIInternal.PopActiveMesh();
+			}
+		};
+	}
+
+	using ActiveMeshScope = Util::ScopeFunc<detail::ActiveMeshPusher, detail::ActiveMeshPopper>;
 }

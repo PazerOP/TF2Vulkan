@@ -139,6 +139,7 @@ namespace Util
 
 		size_type size() const { return m_Elements; }
 		static constexpr size_type max_size() { return maxSize; }
+		[[nodiscard]] bool empty() const { return size() == 0; }
 
 		T& front() { return at(0); }
 		const T& front() const { return at(0); }

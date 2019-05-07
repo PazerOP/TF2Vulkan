@@ -1,11 +1,15 @@
 #pragma once
 
+#include "ShaderConstant.h"
 #include "VertexFormat.h"
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
+#include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/std_compare.h>
 #include <TF2Vulkan/Util/std_stack.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
+#include <TF2Vulkan/Util/vmatrix.h>
+#include <TF2Vulkan/Util/vector.h>
 
 #include <shaderapi/ishaderapi.h>
 #include <shaderapi/ishaderdynamic.h>
@@ -23,14 +27,26 @@ namespace TF2Vulkan
 		constexpr LogicalDynamicState() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(LogicalDynamicState); // weak because we have floats
 
-		std::stack<VMatrix, Util::InPlaceVector<VMatrix, 32>> m_Matrices[NUM_MATRIX_MODES] = {};
+		std::array<VMatrix, NUM_MATRIX_MODES> m_Matrices;
 
+		bool m_InFlashlightMode = false;
 		IMaterial* m_BoundMaterial = nullptr;
 		int m_BoneCount = 0;
 		ShaderAPITextureHandle_t m_FullScreenTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
 		uint_fast8_t m_AnisotropicLevel = 0;
 		Util::InPlaceVector<ShaderViewport_t, 4> m_Viewports;
-		float m_ClearColor[4] = {};
+		std::array<float, 4> m_ClearColor = {};
+		MaterialFogMode_t m_SceneFogMode = MATERIAL_FOG_NONE;
+		Vector m_WorldSpaceCameraPosition;
+		bool m_ForceDepthFuncEquals = false;
+
+		int m_VertexShaderIndex = 0;
+		int m_PixelShaderIndex = 0;
+
+		VertexShaderConstants m_VertexShaderConstants;
+		PixelShaderConstants m_PixelShaderConstants;
+
+		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
 
 		// Shader constants
 		float m_SCOverbright = 1.0f; // standard vertex shader constant
@@ -59,7 +75,7 @@ namespace TF2Vulkan
 		// Pixel shader settings
 		CUtlSymbolDbg m_PSName;
 		int m_PSStaticIndex = 0;
-		Sampler m_PSSamplers[16];
+		std::array<Sampler, 16> m_PSSamplers;
 
 		// Depth settings
 		ShaderDepthFunc_t m_DepthCompareFunc = SHADER_DEPTHFUNC_NEARER;
@@ -89,7 +105,7 @@ namespace TF2Vulkan
 		ShaderBlendFactor_t m_OMSrcFactor = SHADER_BLEND_ZERO;
 		ShaderBlendFactor_t m_OMDstFactor = SHADER_BLEND_ONE;
 		ShaderAPITextureHandle_t m_OMDepthRT = 0;
-		ShaderAPITextureHandle_t m_OMColorRTs[4] = { 0, -1, -1, -1 };
+		std::array<ShaderAPITextureHandle_t, 4> m_OMColorRTs = { 0, -1, -1, -1 };
 
 		// Fog settings
 		ShaderFogMode_t m_FogMode = SHADER_FOGMODE_DISABLED;

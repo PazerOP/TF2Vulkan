@@ -1,6 +1,7 @@
-#include "stdafx.h"
+#include "IStateManagerDynamic.h"
+#include "interface/IMaterialInternal.h"
 #include "ShaderDevice.h"
-#include "ShadowStateManager.h"
+#include "interface/internal/IStateManagerStatic.h"
 #include "VulkanFactories.h"
 #include "VulkanMesh.h"
 #include <TF2Vulkan/Util/FourCC.h>
@@ -30,6 +31,13 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		return;
 	}
 
+	assert(firstIndex == -1); // TODO: What about other values
+	if (firstIndex == -1)
+	{
+		// "Start at true zero"?
+		firstIndex = 0;
+	}
+
 	assert(indexCount >= 0);
 	if (indexCount == 0)
 	{
@@ -37,10 +45,22 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		indexCount = IndexCount();
 	}
 
-	auto& q = g_ShaderDevice.GetGraphicsQueue();
-	auto cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();//q.CreateCmdBufferAndBegin();
+	ActiveMeshScope meshScope(ActiveMeshData{ this, firstIndex, indexCount });
 
-	PixScope pixScope(cmdBuf, Color(128, 255, 128), "VulkanMesh::Draw(%i, %i)", firstIndex, indexCount);
+	auto& dynState = g_StateManagerDynamic.GetDynamicState();
+	auto internalMaterial = assert_cast<IMaterialInternal*>(dynState.m_BoundMaterial);
+	internalMaterial->DrawMesh(VertexCompressionType_t::VERTEX_COMPRESSION_ON);
+}
+
+void VulkanMesh::DrawInternal()
+{
+	const auto& activeMesh = g_ShaderAPIInternal.GetActiveMesh();
+	assert(activeMesh.m_Mesh == this);
+
+	auto & q = g_ShaderDevice.GetGraphicsQueue();
+	auto & cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();//q.CreateCmdBufferAndBegin();
+
+	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
 	auto indexBuf = Factories::BufferFactory{}
 		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer)
@@ -60,11 +80,8 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		.SetDebugName(__FUNCTION__ "(): Dummy vertex buffer (unused attributes)")
 		.Create();
 
-	g_ShadowStateManager.ApplyCurrentState(cmdBuf);
-
-	assert(firstIndex == -1);
-
 	cmdBuf.bindIndexBuffer(indexBuf.GetBuffer(), 0, vk::IndexType::eUint16);
+	cmdBuf.AddResource(std::move(indexBuf));
 
 	// Bind vertex buffers
 	{
@@ -80,13 +97,12 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		};
 		static_assert(std::size(vtxBufs) == std::size(offsets));
 		cmdBuf.bindVertexBuffers(0, TF2Vulkan::to_array_proxy(vtxBufs), TF2Vulkan::to_array_proxy(offsets));
+		cmdBuf.AddResource(std::move(vertexBuf));
+		cmdBuf.AddResource(std::move(dummyVertexBuf));
 	}
 
-	cmdBuf.drawIndexed(
-		Util::SafeConvert<uint32_t>(indexCount),
-		1,
-		0, // Util::SafeConvert<uint32_t>(firstIndex),
-		0, 0);
+	assert(activeMesh.m_FirstIndex == 0); // TODO: What happens when we actually have offsets?
+	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(activeMesh.m_IndexCount));
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)

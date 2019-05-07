@@ -1,3 +1,4 @@
+#include "TF2Vulkan/FormatConversion.h"
 #include "TextureData.h"
 
 using namespace TF2Vulkan;
@@ -39,10 +40,21 @@ template<bool assertEnabled> static bool Validate(const TextureData& data)
 		return false;
 	}
 
+	// Verify that image isn't "empty" depth-wise
 	if (data.m_Depth > 1 && data.m_SliceStride <= 0)
 	{
 		assert(!assertEnabled);
 		return false;
+	}
+
+	// Verify that width/height are a multiple of block size
+	{
+		auto blockSize = GetBlockSize(data.m_Format);
+		if ((data.m_Width % blockSize.width) || (data.m_Height % blockSize.height))
+		{
+			assert(!assertEnabled);
+			return false;
+		}
 	}
 
 	return true;

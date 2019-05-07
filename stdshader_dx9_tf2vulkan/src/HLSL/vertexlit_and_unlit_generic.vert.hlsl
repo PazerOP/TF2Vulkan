@@ -10,8 +10,8 @@
 	float4 cMorphSubrect;
 };
 
-SamplerState morphSampler;
-Texture2D morphTexture;
+[[vk::binding(11)]] SamplerState morphSampler;
+[[vk::binding(11)]] Texture2D morphTexture;
 
 #define SEAMLESS_SCALE (cSeamlessScale.x)
 

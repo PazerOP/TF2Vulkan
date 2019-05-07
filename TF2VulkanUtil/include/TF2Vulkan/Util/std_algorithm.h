@@ -53,4 +53,10 @@ namespace Util{ namespace algorithm
 	{
 		std::copy(std::begin(src), std::end(src), dest);
 	}
+
+	template<typename T, typename T2>
+	inline void copy(const T& src, T2& dest)
+	{
+		std::copy(std::begin(src), std::end(src), dest);
+	}
 } }

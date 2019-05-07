@@ -93,19 +93,23 @@
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\Exceptions.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderAPI_DSA.h" />
+    <ClInclude Include="src\interface\IMaterialInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\PixScope.h" />
     <ClInclude Include="include\TF2Vulkan\TextureData.h" />
+    <ClInclude Include="src\interface\internal\IStateManagerStatic.h" />
     <ClInclude Include="src\stdafx.h" />
     <ClInclude Include="src\TF2Vulkan\FormatConversion.h" />
     <ClInclude Include="src\TF2Vulkan\GraphicsPipeline.h" />
     <ClInclude Include="src\interface\internal\IShaderAPITexture.h" />
-    <ClInclude Include="src\TF2Vulkan\IVulkanQueue.h" />
+    <ClInclude Include="src\interface\internal\IVulkanQueue.h" />
     <ClInclude Include="src\TF2Vulkan\LogicalState.h" />
     <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h" />
     <ClInclude Include="src\interface\internal\IShaderAPIInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
+    <ClInclude Include="src\TF2Vulkan\ShaderConstant.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderDevice.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderDeviceMgr.h" />
     <ClInclude Include="src\TF2Vulkan\shaders\VulkanShaderManager.h" />
-    <ClInclude Include="src\TF2Vulkan\ShadowStateManager.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerDynamic.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerVulkan.h" />
     <ClInclude Include="src\TF2Vulkan\VertexFormat.h" />
@@ -120,6 +124,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\interface\internal\IShaderAPITexture.cpp" />
+    <ClCompile Include="src\interface\internal\IVulkanCommandBuffer.cpp" />
     <ClCompile Include="src\TF2Vulkan\Exceptions.cpp" />
     <ClCompile Include="include\TF2Vulkan\TextureData.cpp" />
     <ClCompile Include="src\ShaderAPIVulkanDLL.cpp" />
@@ -130,18 +135,19 @@
     <ClCompile Include="src\interface\DebugTextureInfo.cpp" />
     <ClCompile Include="src\TF2Vulkan\FormatConversion.cpp" />
     <ClCompile Include="src\TF2Vulkan\GraphicsPipeline.cpp" />
-    <ClCompile Include="src\TF2Vulkan\IVulkanQueue.cpp" />
+    <ClCompile Include="src\interface\internal\IVulkanQueue.cpp" />
     <ClCompile Include="src\TF2Vulkan\MaterialSystemHardwareConfig.cpp" />
+    <ClCompile Include="src\TF2Vulkan\PixScope.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderConstant.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderDevice.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderDeviceMgr.cpp" />
     <ClCompile Include="src\TF2Vulkan\shaders\VulkanShaderManager.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerVulkan.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanBuffer.cpp" />
-    <ClCompile Include="src\TF2Vulkan\VulkanCommandBuffer.cpp" />
+    <ClCompile Include="src\TF2Vulkan\VulkanCommandBufferBase.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanFactories.cpp" />
-    <ClCompile Include="src\TF2Vulkan\VulkanShaderShadow.cpp" />
-    <ClCompile Include="src\TF2Vulkan\ShadowStateManager.cpp" />
+    <ClCompile Include="src\TF2Vulkan\StateManagerStatic.cpp" />
     <ClCompile Include="src\TF2Vulkan\IStateManagerDynamic.cpp" />
     <ClCompile Include="src\TF2Vulkan\VertexFormat.cpp" />
     <ClCompile Include="src\TF2Vulkan\vk_mem_alloc.cpp" />

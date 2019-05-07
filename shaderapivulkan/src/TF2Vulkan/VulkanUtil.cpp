@@ -6,7 +6,7 @@ using namespace TF2Vulkan;
 
 void TF2Vulkan::TransitionImageLayout(const vk::Image& image, const vk::Format& format,
 	const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout,
-	const vk::CommandBuffer& cmdBuf, uint32_t mipLevel)
+	IVulkanCommandBuffer& cmdBuf, uint32_t mipLevel)
 {
 	vk::ImageMemoryBarrier barrier;
 	barrier.oldLayout = oldLayout;
@@ -78,66 +78,68 @@ vk::Extent2D TF2Vulkan::ToExtent2D(const vk::Extent3D& extent)
 	return vk::Extent2D(extent.width, extent.height);
 }
 
-static vk::DebugUtilsLabelEXT InitDebugUtilsLabel(const char* name, const Color& color)
+vk::Extent3D TF2Vulkan::ToExtent3D(const vk::Extent2D& extent)
 {
-	vk::DebugUtilsLabelEXT label;
-
-	label.color[0] = color.r() / 255.0f;
-	label.color[1] = color.g() / 255.0f;
-	label.color[2] = color.b() / 255.0f;
-	label.color[3] = color.a() / 255.0f;
-
-	label.pLabelName = name;
-
-	return label;
+	return vk::Extent3D{ extent.width, extent.height, 1 };
 }
 
-void TF2Vulkan::SetPIXMarker(const vk::CommandBuffer& cmdBuf, const char* name, const Color& color)
+bool TF2Vulkan::IsEqual(const vk::ClearValue& lhs, const vk::ClearValue& rhs, ClearValueType type)
 {
-	cmdBuf.insertDebugUtilsLabelEXT(InitDebugUtilsLabel(name, color), g_ShaderDeviceMgr.GetDynamicDispatch());
+	switch (type)
+	{
+	case ClearValueType::Float:
+	case ClearValueType::Int:
+	case ClearValueType::UInt:
+		return IsEqual(lhs.color, rhs.color, Util::SafeConvert<ClearColorType>(type));
+
+	case ClearValueType::DepthStencil:
+		return (lhs.depthStencil == rhs.depthStencil);
+
+	default:
+		throw VulkanException("Invalid ClearValueType", EXCEPTION_DATA());
+	}
 }
 
-void TF2Vulkan::SetPIXMarker(const vk::Queue& queue, const char* name, const Color& color)
+bool TF2Vulkan::IsEqual(const vk::ClearColorValue& lhs, const vk::ClearColorValue& rhs, ClearColorType type)
 {
-	queue.insertDebugUtilsLabelEXT(InitDebugUtilsLabel(name, color), g_ShaderDeviceMgr.GetDynamicDispatch());
+	switch (type)
+	{
+	default:
+		throw VulkanException("Invalid ClearColorType", EXCEPTION_DATA());
+
+	case ClearColorType::UInt:
+		return
+			lhs.uint32[0] == rhs.uint32[0] &&
+			lhs.uint32[1] == rhs.uint32[1] &&
+			lhs.uint32[2] == rhs.uint32[2] &&
+			lhs.uint32[3] == rhs.uint32[3];
+
+	case ClearColorType::Int:
+		return
+			lhs.int32[0] == rhs.int32[0] &&
+			lhs.int32[1] == rhs.int32[1] &&
+			lhs.int32[2] == rhs.int32[2] &&
+			lhs.int32[3] == rhs.int32[3];
+
+	case ClearColorType::Float:
+		return
+			lhs.float32[0] == rhs.float32[0] &&
+			lhs.float32[1] == rhs.float32[1] &&
+			lhs.float32[2] == rhs.float32[2] &&
+			lhs.float32[3] == rhs.float32[3];
+	}
 }
 
-void TF2Vulkan::BeginPIXEvent(const vk::CommandBuffer& cmdBuf, const char* name, const Color& color)
+bool operator==(const vk::ClearColorValue& lhs, const vk::ClearColorValue& rhs)
 {
-	cmdBuf.beginDebugUtilsLabelEXT(InitDebugUtilsLabel(name, color), g_ShaderDeviceMgr.GetDynamicDispatch());
+	return
+		lhs.float32[0] == rhs.float32[0] &&
+		lhs.float32[1] == rhs.float32[1] &&
+		lhs.float32[2] == rhs.float32[2] &&
+		lhs.float32[3] == rhs.float32[3];
 }
 
-void TF2Vulkan::BeginPIXEvent(const vk::Queue& queue, const char* name, const Color& color)
+bool operator!=(const vk::ClearColorValue& lhs, const vk::ClearColorValue& rhs)
 {
-	queue.beginDebugUtilsLabelEXT(InitDebugUtilsLabel(name, color), g_ShaderDeviceMgr.GetDynamicDispatch());
-}
-
-void TF2Vulkan::EndPIXEvent(const vk::CommandBuffer& cmdBuf)
-{
-	cmdBuf.endDebugUtilsLabelEXT(g_ShaderDeviceMgr.GetDynamicDispatch());
-}
-
-void TF2Vulkan::EndPIXEvent(const vk::Queue& queue)
-{
-	queue.endDebugUtilsLabelEXT(g_ShaderDeviceMgr.GetDynamicDispatch());
-}
-
-PixScope::~PixScope()
-{
-	std::visit([](const auto & obj)
-		{
-			using type = std::decay_t<decltype(obj)>;
-			if constexpr (std::is_same_v<type, std::monostate>)
-				TF2Vulkan::EndPIXEvent(g_ShaderDevice.GetGraphicsQueue().GetQueue());
-			else
-				TF2Vulkan::EndPIXEvent(obj);
-
-		}, m_Object);
-}
-
-void PixScope::BeginPIXEventAnon(const char* fmt, const Color& color)
-{
-	const auto& queue = g_ShaderDevice.GetGraphicsQueue().GetQueue();
-	m_Object = queue;
-	BeginPIXEvent(queue, fmt, color);
+	return !operator==(lhs, rhs);
 }

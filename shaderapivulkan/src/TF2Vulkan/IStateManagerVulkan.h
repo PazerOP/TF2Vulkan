@@ -2,7 +2,6 @@
 
 namespace TF2Vulkan
 {
-	enum class LogicalShadowStateID : size_t;
 	struct LogicalShadowState;
 	struct LogicalDynamicState;
 
@@ -17,18 +16,17 @@ namespace TF2Vulkan
 		virtual ~IStateManagerVulkan() = default;
 
 	public:
-		virtual VulkanStateID FindOrCreateState(
-			LogicalShadowStateID staticID, const LogicalShadowState& staticState,
+		virtual VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
 			const LogicalDynamicState& dynamicState) = 0;
 
-		virtual void ApplyState(VulkanStateID stateID, const vk::CommandBuffer& buf) = 0;
+		virtual void ApplyState(VulkanStateID stateID, const LogicalShadowState& staticState,
+			const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf) = 0;
 
-		VulkanStateID ApplyState(
-			LogicalShadowStateID staticID, const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState, const vk::CommandBuffer& buf)
+		VulkanStateID ApplyState(const LogicalShadowState& staticState,
+			const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
 		{
-			const auto& stateID = FindOrCreateState(staticID, staticState, dynamicState);
-			ApplyState(stateID, buf);
+			const auto& stateID = FindOrCreateState(staticState, dynamicState);
+			ApplyState(stateID, staticState, dynamicState, buf);
 			return stateID;
 		}
 	};

@@ -1,13 +1,14 @@
 #pragma once
 
+#include "interface/internal/IVulkanCommandBuffer.h"
+
 #include <TF2Vulkan/Util/std_compare.h>
 #include <TF2Vulkan/Util/std_utility.h>
 
 #include <Color.h>
+#include <tier0/platform.h>
 
 #include <vulkan/vulkan.hpp>
-
-#include <variant>
 
 template<typename T1, typename T2> struct ::std::hash<vk::Flags<T1, T2>>
 {
@@ -53,76 +54,49 @@ STD_HASH_DEFINITION(vk::ImageViewCreateInfo,
 	v.subresourceRange
 );
 
+#define TF2VULKAN_MAKE_NONUNIQUE_STACK_COPY(varName, array) \
+	auto varName = reinterpret_cast<std::add_pointer_t<std::decay_t<decltype(array[0].get())>>>( \
+		stackalloc(std::size((array)) * sizeof(std::decay_t<decltype(array[0].get())>))); \
+	for (size_t i = 0; i < std::size((array)); i++) \
+		varName[i] = array[i].get();
+
 namespace TF2Vulkan
 {
 	void TransitionImageLayout(const vk::Image& image, const vk::Format& format,
 		const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout,
-		const vk::CommandBuffer& cmdBuf, uint32_t mipLevel);
+		IVulkanCommandBuffer& cmdBuf, uint32_t mipLevel);
 
 	template<typename T, size_t size>
 	inline vk::ArrayProxy<T> to_array_proxy(T(&array)[size])
 	{
 		return vk::ArrayProxy<T>(size, array);
 	}
+	template<typename T>
+	inline vk::ArrayProxy<T> to_array_proxy(T* data, size_t count)
+	{
+		return vk::ArrayProxy<T>(count, data);
+	}
 
 	vk::Extent2D ToExtent2D(const vk::Extent3D& extent);
+	vk::Extent3D ToExtent3D(const vk::Extent2D& extent);
 
-	static constexpr Color PIX_TF2VULKAN_RED(255, 93, 79);
-	void SetPIXMarker(const vk::CommandBuffer& cmdBuf, const char* name, const Color& color = PIX_TF2VULKAN_RED);
-	void SetPIXMarker(const vk::Queue& queue, const char* name, const Color& color = PIX_TF2VULKAN_RED);
-	void BeginPIXEvent(const vk::CommandBuffer& cmdBuf, const char* name, const Color& color = PIX_TF2VULKAN_RED);
-	void BeginPIXEvent(const vk::Queue& queue, const char* name, const Color& color = PIX_TF2VULKAN_RED);
-	void EndPIXEvent(const vk::CommandBuffer& cmdBuf);
-	void EndPIXEvent(const vk::Queue& queue);
-
-	class PixScope final
+	enum class ClearValueType : uint_fast8_t
 	{
-	public:
-		template<typename... Args>
-		PixScope(const char* fmt, const Args& ... args) : PixScope(PIX_TF2VULKAN_RED, fmt, args...) {}
-
-		template<typename... Args>
-		PixScope(const vk::CommandBuffer& cmdBuf, const char* fmt, const Args& ... args) :
-			PixScope(cmdBuf, PIX_TF2VULKAN_RED, fmt, args...)
-		{
-		}
-
-		template<typename... Args>
-		PixScope(const vk::Queue& queue, const char* fmt, const Args& ... args) :
-			PixScope(queue, PIX_TF2VULKAN_RED, fmt, args...)
-		{
-		}
-
-		template<typename... Args>
-		PixScope(const vk::CommandBuffer& cmdBuf, const Color& color, const char* fmt, const Args& ... args) :
-			m_Object(cmdBuf)
-		{
-			char buf[512];
-			sprintf_s(buf, fmt, args...);
-			BeginPIXEvent(cmdBuf, buf, color);
-		}
-		template<typename... Args>
-		PixScope(const vk::Queue& queue, const Color& color, const char* fmt, const Args& ... args) :
-			m_Object(queue)
-		{
-			char buf[512];
-			sprintf_s(buf, fmt, args...);
-			BeginPIXEvent(queue, buf, color);
-		}
-		template<typename... Args>
-		PixScope(const Color& color, const char* fmt, const Args&... args)
-		{
-			char buf[512];
-			sprintf_s(buf, fmt, args...);
-			BeginPIXEventAnon(buf, color);
-		}
-
-		~PixScope();
-
-	private:
-		void BeginPIXEventAnon(const char* fmt, const Color& color);
-		std::variant<vk::Queue, vk::CommandBuffer> m_Object;
+		Float,
+		Int,
+		UInt,
+		DepthStencil,
 	};
+
+	enum class ClearColorType : uint_fast8_t
+	{
+		Float = ClearValueType::Float,
+		Int = ClearValueType::Int,
+		UInt = ClearValueType::UInt,
+	};
+
+	bool IsEqual(const vk::ClearValue& lhs, const vk::ClearValue& rhs, ClearValueType colorType);
+	bool IsEqual(const vk::ClearColorValue& lhs, const vk::ClearColorValue& rhs, ClearColorType type);
 }
 
 #ifndef __INTELLISENSE__

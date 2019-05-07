@@ -16,10 +16,13 @@ namespace TF2Vulkan
 		COUNT,
 	};
 
+	bool IsCompressed(ImageFormat format);
+	bool IsCompressed(vk::Format format);
 	bool HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering);
 	bool HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering);
 	ImageFormat PromoteToHardware(ImageFormat format, FormatUsage usage, bool filtering);
 	vk::Format PromoteToHardware(vk::Format format, FormatUsage usage, bool filtering);
+	vk::Extent2D GetBlockSize(ImageFormat format);
 	vk::Extent2D GetBlockSize(vk::Format format);
 
 	vk::ImageAspectFlags GetAspects(const vk::Format& format);

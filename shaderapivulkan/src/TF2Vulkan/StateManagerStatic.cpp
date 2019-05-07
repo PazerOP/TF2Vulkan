@@ -1,22 +1,139 @@
-#include "ShadowStateManager.h"
+#include "interface/internal/IStateManagerStatic.h"
 #include "IStateManagerDynamic.h"
 #include "IStateManagerVulkan.h"
+
 #include <TF2Vulkan/Util/DirtyVar.h>
+#include <TF2Vulkan/Util/interface.h>
+
+#include <unordered_map>
 
 using namespace TF2Vulkan;
 using namespace Util;
 
-void ShadowStateManager::ApplyState(LogicalShadowStateID id, const vk::CommandBuffer& buf)
+namespace
 {
-	LOG_FUNC();
-	if (m_Dirty)
+	class ShadowStateManager final : public IStateManagerStatic
 	{
-		g_StateManagerVulkan.ApplyState(
-			id, GetState(id), g_StateManagerDynamic.GetDynamicState(), buf);
-	}
+	public:
+		void ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf);
+		void ApplyCurrentState(IVulkanCommandBuffer& buf);
+		void SetDefaultState() override final;
+
+		void DepthFunc(ShaderDepthFunc_t func) override final;
+		void EnableDepthWrites(bool enable) override final;
+		void EnableDepthTest(bool enable) override final;
+		void EnablePolyOffset(PolygonOffsetMode_t mode);
+
+		void EnableStencil(bool enable) override final;
+		void StencilFunc(ShaderStencilFunc_t func) override final;
+		void StencilPassOp(ShaderStencilOp_t op) override final;
+		void StencilFailOp(ShaderStencilOp_t op) override final;
+		void StencilDepthFailOp(ShaderStencilOp_t op) override final;
+		void StencilReference(int reference) override final;
+		void StencilMask(int mask) override final;
+		void StencilWriteMask(int mask) override final;
+
+		void EnableColorWrites(bool enable) override final;
+		void EnableAlphaWrites(bool enable) override final;
+
+		void EnableBlending(bool enable) override final;
+		void BlendFunc(ShaderBlendFactor_t srcFactor, ShaderBlendFactor_t dstFactor) override final;
+
+		void EnableAlphaTest(bool enable) override final;
+		void AlphaFunc(ShaderAlphaFunc_t alphaFunc, float alphaRef) override final;
+
+		void PolyMode(ShaderPolyModeFace_t face, ShaderPolyMode_t mode) override final;
+
+		void EnableCulling(bool enable) override final;
+
+		void EnableConstantColor(bool enable) override final;
+
+		void VertexShaderVertexFormat(uint flags, int texCoordCount,
+			int* texCoorDimensions, int userDataSize) override final;
+
+		void SetVertexShader(const char* filename, int staticIndex) override final;
+		void SetPixelShader(const char* filename, int staticIndex) override final;
+
+		void EnableLighting(bool enable) override final;
+
+		void EnableSpecular(bool enable) override final;
+
+		void EnableSRGBWrite(bool enable) override final;
+
+		void EnableSRGBRead(Sampler_t sampler, bool enable) override final;
+
+		void EnableVertexBlend(bool enable) override final;
+
+		void OverbrightValue(TextureStage_t stage, float value) override final;
+		void EnableTexture(Sampler_t sampler, bool enable) override final;
+		void EnableTexGen(TextureStage_t stage, bool enable) override final;
+		void TexGen(TextureStage_t stage, ShaderTexGenParam_t param) override final;
+
+		void EnableCustomPixelPipe(bool enable) override final;
+		void CustomTextureStages(int stageCount) override final;
+		void CustomTextureOperation(TextureStage_t stage, ShaderTexChannel_t channel,
+			ShaderTexOp_t op, ShaderTexArg_t arg1, ShaderTexArg_t arg2) override final;
+
+		void DrawFlags(uint drawFlags) override final;
+
+		void EnableAlphaPipe(bool enable) override final;
+		void EnableConstantAlpha(bool enable) override final;
+		void EnableVertexAlpha(bool enable) override final;
+		void EnableTextureAlpha(TextureStage_t stage, bool enable) override final;
+
+		void EnableBlendingSeparateAlpha(bool enable) override final;
+		void BlendFuncSeparateAlpha(ShaderBlendFactor_t srcFactor, ShaderBlendFactor_t dstFactor) override final;
+		void FogMode(ShaderFogMode_t fogMode) override final;
+
+		void SetDiffuseMaterialSource(ShaderMaterialSource_t materialSource) override final;
+
+		void SetMorphFormat(MorphFormat_t format) override final;
+
+		void DisableFogGammaCorrection(bool disable) override final;
+
+		void EnableAlphaToCoverage(bool enable) override final;
+
+		void SetShadowDepthFiltering(Sampler_t stage) override final;
+
+		void BlendOp(ShaderBlendOp_t op) override final;
+		void BlendOpSeparateAlpha(ShaderBlendOp_t op) override final;
+
+		LogicalShadowStateID TakeSnapshot() override;
+		bool IsTranslucent(LogicalShadowStateID id) const override;
+		bool IsAlphaTested(LogicalShadowStateID id) const override;
+		bool UsesVertexAndPixelShaders(LogicalShadowStateID id) const override;
+		bool IsDepthWriteEnabled(LogicalShadowStateID id) const override;
+
+		void SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex) override;
+
+		void SetState(LogicalShadowStateID id) override;
+		using IStateManagerStatic::GetState;
+		const LogicalShadowState& GetState(LogicalShadowStateID id) const override;
+
+	protected:
+		bool HasStateChanged() const;
+
+	private:
+		bool m_Dirty = true;
+		LogicalShadowState m_State;
+
+		std::unordered_map<LogicalShadowState, LogicalShadowStateID> m_StatesToIDs;
+		std::vector<const LogicalShadowState*> m_IDsToStates;
+	};
 }
 
-void ShadowStateManager::ApplyCurrentState(const vk::CommandBuffer& buf)
+static ShadowStateManager s_SSM;
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShadowStateManager, IShaderShadow, SHADERSHADOW_INTERFACE_VERSION, s_SSM);
+
+IStateManagerStatic& TF2Vulkan::g_StateManagerStatic = s_SSM;
+
+void ShadowStateManager::ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf)
+{
+	LOG_FUNC();
+	g_StateManagerVulkan.ApplyState(GetState(id), g_StateManagerDynamic.GetDynamicState(), buf);
+}
+
+void ShadowStateManager::ApplyCurrentState(IVulkanCommandBuffer& buf)
 {
 	LOG_FUNC();
 	ApplyState(TakeSnapshot(), buf);
@@ -354,18 +471,18 @@ LogicalShadowStateID ShadowStateManager::TakeSnapshot()
 	return nextID;
 }
 
-bool ShadowStateManager::IsTranslucent(StateSnapshot_t id) const
+bool ShadowStateManager::IsTranslucent(LogicalShadowStateID id) const
 {
 	// TODO: How is "is translucent" actually computed?
 	return GetState(id).m_OMAlphaBlending;
 }
 
-bool ShadowStateManager::IsAlphaTested(StateSnapshot_t id) const
+bool ShadowStateManager::IsAlphaTested(LogicalShadowStateID id) const
 {
 	return GetState(id).m_OMAlphaTest;
 }
 
-bool ShadowStateManager::UsesVertexAndPixelShaders(StateSnapshot_t id) const
+bool ShadowStateManager::UsesVertexAndPixelShaders(LogicalShadowStateID id) const
 {
 	const auto& state = GetState(id);
 
@@ -373,7 +490,7 @@ bool ShadowStateManager::UsesVertexAndPixelShaders(StateSnapshot_t id) const
 	return !!state.m_VSName;
 }
 
-bool ShadowStateManager::IsDepthWriteEnabled(StateSnapshot_t id) const
+bool ShadowStateManager::IsDepthWriteEnabled(LogicalShadowStateID id) const
 {
 	return GetState(id).m_DepthWrite;
 }
@@ -389,10 +506,12 @@ bool ShadowStateManager::HasStateChanged() const
 	return m_Dirty;
 }
 
-auto ShadowStateManager::GetState(StateSnapshot_t id) const -> const LogicalShadowState &
+void ShadowStateManager::SetState(LogicalShadowStateID id)
 {
-	return GetState(Util::SafeConvert<LogicalShadowStateID>(id));
+	LOG_FUNC();
+	m_State = *m_IDsToStates.at(Util::SafeConvert<size_t>(id));
 }
+
 auto ShadowStateManager::GetState(LogicalShadowStateID id) const -> const LogicalShadowState &
 {
 	return *m_IDsToStates.at(Util::SafeConvert<size_t>(id));

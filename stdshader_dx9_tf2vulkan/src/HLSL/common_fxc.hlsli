@@ -30,6 +30,9 @@ static const int BINDING_CBUF_VS_CUSTOM = 11;
 static const int BINDING_CBUF_PS_STANDARD = 20;
 static const int BINDING_CBUF_PS_CUSTOM = 21;
 
+static const int BINDING_BASE_SAMPLER = 100;
+static const int BINDING_BASE_TEXTURE = 200;
+
 #define g_FogType DOWATERFOG
 
 // These cause bad codegen with glslangValidator

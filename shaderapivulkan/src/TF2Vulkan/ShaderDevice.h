@@ -1,6 +1,7 @@
 #pragma once
 
-#include <TF2Vulkan/IVulkanQueue.h>
+#include "interface/internal/IVulkanCommandBuffer.h"
+#include "interface/internal/IVulkanQueue.h"
 #include <TF2Vulkan/Util/Checked.h>
 
 #include <shaderapi/IShaderDevice.h>
@@ -37,7 +38,7 @@ namespace TF2Vulkan
 		virtual vma::UniqueAllocator& GetVulkanAllocator() = 0;
 		virtual const vk::DispatchLoaderDynamic& GetDynamicDispatch() const = 0;
 
-		virtual const IVulkanQueue& GetGraphicsQueue() = 0;
+		virtual IVulkanQueue& GetGraphicsQueue() = 0;
 
 		virtual Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() = 0;
 
@@ -52,7 +53,7 @@ namespace TF2Vulkan
 			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetBackBufferDepthTexture());
 		}
 
-		virtual const vk::CommandBuffer& GetPrimaryCmdBuf() const = 0;
+		virtual IVulkanCommandBuffer& GetPrimaryCmdBuf() = 0;
 
 		virtual bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) = 0;
 
@@ -60,6 +61,7 @@ namespace TF2Vulkan
 		SET_DEBUG_NAME_FN(CommandBuffer);
 		SET_DEBUG_NAME_FN(CommandPool);
 		SET_DEBUG_NAME_FN(Device);
+		SET_DEBUG_NAME_FN(DescriptorPool);
 		SET_DEBUG_NAME_FN(DescriptorSetLayout);
 		SET_DEBUG_NAME_FN(Fence);
 		SET_DEBUG_NAME_FN(Framebuffer);
@@ -69,6 +71,7 @@ namespace TF2Vulkan
 		SET_DEBUG_NAME_FN(PipelineLayout);
 		SET_DEBUG_NAME_FN(Queue);
 		SET_DEBUG_NAME_FN(RenderPass);
+		SET_DEBUG_NAME_FN(Sampler);
 		SET_DEBUG_NAME_FN(Semaphore);
 		SET_DEBUG_NAME_FN(ShaderModule);
 		SET_DEBUG_NAME_FN(SwapchainKHR);

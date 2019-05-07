@@ -2,8 +2,10 @@
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"
+#include "SamplerSettings.h"
 #include "ShaderDevice.h"
 #include "shaders/VulkanShaderManager.h"
+#include "VulkanFactories.h"
 
 #include <TF2Vulkan/Util/MemoryPool.h>
 #include <TF2Vulkan/Util/std_array.h>
@@ -13,10 +15,30 @@
 #undef min
 #undef max
 
+#include <forward_list>
 #include <mutex>
 #include <unordered_map>
 
 using namespace TF2Vulkan;
+
+static constexpr auto BINDING_SAMPLER_OFFSET = 100;
+static constexpr auto BINDING_TEXTURE_OFFSET = 200;
+
+namespace
+{
+	struct SamplerKey
+	{
+		SamplerKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState, Sampler_t sampler);
+		SamplerKey(const SamplerSettings& settings) : m_Settings(settings) {}
+		DEFAULT_STRONG_EQUALITY_OPERATOR(SamplerKey);
+
+		SamplerSettings m_Settings;
+	};
+}
+
+STD_HASH_DEFINITION(SamplerKey,
+	v.m_Settings
+);
 
 namespace
 {
@@ -64,7 +86,7 @@ namespace
 {
 	struct PipelineKey final : RenderPassKey, PipelineLayoutKey
 	{
-		constexpr PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineKey);
 
 		ShaderDepthFunc_t m_DepthCompareFunc;
@@ -115,8 +137,8 @@ namespace
 			bool operator!() const { return !m_ImageView; }
 		};
 
-		RTRef m_OMDepthRT;
 		std::array<RTRef, 4> m_OMColorRTs;
+		RTRef m_OMDepthRT;
 
 		const RenderPass* m_RenderPass;
 	};
@@ -134,6 +156,40 @@ STD_HASH_DEFINITION(FramebufferKey,
 
 namespace
 {
+	struct DescriptorSetLayout;
+	struct DescriptorPoolKey final
+	{
+		DescriptorPoolKey(const DescriptorSetLayout& layout) : m_Layout(&layout) {}
+		DEFAULT_STRONG_ORDERING_OPERATOR(DescriptorPoolKey);
+
+		const DescriptorSetLayout* m_Layout;
+	};
+}
+
+STD_HASH_DEFINITION(DescriptorPoolKey,
+	v.m_Layout
+);
+
+namespace
+{
+	struct Sampler final
+	{
+		vk::SamplerCreateInfo m_CreateInfo;
+		vk::UniqueSampler m_Sampler;
+
+		bool operator!() const { return !m_Sampler; }
+	};
+
+	struct DescriptorPool final
+	{
+		std::vector<vk::DescriptorPoolSize> m_Sizes;
+
+		vk::DescriptorPoolCreateInfo m_CreateInfo;
+		vk::UniqueDescriptorPool m_DescriptorPool;
+
+		bool operator!() const { return !m_DescriptorPool; }
+	};
+
 	struct DescriptorSetLayout final
 	{
 		std::vector<vk::DescriptorSetLayoutBinding> m_Bindings;
@@ -230,16 +286,23 @@ namespace
 	class StateManagerVulkan final : public IStateManagerVulkan
 	{
 	public:
-		void ApplyState(VulkanStateID stateID, const vk::CommandBuffer& buf) override;
+		void ApplyState(VulkanStateID stateID,
+			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
+			IVulkanCommandBuffer& buf) override;
 
-		VulkanStateID FindOrCreateState(
-			LogicalShadowStateID staticID, const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState);
+		VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
+			const LogicalDynamicState& dynamicState) override;
 
 	private:
+		void ApplyRenderPass(const RenderPass& renderPass, IVulkanCommandBuffer& buf);
+		void ApplyDescriptorSets(const Pipeline& pipeline,
+			const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf);
+
+		const DescriptorPool& FindOrCreateDescriptorPool(const DescriptorPoolKey& key);
 		const PipelineLayout& FindOrCreatePipelineLayout(const PipelineLayoutKey& key);
 		const RenderPass& FindOrCreateRenderPass(const RenderPassKey& key);
 		const Framebuffer& FindOrCreateFramebuffer(const FramebufferKey& key);
+		const Sampler& FindOrCreateSampler(const SamplerKey& sampler);
 
 		Pipeline CreatePipeline(const PipelineKey& key,
 			const PipelineLayout& layout,
@@ -252,6 +315,8 @@ namespace
 		std::unordered_map<PipelineLayoutKey, PipelineLayout> m_StatesToLayouts;
 		std::unordered_map<RenderPassKey, RenderPass> m_StatesToRenderPasses;
 		std::unordered_map<FramebufferKey, Framebuffer> m_StatesToFramebuffers;
+		std::unordered_map<DescriptorPoolKey, DescriptorPool> m_StatesToDescPools;
+		std::unordered_map<SamplerKey, Sampler> m_StatesToSamplers;
 	};
 }
 
@@ -420,8 +485,8 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 				auto& colorTex = FindTexture(colorTexID);
 
 				vk::AttachmentDescription& att = retVal.m_Attachments.emplace_back();
-				att.initialLayout = vk::ImageLayout::eUndefined;
-				att.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+				att.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
+				att.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
 				att.samples = vk::SampleCountFlagBits::e1;
 				att.loadOp = vk::AttachmentLoadOp::eClear;
 				att.storeOp = vk::AttachmentStoreOp::eStore;
@@ -441,7 +506,7 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 		{
 			vk::AttachmentDescription& att = retVal.m_Attachments.emplace_back();
 
-			att.initialLayout = vk::ImageLayout::eUndefined;
+			att.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 			att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 			att.samples = vk::SampleCountFlagBits::e1;
 			att.loadOp = vk::AttachmentLoadOp::eClear;
@@ -449,7 +514,7 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 			att.stencilLoadOp = vk::AttachmentLoadOp::eClear;
 			att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
-			att.format = FindTexture(key.m_OMDepthRT).GetImageCreateInfo().format;
+			att.format = FindTexture(key.m_OMDepthRT, true).GetImageCreateInfo().format;
 
 			vk::AttachmentReference& attRef = sp.m_DepthStencilAttachment;
 			attRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
@@ -651,10 +716,13 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	{
 		auto& ci = retVal.m_ColorBlendStateCI;
 
+		ci.setBlendConstants({ 1, 1, 1, 1 });
+
 		auto& att = retVal.m_ColorBlendAttachmentStates.emplace_back();
 
-		att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(key.m_OMSrcFactor);
-		att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(key.m_OMDstFactor);
+		att.blendEnable = true;
+		att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(SHADER_BLEND_ONE);// key.m_OMSrcFactor);
+		att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(SHADER_BLEND_ONE);// key.m_OMDstFactor);
 
 		att.colorWriteMask =
 			vk::ColorComponentFlagBits::eR |
@@ -670,7 +738,7 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 		auto& ci = retVal.m_DepthStencilStateCI;
 		retVal.m_CreateInfo.pDepthStencilState = &ci;
 
-		ci.depthTestEnable = false;// key.m_DepthTest;
+		ci.depthTestEnable = key.m_DepthTest;
 		ci.depthWriteEnable = key.m_DepthWrite;
 		ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
 	}
@@ -763,6 +831,7 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
 
 		retVal.m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci);
+		assert(retVal.m_Framebuffer);
 		g_ShaderDevice.SetDebugName(retVal.m_Framebuffer, debugName.c_str());
 	}
 
@@ -780,43 +849,291 @@ const Framebuffer& StateManagerVulkan::FindOrCreateFramebuffer(const Framebuffer
 	return fb;
 }
 
-void StateManagerVulkan::ApplyState(VulkanStateID id, const vk::CommandBuffer& buf)
+static vk::SamplerAddressMode ConvertAddressMode(ShaderTexWrapMode_t mode)
 {
-	LOG_FUNC();
+	switch (mode)
+	{
+	default:
+		assert(!"Invalid ShaderTexWrapMode_t");
+
+	case SHADER_TEXWRAPMODE_CLAMP:  return vk::SamplerAddressMode::eClampToEdge;
+	case SHADER_TEXWRAPMODE_REPEAT: return vk::SamplerAddressMode::eRepeat;
+	case SHADER_TEXWRAPMODE_BORDER: return vk::SamplerAddressMode::eClampToBorder;
+	}
+}
+
+static vk::Filter ConvertFilter(ShaderTexFilterMode_t mode)
+{
+	switch (mode)
+	{
+	default:
+		assert(!"Invalid ShaderTexFilterMode_t");
+
+	case SHADER_TEXFILTERMODE_NEAREST:
+	case SHADER_TEXFILTERMODE_NEAREST_MIPMAP_NEAREST:
+	case SHADER_TEXFILTERMODE_NEAREST_MIPMAP_LINEAR:
+		return vk::Filter::eNearest;
+
+		// We just have this here so we don't hit the assert.
+	case SHADER_TEXFILTERMODE_ANISOTROPIC:
+
+	case SHADER_TEXFILTERMODE_LINEAR:
+	case SHADER_TEXFILTERMODE_LINEAR_MIPMAP_NEAREST:
+	case SHADER_TEXFILTERMODE_LINEAR_MIPMAP_LINEAR:
+		return vk::Filter::eLinear;
+	}
+}
+
+static vk::SamplerMipmapMode ConvertMipmapMode(ShaderTexFilterMode_t mode)
+{
+	switch (mode)
+	{
+	default:
+		assert(!"Invalid ShaderTexFilterMode_t");
+
+	case SHADER_TEXFILTERMODE_NEAREST:
+	case SHADER_TEXFILTERMODE_NEAREST_MIPMAP_NEAREST:
+	case SHADER_TEXFILTERMODE_LINEAR_MIPMAP_NEAREST:
+		return vk::SamplerMipmapMode::eNearest;
+
+	case SHADER_TEXFILTERMODE_LINEAR:
+	case SHADER_TEXFILTERMODE_NEAREST_MIPMAP_LINEAR:
+	case SHADER_TEXFILTERMODE_LINEAR_MIPMAP_LINEAR:
+	case SHADER_TEXFILTERMODE_ANISOTROPIC:
+		return vk::SamplerMipmapMode::eLinear;
+	}
+}
+
+static Sampler CreateSampler(const SamplerKey& key)
+{
+	Sampler retVal;
+
+	auto& ci = retVal.m_CreateInfo;
+	ci.addressModeU = ConvertAddressMode(key.m_Settings.m_WrapS);
+	ci.addressModeV = ConvertAddressMode(key.m_Settings.m_WrapT);
+	ci.addressModeW = ConvertAddressMode(key.m_Settings.m_WrapU);
+	ci.minFilter = ConvertFilter(key.m_Settings.m_MinFilter);
+	ci.magFilter = ConvertFilter(key.m_Settings.m_MagFilter);
+	ci.anisotropyEnable = (key.m_Settings.m_MinFilter == SHADER_TEXFILTERMODE_ANISOTROPIC ||
+		key.m_Settings.m_MagFilter == SHADER_TEXFILTERMODE_ANISOTROPIC);
+
+	if (ConvertMipmapMode(key.m_Settings.m_MinFilter) == vk::SamplerMipmapMode::eLinear ||
+		ConvertMipmapMode(key.m_Settings.m_MagFilter) == vk::SamplerMipmapMode::eLinear)
+	{
+		ci.mipmapMode = vk::SamplerMipmapMode::eLinear;
+	}
+	else
+	{
+		ci.mipmapMode = vk::SamplerMipmapMode::eNearest;
+	}
+
+	retVal.m_Sampler = g_ShaderDevice.GetVulkanDevice().createSamplerUnique(retVal.m_CreateInfo);
+	{
+		char buf[128];
+		sprintf_s(buf, "TF2Vulkan Sampler 0x%zX", Util::hash_value(key));
+		g_ShaderDevice.SetDebugName(retVal.m_Sampler, buf);
+	}
+
+	return retVal;
+}
+
+const Sampler& StateManagerVulkan::FindOrCreateSampler(const SamplerKey& key)
+{
 	std::lock_guard lock(m_Mutex);
 
-	PixScope pixScope(buf, "StateManagerVulkan::ApplyState(%zu)", Util::UValue(id));
+	auto& sampler = m_StatesToSamplers[key];
+	if (!sampler)
+		sampler = CreateSampler(key);
 
-	const auto& state = *m_IDsToPipelines.at(size_t(id));
+	return sampler;
+}
 
-	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, state.m_Pipeline.get());
+void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCommandBuffer& buf)
+{
+	LOG_FUNC();
 
 	vk::RenderPassBeginInfo rpInfo;
-	rpInfo.renderPass = state.m_RenderPass->m_RenderPass.get();
+	rpInfo.renderPass = renderPass.m_RenderPass.get();
 
 	vk::ClearValue clearVal[2];
-	clearVal[0].color = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 1.0f, 0.5f, 0.5f });
-	clearVal[0].depthStencil.depth = 1;
-	clearVal[0].depthStencil.stencil = 0;
+	clearVal[0].color.float32[0] = 157 / 255.0f;
+	clearVal[0].color.float32[1] =  83 / 255.0f;
+	clearVal[0].color.float32[2] =  34 / 255.0f;
+	clearVal[0].color.float32[3] = 255 / 255.0f;
 
-	std::fill(std::begin(clearVal) + 1, std::end(clearVal), clearVal[0]);
+	clearVal[1].depthStencil.depth = 1;
+	clearVal[1].depthStencil.stencil = 0;
+
 	rpInfo.clearValueCount = std::size(clearVal);
 	rpInfo.pClearValues = clearVal;
 
 	//state.m_RenderPass->m_CreateInfo.
 
 	// Hack!
-	const auto& fb = FindOrCreateFramebuffer(*state.m_RenderPass);
+	const auto& fb = FindOrCreateFramebuffer(renderPass);
 	rpInfo.framebuffer = fb.m_Framebuffer.get();
 
 	rpInfo.renderArea.extent.width = fb.m_CreateInfo.width;
 	rpInfo.renderArea.extent.height = fb.m_CreateInfo.height;
 
-	buf.beginRenderPass(rpInfo, vk::SubpassContents::eInline);
+	if (!buf.IsRenderPassActive(rpInfo, vk::SubpassContents::eInline))
+	{
+		if (buf.GetActiveRenderPass())
+			buf.endRenderPass();
+
+		buf.beginRenderPass(rpInfo, vk::SubpassContents::eInline);
+	}
+}
+
+void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
+	const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
+{
+	auto& device = g_ShaderDevice.GetVulkanDevice();
+
+	const auto& layouts = pipeline.m_Layout->m_SetLayouts;
+	assert(layouts.size() == 1);
+
+	auto dummyUniformBuf = Factories::BufferFactory{}
+		.SetSize(1024)
+		.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eDeviceLocal)
+		.SetDebugName(__FUNCTION__ "(): Temporary test uniform buffer")
+		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+		.Create();
+
+	std::vector<vk::UniqueDescriptorSet> descriptorSets;
+	std::vector<vk::WriteDescriptorSet> writes;
+	std::vector<vk::CopyDescriptorSet> copies;
+	std::forward_list<vk::DescriptorImageInfo> imageInfos;
+	std::forward_list<vk::DescriptorBufferInfo> bufferInfos;
+	for (const auto& layout : layouts)
+	{
+		auto& pool = FindOrCreateDescriptorPool(layout);
+
+		vk::DescriptorSetAllocateInfo allocInfo;
+		allocInfo.descriptorPool = pool.m_DescriptorPool.get();
+		allocInfo.pSetLayouts = &layout.m_Layout.get();
+		allocInfo.descriptorSetCount = 1;
+
+		auto& newSet = descriptorSets.emplace_back(std::move(device.allocateDescriptorSetsUnique(allocInfo).at(0)));
+
+		for (const auto& binding : layout.m_Bindings)
+		{
+			auto& write = writes.emplace_back();
+			write.descriptorType = binding.descriptorType;
+			write.descriptorCount = binding.descriptorCount;
+			write.dstBinding = binding.binding;
+			write.dstSet = newSet.get();
+
+			switch (write.descriptorType)
+			{
+			case vk::DescriptorType::eSampler:
+			{
+				auto& imgInfo = imageInfos.emplace_front();
+				auto& sampler = FindOrCreateSampler(SamplerSettings{});
+				imgInfo.sampler = sampler.m_Sampler.get();
+				write.pImageInfo = &imgInfo;
+				break;
+			}
+			case vk::DescriptorType::eSampledImage:
+			{
+				auto& imgInfo = imageInfos.emplace_front();
+				auto& tex = g_ShaderAPIInternal.TryGetTexture(
+					dynamicState.m_BoundTextures.at(binding.binding - BINDING_TEXTURE_OFFSET),
+					TEXTURE_BLACK);
+				imgInfo.imageView = tex.FindOrCreateView();
+				//imgInfo.sampler = FindOrCreateSampler(SamplerSettings{}).m_Sampler.get();
+				imgInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+				write.pImageInfo = &imgInfo;
+				break;
+			}
+			case vk::DescriptorType::eUniformBuffer:
+			{
+				auto& bufInfo = bufferInfos.emplace_front();
+				write.pBufferInfo = &bufInfo;
+				bufInfo.buffer = dummyUniformBuf.GetBuffer();
+				bufInfo.range = 1024;
+				break;
+			}
+
+			default:
+				throw VulkanException("Unexpected DescriptorType", EXCEPTION_DATA());
+			}
+		}
+	}
+
+	device.updateDescriptorSets(writes, copies);
+
+	TF2VULKAN_MAKE_NONUNIQUE_STACK_COPY(rawSets, descriptorSets);
+
+	buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.m_Layout->m_Layout.get(), 0, { descriptorSets.size(), rawSets }, {});
+	buf.AddResource(std::move(dummyUniformBuf));
+	buf.AddResource(std::move(descriptorSets));
+}
+
+void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& staticState,
+	const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
+{
+	LOG_FUNC();
+	std::lock_guard lock(m_Mutex);
+
+	auto pixScope = buf.DebugRegionBegin("StateManagerVulkan::ApplyState(%zu)", Util::UValue(id));
+
+	const auto& state = *m_IDsToPipelines.at(size_t(id));
+
+	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, state.m_Pipeline.get());
+
+	ApplyRenderPass(*state.m_RenderPass, buf);
+
+	//ApplyDescriptorSets(state, dynamicState, buf);
+}
+
+static DescriptorPool CreateDescriptorPool(const DescriptorPoolKey& key)
+{
+	LOG_FUNC();
+	DescriptorPool retVal;
+
+	// Sizes
+	for (const auto& binding : key.m_Layout->m_Bindings)
+	{
+		auto& size = retVal.m_Sizes.emplace_back();
+		size.descriptorCount = binding.descriptorCount;
+		size.type = binding.descriptorType;
+	}
+
+	// Descriptor pool
+	{
+		auto& ci = retVal.m_CreateInfo;
+		AttachVector(ci.pPoolSizes, ci.poolSizeCount, retVal.m_Sizes);
+
+		ci.maxSets = 1024;
+		ci.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+
+		retVal.m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci);
+		{
+			char buf[128];
+			sprintf_s(buf, "TF2Vulkan Descriptor Pool 0x%zX", Util::hash_value(key));
+			g_ShaderDevice.SetDebugName(retVal.m_DescriptorPool, buf);
+		}
+	}
+
+	return retVal;
+}
+
+const DescriptorPool& StateManagerVulkan::FindOrCreateDescriptorPool(const DescriptorPoolKey& key)
+{
+	LOG_FUNC();
+	std::lock_guard lock(m_Mutex);
+
+	auto& pool = m_StatesToDescPools[key];
+	if (!pool)
+		pool = CreateDescriptorPool(key);
+
+	return pool;
 }
 
 const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(const RenderPassKey& key)
 {
+	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
 
 	if (auto found = m_StatesToRenderPasses.find(key); found != m_StatesToRenderPasses.end())
@@ -830,6 +1147,7 @@ const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(const RenderPassKey
 
 const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const PipelineLayoutKey& key)
 {
+	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
 
 	auto& layout = m_StatesToLayouts[key];
@@ -839,9 +1157,10 @@ const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const Pipel
 	return layout;
 }
 
-VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticID,
+VulkanStateID StateManagerVulkan::FindOrCreateState(
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
 {
+	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
 
 	const PipelineKey key(staticState, dynamicState);
@@ -859,13 +1178,13 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(LogicalShadowStateID staticI
 	return pl.m_ID;
 }
 
-constexpr PipelineKey::PipelineKey(
+PipelineKey::PipelineKey(
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState) :
 
 	RenderPassKey(staticState, dynamicState),
 	PipelineLayoutKey(staticState, dynamicState),
 
-	m_DepthCompareFunc(staticState.m_DepthCompareFunc),
+	m_DepthCompareFunc(dynamicState.m_ForceDepthFuncEquals ? SHADER_DEPTHFUNC_EQUAL : staticState.m_DepthCompareFunc),
 	m_DepthTest(staticState.m_DepthTest),
 	m_DepthWrite(staticState.m_DepthWrite),
 
@@ -879,6 +1198,14 @@ constexpr PipelineKey::PipelineKey(
 {
 	assert((staticState.m_RSFrontFacePolyMode == staticState.m_RSBackFacePolyMode)
 		|| staticState.m_RSBackFaceCulling);
+
+	if (m_Viewports.empty())
+	{
+		auto& vp = m_Viewports.emplace_back();
+		int bbWidth, bbHeight;
+		g_ShaderDevice.GetBackBufferDimensions(bbWidth, bbHeight);
+		vp.Init(0, 0, bbWidth, bbHeight);
+	}
 
 	if (staticState.m_OMDepthRT < 0)
 	{
