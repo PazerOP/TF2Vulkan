@@ -1,6 +1,7 @@
 #include "TF2Vulkan/ShaderDevice.h"
 #include "VulkanShaderManager.h"
 
+#include <TF2Vulkan/Util/Buffer.h>
 #include <TF2Vulkan/Util/std_utility.h>
 #include <stdshader_dx9_tf2vulkan/ShaderBlobs.h>
 
@@ -14,53 +15,122 @@
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::ShaderReflection;
 
-STD_HASH_DEFINITION(TF2Vulkan::IVulkanShaderManager::ShaderID,
-	v.m_Name,
-	v.m_StaticIndex
-);
-
 namespace
 {
+	struct SpecConstMapping final
+	{
+		const char* m_SpecConstName;
+		uint_fast8_t m_ComboOffset;
+		uint32_t m_ComboMask = 0x1;
+	};
+
+	static constexpr SpecConstMapping s_SpecConstMap_VertexLitGeneric_VS[] =
+	{
+		{ "VERTEXCOLOR", 8, },
+		{ "CUBEMAP", 9 },
+		{ "HALFLAMBERT", 10 },
+		{ "FLASHLIGHT", 11 },
+		{ "SEAMLESS_BASE", 12 },
+		{ "SEAMLESS_DETAIL", 13 },
+		{ "SEPARATE_DETAIL_UVS", 14 },
+		{ "DONT_GAMMA_CONVERT_VERTEX_COLOR", 16 },
+	};
+
+	struct ShaderInfo
+	{
+		constexpr ShaderInfo(ShaderBlob blob) : m_Blob(blob) {}
+		template<size_t size>
+		constexpr ShaderInfo(ShaderBlob blob, const SpecConstMapping(&specConstMappings)[size]) :
+			m_Blob(blob), m_SpecConstMappings(specConstMappings), m_SpecConstMappingsCount(size)
+		{
+		}
+
+		ShaderBlob m_Blob;
+		const SpecConstMapping* m_SpecConstMappings = nullptr;
+		size_t m_SpecConstMappingsCount = 0;
+	};
+
 	class VulkanShaderManager final : public IVulkanShaderManager
 	{
 	public:
-		const IShader& FindOrCreateShader(const ShaderID& id) override;
+		const IShader& FindOrCreateShader(const CUtlSymbolDbg& name) override;
 
 	private:
-
 		struct CompiledShader final : IShader
 		{
-			CompiledShader(const ShaderID& id);
+			CompiledShader(const CUtlSymbolDbg& name);
 			vk::ShaderModule GetModule() const override { return m_Shader.get(); }
-			const ShaderID& GetID() const override { return *m_ID; }
+			const CUtlSymbolDbg& GetName() const override { return m_Name; }
 			const ReflectionData& GetReflectionData() const override { return m_ReflectionData; }
+			void CreateSpecializationInfo(uint32_t combo, vk::SpecializationInfo& info,
+				std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const override;
 
-			const ShaderID* m_ID = nullptr;
+			CUtlSymbolDbg m_Name;
 			vk::UniqueShaderModule m_Shader;
 			ReflectionData m_ReflectionData;
+			const ShaderInfo* m_Info;
 		};
 
 		std::recursive_mutex m_Mutex;
-		std::unordered_map<ShaderID, CompiledShader> m_Shaders;
+		std::unordered_map<CUtlSymbolDbg, CompiledShader> m_Shaders;
+	};
+
+	union vertexlit_and_unlit_generic_vs30_static_index
+	{
+		uint32_t m_Index;
+		struct
+		{
+			uint32_t : 1;                                  // 0
+			uint32_t : 1;                                  // 1
+			uint32_t : 1;                                  // 2
+			uint32_t : 1;                                  // 3
+			uint32_t : 1;                                  // 4
+			uint32_t : 1;                                  // 5
+			uint32_t : 1;                                  // 6
+			uint32_t : 1;                                  // 7
+			uint32_t VERTEXCOLOR : 1;                      // 8
+			uint32_t CUBEMAP : 1;                          // 9
+			uint32_t HALFLAMBERT : 1;                      // 10
+			uint32_t FLASHLIGHT : 1;                       // 11
+			uint32_t SEAMLESS_BASE : 1;                    // 12
+			uint32_t SEAMLESS_DETAIL : 1;                  // 13
+			uint32_t SEPARATE_DETAIL_UVS : 1;              // 14
+			uint32_t USE_STATIC_CONTROL_FLOW : 1;          // 15
+			uint32_t DONT_GAMMA_CONVERT_VERTEX_COLOR : 1;  // 16
+		};
+	};
+	static_assert(sizeof(vertexlit_and_unlit_generic_vs30_static_index) == sizeof(uint32_t));
+
+	struct vertexlit_and_unlit_generic_vs30_dynamic_index
+	{
+		uint32_t m_Index;
+		union
+		{
+			uint32_t : 1;              // 0
+			uint32_t : 1;              // 1
+			uint32_t : 1;              // 2
+			uint32_t : 1;              // 3
+			uint32_t : 1;              // 4
+			uint32_t : 1;              // 5
+			uint32_t : 1;              // 6
+		};
 	};
 }
 
 static VulkanShaderManager s_ShaderManager;
 IVulkanShaderManager& TF2Vulkan::g_ShaderManager = s_ShaderManager;
 
-static const std::unordered_map<std::string_view, ShaderBlob> s_ShaderBlobMapping =
+static const std::unordered_map<std::string_view, ShaderInfo> s_ShaderBlobMapping =
 {
 	{ "bik_vs20", ShaderBlob::Bik_VS },
 	{ "bik_ps20b", ShaderBlob::Bik_PS },
-	{ "vertexlit_and_unlit_generic_vs30", ShaderBlob::VertexLitAndUnlitGeneric_VS },
+	{ "vertexlit_and_unlit_generic_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, s_SpecConstMap_VertexLitGeneric_VS } },
 	{ "vertexlit_and_unlit_generic_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
 };
 
-auto VulkanShaderManager::FindOrCreateShader(const ShaderID& id) -> const IShader&
+auto VulkanShaderManager::FindOrCreateShader(const CUtlSymbolDbg& id) -> const IShader&
 {
 	std::lock_guard lock(m_Mutex);
-
-	assert(id.m_StaticIndex == 0);
 
 	if (auto found = m_Shaders.find(id); found != m_Shaders.end())
 		return found->second;
@@ -173,7 +243,7 @@ static ReflectionData CreateReflectionData(const void* data, size_t byteSize)
 {
 	ReflectionData retVal;
 
-	const spirv_cross::Compiler comp(reinterpret_cast<const uint32_t*>(data), byteSize);
+	const spirv_cross::Compiler comp(reinterpret_cast<const uint32_t*>(data), byteSize / sizeof(uint32_t));
 
 	switch (comp.get_execution_model())
 	{
@@ -211,21 +281,53 @@ static ReflectionData CreateReflectionData(const void* data, size_t byteSize)
 	return retVal;
 }
 
-VulkanShaderManager::CompiledShader::CompiledShader(const ShaderID& id) :
-	m_ID(&id)
+VulkanShaderManager::CompiledShader::CompiledShader(const CUtlSymbolDbg& name) :
+	m_Name(name)
 {
+	const ShaderInfo& shaderInfo = s_ShaderBlobMapping.at(m_Name.String());
+	m_Info = &shaderInfo;
+
 	vk::ShaderModuleCreateInfo ci;
 
-	const auto blobType = s_ShaderBlobMapping.at(id.m_Name.String());
-
 	const void* blobData;
-	if (!TF2Vulkan::GetShaderBlob(blobType, blobData, ci.codeSize))
+	if (!TF2Vulkan::GetShaderBlob(shaderInfo.m_Blob, blobData, ci.codeSize))
 		throw VulkanException("Failed to get shader blob", EXCEPTION_DATA());
 
 	ci.pCode = reinterpret_cast<const uint32_t*>(blobData);
 
-	m_Shader = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
-	g_ShaderDevice.SetDebugName(m_Shader, id.m_Name.String());
+	m_ReflectionData = CreateReflectionData(blobData, ci.codeSize);
 
-	m_ReflectionData = CreateReflectionData(blobData, ci.codeSize / sizeof(uint32_t));
+	m_Shader = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
+	g_ShaderDevice.SetDebugName(m_Shader, m_Name.String());
+}
+
+void VulkanShaderManager::CompiledShader::CreateSpecializationInfo(uint32_t combo,
+	vk::SpecializationInfo& info, std::vector<vk::SpecializationMapEntry>& entries,
+	std::vector<std::byte>& data) const
+{
+	const auto& reflData = GetReflectionData();
+
+	// TODO: Don't set spec constants to their default values
+	for (size_t i = 0; i < m_Info->m_SpecConstMappingsCount; i++)
+	{
+		const auto& mapping = m_Info->m_SpecConstMappings[i];
+
+		auto value = (combo >> mapping.m_ComboOffset) & mapping.m_ComboMask;
+
+		auto foundConst = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
+			[&](const SpecializationConstant & c) { return c.m_Name == mapping.m_SpecConstName; });
+		if (foundConst == reflData.m_SpecConstants.end())
+			continue;
+
+		auto& entry = entries.emplace_back();
+		entry.constantID = foundConst->m_ConstantID;
+		entry.size = sizeof(uint32_t);
+		Util::SafeConvert(data.size(), entry.offset);
+		Util::Buffer::Put(data, value);
+	}
+
+	info.pMapEntries = entries.data();
+	info.mapEntryCount = entries.size();
+	Util::SafeConvert(data.size(), info.dataSize);
+	info.pData = data.data();
 }

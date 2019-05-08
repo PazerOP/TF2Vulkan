@@ -1,10 +1,12 @@
 #include <TF2Vulkan/Util/interface.h>
 
-#include <materialsystem/idebugtextureinfo.h>
+#include "interface/internal/IDebugTextureInfoInternal.h"
+
+using namespace TF2Vulkan;
 
 namespace
 {
-	class DebugTextureInfo : public IDebugTextureInfo
+	class DebugTextureInfo : public IDebugTextureInfoInternal
 	{
 	public:
 		void EnableDebugTextureList(bool enable) override;
@@ -23,12 +25,12 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(DebugTextureInfo, IDebugTextureInfo, DEBUG_TEX
 
 void DebugTextureInfo::EnableDebugTextureList(bool enable)
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void DebugTextureInfo::EnableGetAllTextures(bool enable)
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 KeyValues* DebugTextureInfo::GetDebugTextureList()

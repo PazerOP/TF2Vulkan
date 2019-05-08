@@ -120,35 +120,20 @@ namespace TF2Vulkan
 	public:
 		virtual ~IVulkanShaderManager() = default;
 
-		struct ShaderID
-		{
-			CUtlSymbolDbg m_Name;
-			int m_StaticIndex = 0;
-
-			DEFAULT_STRONG_EQUALITY_OPERATOR(ShaderID);
-		};
-
 		class IShader
 		{
 		public:
 			virtual vk::ShaderModule GetModule() const = 0;
-			virtual const ShaderID& GetID() const = 0;
+			virtual const CUtlSymbolDbg& GetName() const = 0;
 			virtual const ShaderReflection::ReflectionData& GetReflectionData() const = 0;
-
-			//virtual void BindResources(IMaterial* pMaterial) const = 0;
-
-			//virtual ::IShader& GetValveShader() = 0;
+			virtual void CreateSpecializationInfo(uint32_t combo, vk::SpecializationInfo& info,
+				std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const = 0;
 
 		protected:
 			virtual ~IShader() = default;
 		};
 
-		virtual const IShader& FindOrCreateShader(const ShaderID& id) = 0;
-
-		const IShader& FindOrCreateShader(const CUtlSymbolDbg& name, int staticIndex)
-		{
-			return FindOrCreateShader({ name, staticIndex });
-		}
+		virtual const IShader& FindOrCreateShader(const CUtlSymbolDbg& id) = 0;
 	};
 
 	extern IVulkanShaderManager& g_ShaderManager;

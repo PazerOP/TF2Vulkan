@@ -41,6 +41,39 @@ void IShaderAPI_StateManagerDynamic::SetPixelShaderFogParams(int reg)
 	SetPixelShaderConstant(reg, fogParams, 1);
 }
 
+void IShaderAPI_StateManagerDynamic::SetLight(int light, const LightDesc_t& desc)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_Lights, light, desc, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetAmbientLightCube(Vector4D cube[6])
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_LightAmbientCube,
+		*reinterpret_cast<const std::array<Vector4D, 6>*>(cube), m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	// TODO: Remove this function, we write directly into ps state via uniform buffers?
+}
+
+void IShaderAPI_StateManagerDynamic::GetDX9LightState(LightState_t* state) const
+{
+	LOG_FUNC();
+
+	if (state)
+		*state = m_State.m_LightState;
+}
+
+void IShaderAPI_StateManagerDynamic::CullMode(MaterialCullMode_t mode)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_CullMode, mode, m_Dirty);
+}
+
 void IShaderAPI_StateManagerDynamic::GetWorldSpaceCameraPosition(float* pos) const
 {
 	LOG_FUNC();
@@ -59,6 +92,11 @@ void IShaderAPI_StateManagerDynamic::SetPixelShaderIndex(int index)
 {
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_PixelShaderIndex, index, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void IShaderAPI_StateManagerDynamic::ForceDepthFuncEquals(bool enable)
@@ -89,6 +127,12 @@ int IShaderAPI_StateManagerDynamic::GetCurrentNumBones() const
 {
 	LOG_FUNC();
 	return m_State.m_BoneCount;
+}
+
+void IShaderAPI_StateManagerDynamic::SetNumBoneWeights(int boneCount)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_BoneCount, boneCount, m_Dirty); // TODO: <# bone weights> == <bone count>?
 }
 
 void IShaderAPI_StateManagerDynamic::ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
@@ -142,8 +186,13 @@ void IShaderAPI_StateManagerDynamic::MatrixMode(MaterialMatrixMode_t mode)
 
 void IShaderAPI_StateManagerDynamic::GetMatrix(MaterialMatrixMode_t mode, float* dst)
 {
+	return GetMatrix(mode, *reinterpret_cast<VMatrix*>(dst));
+}
+
+void IShaderAPI_StateManagerDynamic::GetMatrix(MaterialMatrixMode_t mode, VMatrix& dst)
+{
 	LOG_FUNC();
-	memcpy(dst, m_State.m_Matrices.at(mode).Base(), sizeof(float) * 4 * 4);
+	dst = m_State.m_Matrices.at(mode);
 }
 
 void IShaderAPI_StateManagerDynamic::AssertMatrixMode()
@@ -178,8 +227,21 @@ void IShaderAPI_StateManagerDynamic::LoadIdentity()
 {
 	LOG_FUNC();
 
+	//ViewMatrix
+
 	m_State.m_Matrices.at(m_MatrixMode).Identity();
 	m_Dirty = true;
+}
+
+void IShaderAPI_StateManagerDynamic::LoadMatrix(float* m)
+{
+	return LoadMatrix(*reinterpret_cast<const VMatrix*>(m));
+}
+
+void IShaderAPI_StateManagerDynamic::LoadMatrix(const VMatrix& m)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_Matrices.at(m_MatrixMode), m, m_Dirty);
 }
 
 bool IShaderAPI_StateManagerDynamic::InFlashlightMode() const
@@ -237,4 +299,88 @@ void IShaderAPI_StateManagerDynamic::SetIntegerPixelShaderConstant(int var, cons
 {
 	LOG_FUNC();
 	SetShaderConstantsSafe(m_State.m_PixelShaderConstants, var, vec, numIntVecs);
+}
+
+void IShaderAPI_StateManagerDynamic::SetFloatRenderingParameter(RenderParamFloat_t param, float value)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_RenderParamsFloat, param, value, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetIntRenderingParameter(RenderParamInt_t param, int value)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_RenderParamsInt, param, value, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetVectorRenderingParameter(RenderParamVector_t param, const Vector& value)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_RenderParamsVector, param, value, m_Dirty);
+}
+
+float IShaderAPI_StateManagerDynamic::GetFloatRenderingParameter(RenderParamFloat_t param) const
+{
+	LOG_FUNC();
+	return m_State.m_RenderParamsFloat.at(param);
+}
+
+int IShaderAPI_StateManagerDynamic::GetIntRenderingParameter(RenderParamInt_t param) const
+{
+	LOG_FUNC();
+	return m_State.m_RenderParamsInt.at(param);
+}
+
+Vector IShaderAPI_StateManagerDynamic::GetVectorRenderingParameter(RenderParamVector_t param) const
+{
+	LOG_FUNC();
+	return m_State.m_RenderParamsVector.at(param);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilEnable(bool enabled)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilEnable, enabled, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilFailOperation(StencilOperation_t op)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilFailOp, op, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilZFailOperation(StencilOperation_t op)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilDepthFailOp, op, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilPassOperation(StencilOperation_t op)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilPassOp, op, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilCompareFunction(StencilComparisonFunction_t fn)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilCompareFunc, fn, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilReferenceValue(int ref)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilRef, ref, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilTestMask(uint32 mask)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilTestMask, mask, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetStencilWriteMask(uint32 mask)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_StencilWriteMask, mask, m_Dirty);
 }

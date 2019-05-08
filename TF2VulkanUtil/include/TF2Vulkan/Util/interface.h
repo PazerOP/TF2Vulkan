@@ -31,11 +31,12 @@ DLL_EXPORT inline void* CreateInterface(const char* pName, int* pReturnCode)
 			if (pReturnCode)
 				* pReturnCode = retVal ? IFACE_OK : IFACE_FAILED;
 
+			Msg("[TF2Vulkan] %s(): Found %s\n", __FUNCTION__, pName);
 			return retVal;
 		}
 	}
 
-	Msg("[TF2Vulkan] Reporting %s as unavailable\n", pName);
+	Msg("[TF2Vulkan] %s(): Reporting %s as unavailable\n", __FUNCTION__, pName);
 
 	if (pReturnCode)
 		* pReturnCode = IFACE_FAILED;

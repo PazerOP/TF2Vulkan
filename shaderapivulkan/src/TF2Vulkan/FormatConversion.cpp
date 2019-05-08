@@ -15,15 +15,9 @@ vk::Format TF2Vulkan::ConvertImageFormat(ImageFormat format)
 	case IMAGE_FORMAT_UNKNOWN:
 	case IMAGE_FORMAT_UVLX8888:
 	case IMAGE_FORMAT_P8:
-	case IMAGE_FORMAT_NV_DST16:
-	case IMAGE_FORMAT_NV_DST24:
 	case IMAGE_FORMAT_NV_INTZ:
 	case IMAGE_FORMAT_NV_RAWZ:
-	case IMAGE_FORMAT_ATI_DST16:
-	case IMAGE_FORMAT_ATI_DST24:
 	case IMAGE_FORMAT_NV_NULL:
-	case IMAGE_FORMAT_ATI2N:
-	case IMAGE_FORMAT_ATI1N:
 		return vk::Format::eUndefined;
 
 		// R
@@ -75,6 +69,16 @@ vk::Format TF2Vulkan::ConvertImageFormat(ImageFormat format)
 		// DXT5
 	case IMAGE_FORMAT_DXT5_RUNTIME:
 	case IMAGE_FORMAT_DXT5:              return vk::Format::eBc3UnormBlock;
+
+		// BC4
+	case IMAGE_FORMAT_ATI1N:             return vk::Format::eBc4SnormBlock;
+	case IMAGE_FORMAT_ATI2N:             return vk::Format::eBc5SnormBlock;
+
+		// Depth
+	case IMAGE_FORMAT_NV_DST16:
+	case IMAGE_FORMAT_ATI_DST16:         return vk::Format::eD16Unorm;
+	case IMAGE_FORMAT_NV_DST24:
+	case IMAGE_FORMAT_ATI_DST24:         return vk::Format::eD24UnormS8Uint;
 	}
 }
 
@@ -243,12 +247,24 @@ namespace
 						PROMOTE_2_HARDWARE(IMAGE_FORMAT_RGB323232F);
 						PROMOTE_2_HARDWARE(IMAGE_FORMAT_RGBA32323232F);
 
-						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_DST16);
-						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_DST24);
+						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_DST16,
+							IMAGE_FORMAT_ATI_DST16,
+							IMAGE_FORMAT_NV_DST24,
+							IMAGE_FORMAT_ATI_DST24);
+						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_DST24,
+							IMAGE_FORMAT_ATI_DST24,
+							IMAGE_FORMAT_NV_DST16,
+							IMAGE_FORMAT_ATI_DST16);
 						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_INTZ);
 						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_RAWZ);
-						PROMOTE_2_HARDWARE(IMAGE_FORMAT_ATI_DST16);
-						PROMOTE_2_HARDWARE(IMAGE_FORMAT_ATI_DST24);
+						PROMOTE_2_HARDWARE(IMAGE_FORMAT_ATI_DST16,
+							IMAGE_FORMAT_NV_DST16,
+							IMAGE_FORMAT_ATI_DST24,
+							IMAGE_FORMAT_NV_DST24);
+						PROMOTE_2_HARDWARE(IMAGE_FORMAT_ATI_DST24,
+							IMAGE_FORMAT_NV_DST24,
+							IMAGE_FORMAT_ATI_DST16,
+							IMAGE_FORMAT_NV_DST16);
 						PROMOTE_2_HARDWARE(IMAGE_FORMAT_NV_NULL);
 
 						PROMOTE_2_HARDWARE(IMAGE_FORMAT_ATI2N);
@@ -344,6 +360,14 @@ vk::Extent2D TF2Vulkan::GetBlockSize(vk::Format format)
 	case vk::Format::eR8Uint:
 	case vk::Format::eR8Sint:
 
+	case vk::Format::eR8G8B8Unorm:
+	case vk::Format::eR8G8B8Snorm:
+	case vk::Format::eR8G8B8Uscaled:
+	case vk::Format::eR8G8B8Sscaled:
+	case vk::Format::eR8G8B8Uint:
+	case vk::Format::eR8G8B8Sint:
+	case vk::Format::eR8G8B8Srgb:
+
 	case vk::Format::eR8G8B8A8Srgb:
 	case vk::Format::eR8G8B8A8Unorm:
 	case vk::Format::eR8G8B8A8Snorm:
@@ -367,6 +391,8 @@ vk::Extent2D TF2Vulkan::GetBlockSize(vk::Format format)
 	case vk::Format::eR16G16B16A16Uint:
 	case vk::Format::eR16G16B16A16Sint:
 	case vk::Format::eR16G16B16A16Sfloat:
+
+	case vk::Format::eD24UnormS8Uint:
 		return vk::Extent2D(1, 1);
 	}
 }
@@ -383,13 +409,21 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 	case vk::Format::eR8Sint:
 	case vk::Format::eR8Srgb:
 
-	case vk::Format::eB8G8R8A8Srgb:
+	case vk::Format::eR8G8B8A8Unorm:
+	case vk::Format::eR8G8B8A8Snorm:
+	case vk::Format::eR8G8B8A8Uscaled:
+	case vk::Format::eR8G8B8A8Sscaled:
+	case vk::Format::eR8G8B8A8Uint:
+	case vk::Format::eR8G8B8A8Sint:
+	case vk::Format::eR8G8B8A8Srgb:
+
 	case vk::Format::eB8G8R8A8Unorm:
 	case vk::Format::eB8G8R8A8Snorm:
-	case vk::Format::eB8G8R8A8Uint:
-	case vk::Format::eB8G8R8A8Sint:
 	case vk::Format::eB8G8R8A8Uscaled:
 	case vk::Format::eB8G8R8A8Sscaled:
+	case vk::Format::eB8G8R8A8Uint:
+	case vk::Format::eB8G8R8A8Sint:
+	case vk::Format::eB8G8R8A8Srgb:
 
 	case vk::Format::eR16G16B16A16Unorm:
 	case vk::Format::eR16G16B16A16Snorm:
@@ -398,6 +432,14 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 	case vk::Format::eR16G16B16A16Uint:
 	case vk::Format::eR16G16B16A16Sint:
 	case vk::Format::eR16G16B16A16Sfloat:
+
+	case vk::Format::eBc1RgbUnormBlock:
+	case vk::Format::eBc1RgbSrgbBlock:
+	case vk::Format::eBc1RgbaUnormBlock:
+	case vk::Format::eBc1RgbaSrgbBlock:
+
+	case vk::Format::eBc3UnormBlock:
+	case vk::Format::eBc3SrgbBlock:
 		return vk::ImageAspectFlagBits::eColor;
 
 	case vk::Format::eD24UnormS8Uint:
@@ -446,6 +488,11 @@ vk::Format TF2Vulkan::ConvertDataFormat(DataFormat fmt, uint_fast8_t components,
 	case PACK_DFMT<DataFormat::SFloat, 2, 4>:        return vk::Format::eR32G32Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 3, 4>:        return vk::Format::eR32G32B32Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 4, 4>:        return vk::Format::eR32G32B32A32Sfloat;
+
+	case PACK_DFMT<DataFormat::UNorm, 1, 1>:         return vk::Format::eR8Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 2, 1>:         return vk::Format::eR8G8Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 3, 1>:         return vk::Format::eR8G8B8Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 4, 1>:         return vk::Format::eR8G8B8A8Unorm;
 	}
 
 	assert(!"Unknown/unsupported combination");

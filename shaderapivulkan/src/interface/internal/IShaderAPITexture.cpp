@@ -33,3 +33,9 @@ const vk::ImageView& IVulkanTexture::FindOrCreateView()
 
 	return FindOrCreateView(ci);
 }
+
+ImageFormat IVulkanTexture::GetImageFormat() const
+{
+	LOG_FUNC();
+	return ConvertImageFormat(GetImageCreateInfo().format);
+}

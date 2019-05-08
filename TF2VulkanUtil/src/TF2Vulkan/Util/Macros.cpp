@@ -3,6 +3,14 @@
 
 #include <cctype>
 
+#pragma push_macro("RTL_NUMBER_OF_V2")
+#pragma push_macro("_PREFAST_")
+#undef RTL_NUMBER_OF_V2
+#undef _PREFAST_
+#include <Windows.h>
+#pragma pop_macro("RTL_NUMBER_OF_V2")
+#pragma pop_macro("_PREFAST_")
+
 namespace
 {
 	class FnSigComponents
@@ -52,12 +60,21 @@ void Util::FunctionNotImplemented(const char* fnSig, const char* file, int line)
 static thread_local int s_LogFunctionCallIndentation = 0;
 static constexpr const char LOG_FN_INDENT_CHARS[] =
 	"                                                            ";
-Util::LogFunctionCallScope::LogFunctionCallScope(const std::string_view& fnSig,
+
+template<bool enabled>
+Util::LogFunctionCallScope<enabled>::LogFunctionCallScope(const std::string_view& fnSig,
 	const std::string_view& file, int line, const std::string_view& msg)
 {
 	LogFunctionCall(fnSig, file, line, msg);
 	s_LogFunctionCallIndentation++;
 }
+template<bool enabled>
+Util::LogFunctionCallScope<enabled>::~LogFunctionCallScope()
+{
+	s_LogFunctionCallIndentation--;
+}
+
+template struct Util::LogFunctionCallScope<true>;
 
 void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line,
 	const std::string_view& msg)
@@ -65,12 +82,10 @@ void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view
 	ASSERT_MAIN_THREAD();
 	const FnSigComponents comps(fnSig);
 
-	Msg("[TF2Vulkan] -> %.*s%.*s%s%.*s\n",
+	char buf[512];
+	sprintf_s(buf, "[TF2Vulkan] -> %.*s%.*s%s%.*s\n",
 		s_LogFunctionCallIndentation, LOG_FN_INDENT_CHARS,
 		PRINTF_SV(fnSig), msg.empty() ? "" : ": ", PRINTF_SV(msg));
-}
 
-Util::LogFunctionCallScope::~LogFunctionCallScope()
-{
-	s_LogFunctionCallIndentation--;
+	OutputDebugStringA(buf);
 }

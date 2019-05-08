@@ -18,6 +18,7 @@
 
 #include <Color.h>
 #include <materialsystem/imesh.h>
+#include <shaderapi/commandbuffer.h>
 
 #include <atomic>
 #include <cstdint>
@@ -46,7 +47,6 @@ namespace
 
 		void GetLightmapDimensions(int* w, int* h) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void LoadMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
 		void MultMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
 		void MultMatrixLocal(float* m) override { NOT_IMPLEMENTED_FUNC(); }
 		void LoadCameraToWorld() override { NOT_IMPLEMENTED_FUNC(); }
@@ -79,8 +79,7 @@ namespace
 		int GetMaxLights() const override { NOT_IMPLEMENTED_FUNC(); }
 		const LightDesc_t& GetLight(int lightNum) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetVertexShaderStateAmbientLightCube() override { NOT_IMPLEMENTED_FUNC(); }
-		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetVertexShaderStateAmbientLightCube() override;
 		void CommitPixelShaderLighting(int pshReg) override { NOT_IMPLEMENTED_FUNC(); }
 
 		CMeshBuilder* GetVertexModifyBuilder() override;
@@ -134,23 +133,14 @@ namespace
 		void BeginPass(StateSnapshot_t snapshot) override;
 		void RenderPass(int passID, int passCount) override;
 		bool IsInPass() const override { NOT_IMPLEMENTED_FUNC(); }
-		void BeginFrame() override { NOT_IMPLEMENTED_FUNC(); }
-		bool IsInFrame() const override { NOT_IMPLEMENTED_FUNC(); }
-		void EndFrame() override { NOT_IMPLEMENTED_FUNC(); }
+		void BeginFrame() override;
+		bool IsInFrame() const override;
+		void EndFrame() override;
 
 		void FlushHardware() override { NOT_IMPLEMENTED_FUNC(); }
-		void ForceHardwareSync() override { NOT_IMPLEMENTED_FUNC(); }
-
-		void SetNumBoneWeights(int boneCount) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void SetLight(int light, const LightDesc_t& desc) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetLightingOrigin(Vector lightingOrigin) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetAmbientLight(float r, float g, float b) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetAmbientLightCube(Vector4D cube[6]) override { NOT_IMPLEMENTED_FUNC(); }
+		void ForceHardwareSync() override;
 
 		void ShadeMode(ShaderShadeMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void CullMode(MaterialCullMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void OverrideDepthEnable(bool enable, bool depthEnable) override { NOT_IMPLEMENTED_FUNC(); }
 
@@ -177,8 +167,8 @@ namespace
 		bool IsTexture(ShaderAPITextureHandle_t tex) override;
 		bool IsTextureResident(ShaderAPITextureHandle_t tex) override { NOT_IMPLEMENTED_FUNC(); }
 
-		ShaderAPITextureHandle_t CreateDepthTexture( ImageFormat rtFormat, int width,
-			int height, const char* dbgName, bool texture) override { NOT_IMPLEMENTED_FUNC(); }
+		ShaderAPITextureHandle_t CreateDepthTexture(ImageFormat rtFormat, int width,
+			int height, const char* dbgName, bool texture) override;
 
 		void TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int ivtfFrame) override;
 
@@ -251,14 +241,6 @@ namespace
 
 		void EnableLinearColorSpaceFrameBuffer(bool enable) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 
-		void SetFloatRenderingParameter(RenderParamFloat_t param, float value) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetIntRenderingParameter(RenderParamInt_t param, int value) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetVectorRenderingParameter(RenderParamVector_t param, const Vector& value) override { NOT_IMPLEMENTED_FUNC(); }
-
-		float GetFloatRenderingParameter(RenderParamFloat_t param) const override { NOT_IMPLEMENTED_FUNC(); }
-		int GetIntRenderingParameter(RenderParamInt_t param) const override { NOT_IMPLEMENTED_FUNC(); }
-		Vector GetVectorRenderingParameter(RenderParamVector_t param) const override { NOT_IMPLEMENTED_FUNC(); }
-
 		void SetFastClipPlane(const float* plane) override { NOT_IMPLEMENTED_FUNC(); }
 		void EnableFastClip(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
@@ -267,14 +249,6 @@ namespace
 		int GetMaxVerticesToRender(IMaterial* material) override { NOT_IMPLEMENTED_FUNC(); }
 		int GetMaxIndicesToRender() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetStencilEnable(bool enabled) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilFailOperation(StencilOperation_t op) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilZFailOperation(StencilOperation_t op) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilPassOperation(StencilOperation_t op) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilCompareFunction(StencilComparisonFunction_t fn) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilReferenceValue(int ref) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilTestMask(uint32 mask) override { NOT_IMPLEMENTED_FUNC(); }
-		void SetStencilWriteMask(uint32 mask) override { NOT_IMPLEMENTED_FUNC(); }
 		void ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void DisableAllLocalLights() override { NOT_IMPLEMENTED_FUNC(); }
@@ -342,8 +316,6 @@ namespace
 
 		void EnableBuffer2FramesAhead(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale) override { NOT_IMPLEMENTED_FUNC(); }
-
 		void PrintfVA(char* fmt, va_list vargs) override { NOT_IMPLEMENTED_FUNC(); }
 		void Printf(PRINTF_FORMAT_STRING const char* fmt, ...) override { NOT_IMPLEMENTED_FUNC(); }
 		float Knob(char* knobName, float* setValue) override { NOT_IMPLEMENTED_FUNC(); }
@@ -355,10 +327,10 @@ namespace
 			int x, int y, int w, int h, bool write, bool read) override { NOT_IMPLEMENTED_FUNC(); }
 		void UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
+		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override;
 		void BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
 
-		ITexture* GetRenderTargetEx(int renderTargetID) override { NOT_IMPLEMENTED_FUNC(); }
+		ITexture* GetRenderTargetEx(int renderTargetID) override;
 
 		void SetToneMappingScaleLinear(const Vector& scale) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		const Vector& GetToneMappingScaleLinear() const override { NOT_IMPLEMENTED_FUNC(); }
@@ -370,13 +342,11 @@ namespace
 
 		float GetAmbientLightCubeLuminance() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetDX9LightState(LightState_t* state) const override { NOT_IMPLEMENTED_FUNC(); }
+		bool IsHWMorphingEnabled() const override;
 
-		bool IsHWMorphingEnabled() const override { NOT_IMPLEMENTED_FUNC(); }
+		void GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id) override;
 
-		void GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
-
-		bool ShouldWriteDepthToDestAlpha() const override { NOT_IMPLEMENTED_FUNC(); }
+		bool ShouldWriteDepthToDestAlpha() const override;
 
 		void PushDeformation(const DeformationBase_t* deformation) override { NOT_IMPLEMENTED_FUNC(); }
 		void PopDeformation() override { NOT_IMPLEMENTED_FUNC(); }
@@ -385,9 +355,9 @@ namespace
 		int GetPackedDeformationInformation(int maxOfUnderstoodDeformations, float* constantValuesOut,
 			int bufSize, int maxDeformations, int* numDefsOut) const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords) override { NOT_IMPLEMENTED_FUNC(); }
+		void MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords) override;
 
-		void ExecuteCommandBuffer(uint8* cmdBuf) override { NOT_IMPLEMENTED_FUNC(); }
+		void ExecuteCommandBuffer(uint8* cmdBuf) override;
 
 		void SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex) override;
 		void GetCurrentColorCorrection(ShaderColorCorrectionInfo_t* info) override { NOT_IMPLEMENTED_FUNC(); }
@@ -441,6 +411,8 @@ namespace
 		CMeshBuilder m_MeshBuilder;
 
 		std::stack<ActiveMeshData, std::vector<ActiveMeshData>> m_ActiveMesh;
+
+		bool m_IsInFrame = false;
 	};
 }
 
@@ -453,7 +425,9 @@ IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
 	LOG_FUNC();
-	return;
+	if (!g_StateManagerStatic.IsAnyRenderTargetBound())
+		return;
+
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
 
 	auto pixScope = cmdBuf.DebugRegionBegin("ShaderAPI::ClearBuffers(%s, %s, %s, %i, %i)",
@@ -678,14 +652,17 @@ VertexFormat_t ShaderAPI::ComputeVertexFormat(int snapshotCount, StateSnapshot_t
 		}
 	}
 
-	// Untested;
+	// Untested
 	assert(boneCount == 0);
-	assert(userDataSize == 0);
 
 	VertexFormat_t retVal =
 		VertexFormat_t(flags) |
 		VERTEX_BONEWEIGHT(boneCount) |
 		VERTEX_USERDATA_SIZE(userDataSize);
+
+	[[maybe_unused]] const VertexFormat dbgTest(retVal);
+
+	assert(userDataSize >= 0 && userDataSize <= 4); // Untested
 
 	for (size_t i = 0; i < std::size(texCoordSize); i++)
 		retVal |= VERTEX_TEXCOORD_SIZE(i, texCoordSize[i]);
@@ -757,7 +734,31 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 	Util::SafeConvert(depth, createInfo.extent.depth);
 	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
 
-	createInfo.format = ConvertImageFormat(dstImgFormat);
+	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
+	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
+	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
+
+	if (flags & TEXTURE_CREATE_CUBEMAP)
+		createInfo.arrayLayers = 6;
+
+	FormatUsage fmtUsage;
+	assert(!(flags & TEXTURE_CREATE_RENDERTARGET) || !(flags & TEXTURE_CREATE_DEPTHBUFFER));
+	if (flags & TEXTURE_CREATE_RENDERTARGET)
+	{
+		createInfo.usage |= vk::ImageUsageFlagBits::eColorAttachment;
+		fmtUsage = FormatUsage::RenderTarget;
+	}
+	else if (flags & TEXTURE_CREATE_DEPTHBUFFER)
+	{
+		createInfo.usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
+		fmtUsage = FormatUsage::DepthStencil;
+	}
+	else
+	{
+		fmtUsage = FormatUsage::ImmutableTexture;
+	}
+
+	createInfo.format = ConvertImageFormat(PromoteToHardware(dstImgFormat, fmtUsage, true));
 
 	// Make sure it's a multiple of the block size
 	{
@@ -768,17 +769,6 @@ ShaderAPITextureHandle_t ShaderAPI::CreateTexture(int width, int height, int dep
 		createInfo.extent.width += (blockSize.width - wDelta) % blockSize.width;
 		createInfo.extent.height += (blockSize.height - hDelta) % blockSize.height;
 	}
-
-	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
-	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
-	createInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-
-	if (flags & TEXTURE_CREATE_CUBEMAP)
-		createInfo.arrayLayers = 6;
-	if (flags & TEXTURE_CREATE_RENDERTARGET)
-		createInfo.usage |= vk::ImageUsageFlagBits::eColorAttachment;
-	if (flags & TEXTURE_CREATE_DEPTHBUFFER)
-		createInfo.usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
 
 	return CreateTexture(dbgName, createInfo).GetHandle();
 }
@@ -794,6 +784,16 @@ void ShaderAPI::CreateTextures(ShaderAPITextureHandle_t* handles, int count,
 		handles[i] = CreateTexture(width, height, depth, dstImgFormat,
 			mipLevelCount, copyCount, flags, dbgName, texGroupName);
 	}
+}
+
+ShaderAPITextureHandle_t ShaderAPI::CreateDepthTexture(ImageFormat rtFormat, int width, int height,
+	const char* dbgName, bool texture)
+{
+	LOG_FUNC();
+
+	assert(!texture); // TODO: what does (texture = true) indicate
+
+	return CreateTexture(width, height, 1, IMAGE_FORMAT_NV_DST24, 1, 0, TEXTURE_CREATE_DEPTHBUFFER, dbgName, TEXTURE_GROUP_RENDER_TARGET);
 }
 
 const vk::ImageView& ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageViewCreateInfo& viewCreateInfo)
@@ -899,6 +899,7 @@ void ShaderAPI::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture*
 			texData.m_Data = vtf->ImageData(frameIndex, face, mip);
 			Util::SafeConvert(mipSize, texData.m_DataLength);
 			Util::SafeConvert(stride, texData.m_Stride);
+			Util::SafeConvert(mipSize, texData.m_SliceStride);
 
 			Util::SafeConvert(mip, texData.m_MipLevel);
 			texData.m_CubeFace = CubeMapFaceIndex_t(face);
@@ -961,10 +962,14 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 				region.bufferOffset = currentOffset;
 				if (slice.m_Stride > 0)
 					region.bufferRowLength = slice.m_Stride / (slice.m_Stride / slice.m_Width); // bufferRowLength is in texels
+
 				if (slice.m_SliceStride > 0)
 				{
-					assert(!"TODO");
-					//region.bufferImageHeight = slice.m_SliceStride;
+					// bufferImageHeight is in texels
+					if (slice.m_Stride > 0)
+						region.bufferImageHeight = slice.m_SliceStride / slice.m_Stride;
+					else
+						region.bufferImageHeight = slice.m_Height;
 				}
 
 				Util::SafeConvert(slice.m_XOffset, region.imageOffset.x);
@@ -1026,7 +1031,7 @@ void ShaderAPI::ClearSnapshots()
 bool ShaderAPI::CanDownloadTextures() const
 {
 	LOG_FUNC();
-	return true; // Why wouldn't we be able to?
+	return true; // TODO: Why wouldn't we be able to?
 }
 
 void ShaderAPI::ResetRenderState(bool fullReset)
@@ -1149,4 +1154,297 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 
 	auto& activeMesh = GetActiveMesh();
 	activeMesh.m_Mesh->DrawInternal(cmdBuf, activeMesh.m_FirstIndex, activeMesh.m_IndexCount);
+}
+
+bool ShaderAPI::ShouldWriteDepthToDestAlpha() const
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	return false;
+}
+
+bool ShaderAPI::IsHWMorphingEnabled() const
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	//return true; // Always enabled for vulkan
+	return false; // Disabled (for now) to reduce complexity
+}
+
+void ShaderAPI::GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id)
+{
+	LOG_FUNC();
+
+	auto& tex = GetTexture(m_StdTextures.at(id));
+	auto& ci = tex.GetImageCreateInfo();
+
+	if (width)
+		Util::SafeConvert(ci.extent.width, *width);
+
+	if (height)
+		Util::SafeConvert(ci.extent.height, *height);
+}
+
+void ShaderAPI::MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords)
+{
+	assert(flags == 0); // TODO: What flags go here?
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
+ITexture* ShaderAPI::GetRenderTargetEx(int renderTargetID)
+{
+	assert(renderTargetID == 0);
+	return &g_ShaderDevice.GetBackBufferColorTexture();
+}
+
+namespace
+{
+	struct BaseCommandBufferCmd
+	{
+		CommandBufferCommand_t m_Command;
+	};
+
+	union CommandBufferCmd
+	{
+		CommandBufferCommand_t m_Command;
+
+		struct : BaseCommandBufferCmd
+		{
+
+		} m_End, m_SetAmbientCubeDynamicStateVertexShader;
+
+		struct : BaseCommandBufferCmd
+		{
+			uint8_t* m_Address;
+		} m_Jump;
+
+		struct : BaseCommandBufferCmd
+		{
+			uint8_t* m_Address;
+		} m_JumpSubroutine;
+
+		struct : BaseCommandBufferCmd
+		{
+			int m_FirstRegister;
+			int m_NumRegisters;
+			float m_Values[4];
+		} m_SetVertexShaderFloatConstant, m_SetPixelShaderFloatConstant;
+
+		struct : BaseCommandBufferCmd
+		{
+			int m_DestRegister;
+		} m_SetPixelShaderFogParams;
+
+		struct : BaseCommandBufferCmd
+		{
+			Sampler_t m_Sampler;
+			ShaderAPITextureHandle_t m_Texture;
+		} m_BindShaderAPITextureHandle;
+
+		struct : BaseCommandBufferCmd
+		{
+			int m_Index;
+		} m_SetPSIndex, m_SetVSIndex;
+
+		struct : BaseCommandBufferCmd
+		{
+			int m_Register;
+			float m_BlendScale;
+		} m_SetDepthFeatheringConst;
+
+		struct : BaseCommandBufferCmd
+		{
+			Sampler_t m_Sampler;
+			StandardTextureId_t m_StdTexture;
+		} m_BindStdTexture;
+
+		struct : BaseCommandBufferCmd
+		{
+			int m_Register;
+		} m_SetPixelShaderStateAmbientLightCube;
+	};
+}
+
+#define TOSTRING_CASE(enumVal) case enumVal : return #enumVal;
+
+static inline const char* ToString(CommandBufferCommand_t cmd)
+{
+	switch (cmd)
+	{
+	default:
+		assert(!"Unknown CommandBufferCommand_t");
+		return "UNKNOWN";
+
+		TOSTRING_CASE(CBCMD_END);
+		TOSTRING_CASE(CBCMD_JUMP);
+		TOSTRING_CASE(CBCMD_JSR);
+		TOSTRING_CASE(CBCMD_SET_PIXEL_SHADER_FLOAT_CONST);
+		TOSTRING_CASE(CBCMD_SET_VERTEX_SHADER_FLOAT_CONST);
+		TOSTRING_CASE(CBCMD_SET_VERTEX_SHADER_FLOAT_CONST_REF);
+		TOSTRING_CASE(CBCMD_SETPIXELSHADERFOGPARAMS);
+		TOSTRING_CASE(CBCMD_STORE_EYE_POS_IN_PSCONST);
+		TOSTRING_CASE(CBCMD_COMMITPIXELSHADERLIGHTING);
+		TOSTRING_CASE(CBCMD_SETPIXELSHADERSTATEAMBIENTLIGHTCUBE);
+		TOSTRING_CASE(CBCMD_SETAMBIENTCUBEDYNAMICSTATEVERTEXSHADER);
+		TOSTRING_CASE(CBCMD_SET_DEPTH_FEATHERING_CONST);
+		TOSTRING_CASE(CBCMD_BIND_STANDARD_TEXTURE);
+		TOSTRING_CASE(CBCMD_BIND_SHADERAPI_TEXTURE_HANDLE);
+		TOSTRING_CASE(CBCMD_SET_PSHINDEX);
+		TOSTRING_CASE(CBCMD_SET_VSHINDEX);
+		TOSTRING_CASE(CBCMD_SET_VERTEX_SHADER_FLASHLIGHT_STATE);
+		TOSTRING_CASE(CBCMD_SET_PIXEL_SHADER_FLASHLIGHT_STATE);
+		TOSTRING_CASE(CBCMD_SET_PIXEL_SHADER_UBERLIGHT_STATE);
+		TOSTRING_CASE(CBCMD_SET_VERTEX_SHADER_NEARZFARZ_STATE);
+	}
+}
+
+static void PrintCommandBufferCommand(CommandBufferCommand_t cmd)
+{
+	char buf[512];
+	sprintf_s(buf, "%s\t%s\n", TF2VULKAN_PREFIX, ToString(cmd));
+	OutputDebugStringA(buf);
+}
+
+void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
+{
+	LOG_FUNC();
+	const auto cmdBufBegin = cmdBuf;
+
+	auto& realCmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
+
+	const auto& cmdBufTyped = *reinterpret_cast<CommandBufferCmd**>(&cmdBuf);
+	while (cmdBufTyped->m_Command != CBCMD_END)
+	{
+		PrintCommandBufferCommand(cmdBufTyped->m_Command);
+
+		switch (cmdBufTyped->m_Command)
+		{
+		default:
+			assert(!"Unknown CommandBufferCommand_t");
+			return;
+
+		case CBCMD_JSR:
+		{
+			ExecuteCommandBuffer(cmdBufTyped->m_JumpSubroutine.m_Address);
+			cmdBuf += sizeof(cmdBufTyped->m_JumpSubroutine);
+			break;
+		}
+
+		case CBCMD_SETPIXELSHADERFOGPARAMS:
+		{
+			SetPixelShaderFogParams(cmdBufTyped->m_SetPixelShaderFogParams.m_DestRegister);
+			cmdBuf += sizeof(cmdBufTyped->m_SetPixelShaderFogParams);
+			break;
+		}
+
+		case CBCMD_BIND_SHADERAPI_TEXTURE_HANDLE:
+		{
+			const auto& cmd = cmdBufTyped->m_BindShaderAPITextureHandle;
+			BindTexture(cmd.m_Sampler, cmd.m_Texture);
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_SET_VERTEX_SHADER_FLOAT_CONST:
+		{
+			const auto& cmd = cmdBufTyped->m_SetVertexShaderFloatConstant;
+			SetVertexShaderConstant(cmd.m_FirstRegister, cmd.m_Values, cmd.m_NumRegisters);
+			cmdBuf += sizeof(cmd) - sizeof(cmd.m_Values) + (sizeof(float) * 4 * cmd.m_NumRegisters);
+			break;
+		}
+
+		case CBCMD_SET_PIXEL_SHADER_FLOAT_CONST:
+		{
+			const auto& cmd = cmdBufTyped->m_SetPixelShaderFloatConstant;
+			SetPixelShaderConstant(cmd.m_FirstRegister, cmd.m_Values, cmd.m_NumRegisters);
+			cmdBuf += sizeof(cmd) - sizeof(cmd.m_Values) + (sizeof(float) * 4 * cmd.m_NumRegisters);
+			break;
+		}
+
+		case CBCMD_SETAMBIENTCUBEDYNAMICSTATEVERTEXSHADER:
+		{
+			const auto& cmd = cmdBufTyped->m_SetAmbientCubeDynamicStateVertexShader;
+			SetVertexShaderStateAmbientLightCube();
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_SET_VSHINDEX:
+		{
+			const auto& cmd = cmdBufTyped->m_SetPSIndex;
+			SetVertexShaderIndex(cmd.m_Index);
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_SET_PSHINDEX:
+		{
+			const auto& cmd = cmdBufTyped->m_SetPSIndex;
+			SetPixelShaderIndex(cmd.m_Index);
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_SET_DEPTH_FEATHERING_CONST:
+		{
+			const auto& cmd = cmdBufTyped->m_SetDepthFeatheringConst;
+			SetDepthFeatheringPixelShaderConstant(cmd.m_Register, cmd.m_BlendScale);
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_BIND_STANDARD_TEXTURE:
+		{
+			const auto& cmd = cmdBufTyped->m_BindStdTexture;
+			BindStandardTexture(cmd.m_Sampler, cmd.m_StdTexture);
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_SETPIXELSHADERSTATEAMBIENTLIGHTCUBE:
+		{
+			const auto& cmd = cmdBufTyped->m_SetPixelShaderStateAmbientLightCube;
+			SetPixelShaderStateAmbientLightCube(cmd.m_Register, false); // TODO: force to black???
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+		}
+	}
+}
+
+void ShaderAPI::SetVertexShaderStateAmbientLightCube()
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	// TODO: Update the vertex shader uniform buffer with the ambient light cube
+	// TODO: This probably belongs in IShaderAPI_StateManagerDynamic
+}
+
+void ShaderAPI::ForceHardwareSync()
+{
+	LOG_FUNC();
+	// Vulkan makes this so easy :)
+	g_ShaderDevice.GetGraphicsQueue().GetQueue().waitIdle();
+}
+
+void ShaderAPI::BeginFrame()
+{
+	LOG_FUNC();
+	assert(!m_IsInFrame);
+	m_IsInFrame = true;
+}
+
+bool ShaderAPI::IsInFrame() const
+{
+	return m_IsInFrame;
+}
+
+void ShaderAPI::EndFrame()
+{
+	LOG_FUNC();
+	assert(m_IsInFrame);
+	m_IsInFrame = false;
+}
+
+void ShaderAPI::BindStandardTexture(Sampler_t sampler, StandardTextureId_t id)
+{
+	LOG_FUNC();
+	BindTexture(sampler, m_StdTextures.at(id));
 }

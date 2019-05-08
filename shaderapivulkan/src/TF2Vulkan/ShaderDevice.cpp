@@ -1,9 +1,10 @@
 #include "FormatConversion.h"
 #include "interface/internal/IShaderAPIInternal.h"
 #include "interface/internal/IShaderAPITexture.h"
-#include "VulkanCommandBufferBase.h"
 #include "ShaderDevice.h"
 #include "ShaderDeviceMgr.h"
+#include "VulkanCommandBufferBase.h"
+#include "VulkanMesh.h"
 
 #include <TF2Vulkan/Util/interface.h>
 
@@ -369,13 +370,16 @@ void ShaderDevice::DestroyPixelShader(PixelShaderHandle_t shader)
 
 IMesh* ShaderDevice::CreateStaticMesh(VertexFormat_t format, const char* textureBudgetGroup, IMaterial* material)
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	// TODO
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	return new VulkanMesh(VertexFormat(format));
 }
 
 void ShaderDevice::DestroyStaticMesh(IMesh* mesh)
 {
-	NOT_IMPLEMENTED_FUNC();
+	// TODO
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	delete assert_cast<VulkanMesh*>(mesh);
 }
 
 IVertexBuffer* ShaderDevice::CreateVertexBuffer(ShaderBufferType_t type, VertexFormat_t fmt, int vertexCount, const char* budgetGroup)

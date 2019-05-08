@@ -17,10 +17,8 @@ VS_OUTPUT main( const VS_INPUT input )
 	VS_OUTPUT output;
 
 	output.pos = input.pos;
-	output.pos.z = 0.5f;
-
-	output.pos.xyz *= 0.75f;
 	output.texCoord = input.texCoord;
+	//output.texCoord.y = output.texCoord.y;
 
 	return output;
 }

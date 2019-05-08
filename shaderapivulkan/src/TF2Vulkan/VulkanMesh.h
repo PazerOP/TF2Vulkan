@@ -2,7 +2,7 @@
 
 #include "VertexFormat.h"
 
-#include <materialsystem/imesh.h>
+#include "interface/internal/IMeshInternal.h"
 
 #include <atomic>
 #include <vector>
@@ -14,7 +14,7 @@ namespace Util
 
 namespace TF2Vulkan
 {
-	class VulkanVertexBuffer final : public IVertexBuffer
+	class VulkanVertexBuffer final : public IVertexBufferInternal
 	{
 	public:
 		explicit VulkanVertexBuffer(const VertexFormat& format);
@@ -46,7 +46,7 @@ namespace TF2Vulkan
 		size_t m_VertexCount = 0;
 	};
 
-	class VulkanIndexBuffer final : public IIndexBuffer
+	class VulkanIndexBuffer final : public IIndexBufferInternal
 	{
 	public:
 		int IndexCount() const override;
@@ -76,7 +76,7 @@ namespace TF2Vulkan
 		std::vector<unsigned short> m_Indices;
 	};
 
-	class VulkanMesh final : public IMesh
+	class VulkanMesh final : public IMeshInternal
 	{
 	public:
 		explicit VulkanMesh(const VertexFormat& fmt);
@@ -139,6 +139,9 @@ namespace TF2Vulkan
 
 		VulkanVertexBuffer m_VertexBuffer;
 		VulkanIndexBuffer m_IndexBuffer;
+
+		IMesh* m_ColorMesh = nullptr;
+		int m_ColorMeshVertexOffset = 0;
 
 		MaterialPrimitiveType_t m_PrimitiveType = MATERIAL_TRIANGLES;
 	};

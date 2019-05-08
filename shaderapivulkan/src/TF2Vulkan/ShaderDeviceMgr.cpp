@@ -93,6 +93,42 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderDeviceMgr, IShaderDeviceMgr, SHADER_DEVI
 
 IShaderDeviceMgrInternal& TF2Vulkan::g_ShaderDeviceMgr = s_DeviceMgr;
 
+static ConVar mat_alphacoverage("mat_alphacoverage", "0");
+static ConVar mat_frame_sync_enable("mat_frame_sync_enable", "1");
+static ConVar r_pixelfog("r_pixelfog", "1");
+static ConVar mat_debugalttab("mat_debugalttab", "0");
+//static ConVar mat_depthbias_shadowmap("mat_depthbias_shadowmap", "0");
+//static ConVar mat_fastclip("mat_fastclip", "0");
+//static ConVar mat_forcedynamic("mat_forcedynamic", "0");
+
+static ConVar mat_hdr_level("mat_hdr_level", "2");
+//static ConVar mat_slopescaledepthbias_shadowmap("mat_slopescaledepthbias_shadowmap", "0");
+//static ConVar mat_supports_d3d9ex("mat_supports_d3d9ex", "0");
+static ConVar mat_disable_ps_patch("mat_disable_ps_patch", "0");
+static ConVar mat_force_ps_patch("mat_force_ps_patch", "0");
+static ConVar mat_remoteshadercompile("mat_remoteshadercompile", "0");
+
+bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
+{
+	LOG_FUNC();
+
+	ConnectTier1Libraries(&factory, 1);
+	ConnectTier2Libraries(&factory, 1);
+	ConnectTier3Libraries(&factory, 1);
+
+	ConVar_Register();
+
+	//auto test = factory("MatSystemSurface008", nullptr);
+
+	if (!CommandLine()->CheckParm("-insecure"))
+	{
+		Error("TF2Vulkan is likely to trigger VAC. For this reason, you MUST use -insecure"
+			" on the command line (advanced options) to disable access to VAC-secured servers.");
+	}
+
+	return true;
+}
+
 static inline auto tie(const ShaderDisplayMode_t& v)
 {
 	return std::tie(
@@ -282,23 +318,6 @@ vk::PhysicalDevice ShaderDeviceMgr::GetAdapterByIndex(size_t index) const
 	}
 
 	return allAdapters[index];
-}
-
-bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
-{
-	LOG_FUNC();
-
-	ConnectTier1Libraries(&factory, 1);
-	ConnectTier2Libraries(&factory, 1);
-	ConnectTier3Libraries(&factory, 1);
-
-	if (!CommandLine()->CheckParm("-insecure"))
-	{
-		Error("TF2Vulkan is likely to trigger VAC. For this reason, you MUST use -insecure"
-			" on the command line (advanced options) to disable access to VAC-secured servers.");
-	}
-
-	return true;
 }
 
 static vk::Bool32 DebugUtilsMessengerCallback(

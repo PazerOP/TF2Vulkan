@@ -38,7 +38,7 @@ namespace TF2Vulkan
 		void SetData(size_t startReg, const ShaderConstant* data, size_t numRegs);
 
 		bool m_Dirty = false;
-		std::array<ShaderConstant, 32> m_Constants;
+		std::array<ShaderConstant, 1024> m_Constants;
 	};
 
 	using VertexShaderConstants = ShaderConstantValues;

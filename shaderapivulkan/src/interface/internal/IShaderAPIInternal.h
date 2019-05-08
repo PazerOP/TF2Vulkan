@@ -17,7 +17,10 @@ enum RenderParamVector_t;
 namespace TF2Vulkan
 {
 	struct TextureData;
+	union VertexFormat;
 	class VulkanMesh;
+	class VulkanIndexBuffer;
+	class VulkanVertexBuffer;
 
 	struct ActiveMeshData
 	{

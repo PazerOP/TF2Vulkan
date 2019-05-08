@@ -4,6 +4,8 @@
 #include "VertexFormat.h"
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
+#include <TF2Vulkan/Util/lightdesc.h>
+#include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/std_compare.h>
 #include <TF2Vulkan/Util/std_stack.h>
@@ -11,8 +13,8 @@
 #include <TF2Vulkan/Util/vmatrix.h>
 #include <TF2Vulkan/Util/vector.h>
 
+#include <renderparm.h>
 #include <shaderapi/ishaderapi.h>
-#include <shaderapi/ishaderdynamic.h>
 #include <shaderapi/ishadershadow.h>
 
 namespace TF2Vulkan
@@ -43,8 +45,28 @@ namespace TF2Vulkan
 		int m_VertexShaderIndex = 0;
 		int m_PixelShaderIndex = 0;
 
+		// Stencil settings
+		bool m_StencilEnable = false;
+		StencilOperation_t m_StencilFailOp = STENCILOPERATION_KEEP;
+		StencilOperation_t m_StencilDepthFailOp = STENCILOPERATION_KEEP;
+		StencilOperation_t m_StencilPassOp = STENCILOPERATION_KEEP;
+		StencilComparisonFunction_t m_StencilCompareFunc = STENCILCOMPARISONFUNCTION_ALWAYS;
+		uint32_t m_StencilRef = 0;
+		uint32_t m_StencilTestMask = 0xFFFFFFFF;
+		uint32_t m_StencilWriteMask = 0xFFFFFFFF;
+
+		MaterialCullMode_t m_CullMode = MATERIAL_CULLMODE_CCW;
+
 		VertexShaderConstants m_VertexShaderConstants;
 		PixelShaderConstants m_PixelShaderConstants;
+
+		LightState_t m_LightState;
+		std::array<LightDesc_t, 4> m_Lights;
+		std::array<Vector4D, 6> m_LightAmbientCube;
+
+		std::array<Vector, MAX_VECTOR_RENDER_PARMS> m_RenderParamsVector;
+		std::array<int, MAX_INT_RENDER_PARMS> m_RenderParamsInt;
+		std::array<float, MAX_FLOAT_RENDER_PARMS> m_RenderParamsFloat;
 
 		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
 
@@ -81,12 +103,6 @@ namespace TF2Vulkan
 		ShaderDepthFunc_t m_DepthCompareFunc = SHADER_DEPTHFUNC_NEARER;
 		bool m_DepthTest = true;
 		bool m_DepthWrite = true;
-
-		// Stencil settings
-		ShaderStencilFunc_t m_StencilFunc = SHADER_STENCILFUNC_ALWAYS;
-		ShaderStencilOp_t m_StencilPassOp = SHADER_STENCILOP_KEEP;
-		ShaderStencilOp_t m_StencilFailOp = SHADER_STENCILOP_KEEP;
-		ShaderStencilOp_t m_StencilDepthFailOp = SHADER_STENCILOP_KEEP;
 
 		// Rasterizer settings
 		bool m_RSBackFaceCulling = true;
@@ -150,11 +166,6 @@ STD_HASH_DEFINITION(TF2Vulkan::LogicalShadowState,
 	v.m_DepthCompareFunc,
 	v.m_DepthTest,
 	v.m_DepthWrite,
-
-	v.m_StencilFunc,
-	v.m_StencilPassOp,
-	v.m_StencilFailOp,
-	v.m_StencilDepthFailOp,
 
 	v.m_RSBackFaceCulling,
 	v.m_RSPolyOffsetMode,

@@ -10,6 +10,13 @@ using namespace TF2Vulkan;
 
 static std::aligned_storage_t<256> s_FallbackMeshData;
 
+static void AssertCheckHeap()
+{
+#ifdef _DEBUG
+	assert(_CrtCheckMemory());
+#endif
+}
+
 VulkanMesh::VulkanMesh(const VertexFormat& fmt) :
 	m_VertexBuffer(fmt)
 {
@@ -24,6 +31,7 @@ void VulkanMesh::SetPrimitiveType(MaterialPrimitiveType_t type)
 void VulkanMesh::Draw(int firstIndex, int indexCount)
 {
 	LOG_FUNC();
+	AssertCheckHeap();
 
 	if (!g_ShaderDevice.IsReady())
 	{
@@ -31,7 +39,7 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		return;
 	}
 
-	assert(firstIndex == -1); // TODO: What about other values
+	assert(firstIndex == -1 || firstIndex == 0); // TODO: What about other values
 	if (firstIndex == -1)
 	{
 		// "Start at true zero"?
@@ -55,18 +63,19 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int indexCount)
 {
 	LOG_FUNC();
+	AssertCheckHeap();
 
 	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
 	auto indexBuf = Factories::BufferFactory{}
 		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer)
-		.SetInitialData(m_IndexBuffer.IndexData(), m_IndexBuffer.IndexDataSize() * IndexCount())
+		.SetInitialData(m_IndexBuffer.IndexData(), m_IndexBuffer.IndexDataSize())
 		.SetDebugName(__FUNCTION__ "(): Test index buffer")
 		.Create();
 
 	auto vertexBuf = Factories::BufferFactory{}
 		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-		.SetInitialData(m_VertexBuffer.VertexData(), m_VertexBuffer.VertexDataSize() * VertexCount())
+		.SetInitialData(m_VertexBuffer.VertexData(), m_VertexBuffer.VertexDataSize())
 		.SetDebugName(__FUNCTION__ "(): Test vertex buffer")
 		.Create();
 
@@ -103,7 +112,9 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	m_ColorMesh = colorMesh;
+	m_ColorMeshVertexOffset = vertexOffset;
 }
 
 void VulkanMesh::Draw(CPrimList* lists, int listCount)
@@ -338,6 +349,7 @@ int VulkanIndexBuffer::GetRoomRemaining() const
 bool VulkanIndexBuffer::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 {
 	LOG_FUNC();
+	AssertCheckHeap();
 
 	if (append)
 		NOT_IMPLEMENTED_FUNC();
@@ -346,9 +358,9 @@ bool VulkanIndexBuffer::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 
 	desc.m_nFirstIndex = 0;
 	desc.m_nOffset = 0;
-	desc.m_nIndexSize = sizeof(m_Indices[0]);
+	desc.m_nIndexSize = sizeof(m_Indices[0]); // FIXME: = (sizeof(...) >> 1)? Who even came up with this....
 
-	m_Indices.resize(maxIndexCount);
+	m_Indices.resize(maxIndexCount * 2); // FIXME REALLY SOON: Additional space to avoid heap corruption
 	desc.m_pIndices = m_Indices.data();
 
 	return true;
@@ -357,6 +369,7 @@ bool VulkanIndexBuffer::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 void VulkanIndexBuffer::Unlock(int writtenIndexCount, IndexDesc_t& desc)
 {
 	LOG_FUNC();
+	AssertCheckHeap();
 	assert(Util::SafeConvert<size_t>(writtenIndexCount) <= (m_Indices.size() * sizeof(m_Indices[0])));
 	// TODO: Send data to GPU
 }
@@ -433,6 +446,7 @@ int VulkanVertexBuffer::GetRoomRemaining() const
 bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 {
 	LOG_FUNC();
+	AssertCheckHeap();
 
 	if (append)
 		NOT_IMPLEMENTED_FUNC();
@@ -462,7 +476,7 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	const auto vtxElemsCount = uncompressedFormat.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
 	Util::SafeConvert(vertexCount, m_VertexCount);
-	m_DataBuffer.resize(totalVtxSize * m_VertexCount);
+	m_DataBuffer.resize(totalVtxSize * m_VertexCount);;
 
 	Util::SafeConvert(totalVtxSize, desc.m_ActualVertexSize);
 	desc.m_CompressionType = uncompressedFormat.GetCompressionType();
@@ -473,19 +487,62 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 		switch (vtxElem.m_Type->m_Element)
 		{
 		default:
-			if (vtxElem.m_Type->m_Element >= VERTEX_ELEMENT_TEXCOORD1D_0 && vtxElem.m_Type->m_Element < VERTEX_ELEMENT_NUMELEMENTS)
-			{
-				const auto texCoordIdx = (vtxElem.m_Type->m_Element - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_MAX_TEXTURE_COORDINATES;
-				desc.m_VertexSize_TexCoord[texCoordIdx] = totalVtxSize;
-				desc.m_pTexCoord[texCoordIdx] = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
-
-				break;
-			}
-
 			assert(!"Unknown vertex element type");
 		case VERTEX_ELEMENT_NONE:
 			break;
 
+		case VERTEX_ELEMENT_TEXCOORD1D_0:
+		case VERTEX_ELEMENT_TEXCOORD1D_1:
+		case VERTEX_ELEMENT_TEXCOORD1D_2:
+		case VERTEX_ELEMENT_TEXCOORD1D_3:
+		case VERTEX_ELEMENT_TEXCOORD1D_4:
+		case VERTEX_ELEMENT_TEXCOORD1D_5:
+		case VERTEX_ELEMENT_TEXCOORD1D_6:
+		case VERTEX_ELEMENT_TEXCOORD1D_7:
+		case VERTEX_ELEMENT_TEXCOORD2D_0:
+		case VERTEX_ELEMENT_TEXCOORD2D_1:
+		case VERTEX_ELEMENT_TEXCOORD2D_2:
+		case VERTEX_ELEMENT_TEXCOORD2D_3:
+		case VERTEX_ELEMENT_TEXCOORD2D_4:
+		case VERTEX_ELEMENT_TEXCOORD2D_5:
+		case VERTEX_ELEMENT_TEXCOORD2D_6:
+		case VERTEX_ELEMENT_TEXCOORD2D_7:
+		case VERTEX_ELEMENT_TEXCOORD3D_0:
+		case VERTEX_ELEMENT_TEXCOORD3D_1:
+		case VERTEX_ELEMENT_TEXCOORD3D_2:
+		case VERTEX_ELEMENT_TEXCOORD3D_3:
+		case VERTEX_ELEMENT_TEXCOORD3D_4:
+		case VERTEX_ELEMENT_TEXCOORD3D_5:
+		case VERTEX_ELEMENT_TEXCOORD3D_6:
+		case VERTEX_ELEMENT_TEXCOORD3D_7:
+		case VERTEX_ELEMENT_TEXCOORD4D_0:
+		case VERTEX_ELEMENT_TEXCOORD4D_1:
+		case VERTEX_ELEMENT_TEXCOORD4D_2:
+		case VERTEX_ELEMENT_TEXCOORD4D_3:
+		case VERTEX_ELEMENT_TEXCOORD4D_4:
+		case VERTEX_ELEMENT_TEXCOORD4D_5:
+		case VERTEX_ELEMENT_TEXCOORD4D_6:
+		case VERTEX_ELEMENT_TEXCOORD4D_7:
+		{
+			const auto texCoordIdx = (vtxElem.m_Type->m_Element - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_MAX_TEXTURE_COORDINATES;
+			desc.m_VertexSize_TexCoord[texCoordIdx] = totalVtxSize;
+			desc.m_pTexCoord[texCoordIdx] = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+
+			break;
+		}
+
+		case VERTEX_ELEMENT_USERDATA1:
+		case VERTEX_ELEMENT_USERDATA2:
+		case VERTEX_ELEMENT_USERDATA3:
+		case VERTEX_ELEMENT_USERDATA4:
+			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_UserData);
+			desc.m_pUserData = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			break;
+
+		case VERTEX_ELEMENT_COLOR:
+			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Color);
+			desc.m_pColor = reinterpret_cast<unsigned char*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			break;
 		case VERTEX_ELEMENT_POSITION:
 			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Position);
 			desc.m_pPosition = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
@@ -502,7 +559,8 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
-	LOG_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	AssertCheckHeap();
 	// TODO: Send data to GPU
 }
 
@@ -523,6 +581,5 @@ const std::byte* VulkanVertexBuffer::VertexData() const
 
 size_t VulkanVertexBuffer::VertexDataSize() const
 {
-	static_assert(sizeof(m_DataBuffer[0]) == 1);
-	return m_DataBuffer.size();
+	return m_DataBuffer.size() * sizeof(m_DataBuffer[0]);
 }

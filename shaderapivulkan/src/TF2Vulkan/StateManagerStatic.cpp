@@ -104,6 +104,7 @@ namespace
 		bool UsesVertexAndPixelShaders(LogicalShadowStateID id) const override;
 		bool IsDepthWriteEnabled(LogicalShadowStateID id) const override;
 
+		bool IsAnyRenderTargetBound() const override;
 		void SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex) override;
 
 		void SetState(LogicalShadowStateID id) override;
@@ -276,14 +277,10 @@ void ShadowStateManager::VertexShaderVertexFormat(uint flags,
 
 	VertexFormat fmt(flags | VERTEX_USERDATA_SIZE(userDataSize));
 
-	if (texCoordDimensions)
+	for (int i = 0; i < texCoordCount; i++)
 	{
-		for (int i = 0; i < texCoordCount; i++)
-			fmt.m_BaseFmt |= VERTEX_TEXCOORD_SIZE(i, texCoordDimensions[i]);
-	}
-	else if (texCoordCount)
-	{
-		Warning(TF2VULKAN_PREFIX "texCoordDimensions was nullptr, but texCoordCount was %i\n", texCoordCount);
+		auto dim = texCoordDimensions ? texCoordDimensions[i] : 2;
+		fmt.m_BaseFmt |= VERTEX_TEXCOORD_SIZE(i, dim);
 	}
 
 	auto& oldFmt = m_State.m_VSVertexFormat;
@@ -515,4 +512,15 @@ void ShadowStateManager::SetState(LogicalShadowStateID id)
 auto ShadowStateManager::GetState(LogicalShadowStateID id) const -> const LogicalShadowState &
 {
 	return *m_IDsToStates.at(Util::SafeConvert<size_t>(id));
+}
+
+bool ShadowStateManager::IsAnyRenderTargetBound() const
+{
+	for (auto& id : m_State.m_OMColorRTs)
+	{
+		if (id >= 0)
+			return true;
+	}
+
+	return false;
 }

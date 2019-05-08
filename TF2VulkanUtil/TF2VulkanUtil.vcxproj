@@ -84,11 +84,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\TF2Vulkan\Util\Buffer.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
     <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Enums.h" />
     <ClInclude Include="include\TF2Vulkan\Util\FourCC.h" />
     <ClInclude Include="include\TF2Vulkan\Util\InPlaceVector.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\lightdesc.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Macros.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ImageManip.h" />
     <ClInclude Include="include\TF2Vulkan\Util\interface.h" />
@@ -96,6 +98,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\MemoryPool.h" />
     <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ScopeFunc.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\shaderapi_ishaderdynamic.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_stack.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_array.h" />

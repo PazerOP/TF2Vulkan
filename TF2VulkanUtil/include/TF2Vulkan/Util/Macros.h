@@ -8,12 +8,21 @@
 
 #include <tier0/basetypes.h>
 
+#define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread())
+
 namespace Util
 {
+	template<bool enabled>
 	struct LogFunctionCallScope
 	{
 		LogFunctionCallScope(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
 		~LogFunctionCallScope();
+	};
+
+	template<>
+	struct LogFunctionCallScope<false>
+	{
+		LogFunctionCallScope(const char*, const char*, int, const std::string_view&) { ASSERT_MAIN_THREAD(); }
 	};
 
 	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
@@ -21,11 +30,11 @@ namespace Util
 	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
 }
 
-#define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread())
+#define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 
-//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
-#ifdef TF2VULKAN_ENABLE_FUNCTION_LOGGING
-#define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __LINE__) (__FUNCSIG__, __FILE__, __LINE__, msg)
+#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+#if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)
+#define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __LINE__) (__FUNCSIG__, __FILE__, __LINE__, msg)
 #else
 #define LOG_FUNC_MSG(msg) { ASSERT_MAIN_THREAD(); }
 #endif

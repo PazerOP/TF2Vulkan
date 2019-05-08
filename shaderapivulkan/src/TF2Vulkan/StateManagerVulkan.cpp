@@ -177,6 +177,7 @@ namespace
 		vk::SamplerCreateInfo m_CreateInfo;
 		vk::UniqueSampler m_Sampler;
 
+		void FixupPointers();
 		bool operator!() const { return !m_Sampler; }
 	};
 
@@ -187,6 +188,7 @@ namespace
 		vk::DescriptorPoolCreateInfo m_CreateInfo;
 		vk::UniqueDescriptorPool m_DescriptorPool;
 
+		void FixupPointers();
 		bool operator!() const { return !m_DescriptorPool; }
 	};
 
@@ -196,6 +198,9 @@ namespace
 
 		vk::DescriptorSetLayoutCreateInfo m_CreateInfo;
 		vk::UniqueDescriptorSetLayout m_Layout;
+
+		void FixupPointers();
+		bool operator!() const { return !m_Layout; }
 	};
 
 	struct PipelineLayout final
@@ -206,6 +211,7 @@ namespace
 		vk::PipelineLayoutCreateInfo m_CreateInfo;
 		vk::UniquePipelineLayout m_Layout;
 
+		void FixupPointers();
 		bool operator!() const { return !m_Layout; }
 	};
 
@@ -216,6 +222,8 @@ namespace
 		vk::AttachmentReference m_DepthStencilAttachment;
 
 		vk::SubpassDescription m_CreateInfo;
+
+		void FixupPointers();
 	};
 
 	struct RenderPass final
@@ -231,6 +239,7 @@ namespace
 
 		RenderPassKey m_Key;
 
+		void FixupPointers();
 		bool operator!() const { return !m_RenderPass; }
 	};
 
@@ -241,13 +250,20 @@ namespace
 		vk::FramebufferCreateInfo m_CreateInfo;
 		vk::UniqueFramebuffer m_Framebuffer;
 
+		void FixupPointers();
 		bool operator!() const { return !m_Framebuffer; }
 	};
 
 	struct ShaderStageCreateInfo
 	{
 		const IVulkanShaderManager::IShader* m_Shader = nullptr;
+
+		std::vector<std::byte> m_SpecializationData;
+		std::vector<vk::SpecializationMapEntry> m_SpecializationMapEntries;
+		vk::SpecializationInfo m_SpecializationInfo;
 		vk::PipelineShaderStageCreateInfo m_CreateInfo;
+
+		void FixupPointers();
 	};
 
 	struct Pipeline final
@@ -279,6 +295,7 @@ namespace
 		vk::GraphicsPipelineCreateInfo m_CreateInfo;
 		vk::UniquePipeline m_Pipeline;
 
+		void FixupPointers();
 		bool operator!() const { return !m_Pipeline; }
 		VulkanStateID m_ID;
 	};
@@ -331,25 +348,29 @@ static void AttachVector(const T*& destData, TSize& destSize, const std::vector<
 }
 
 static ShaderStageCreateInfo CreateStageInfo(
-	const CUtlSymbolDbg& name, int staticIndex, vk::ShaderStageFlagBits type)
+	const CUtlSymbolDbg& name, int shaderCombo, vk::ShaderStageFlagBits type)
 {
 	ShaderStageCreateInfo retVal;
-	retVal.m_CreateInfo.stage = type;
 
-	retVal.m_Shader = &g_ShaderManager.FindOrCreateShader(
-		name, staticIndex);
+	auto& ci = retVal.m_CreateInfo;
 
-	retVal.m_CreateInfo.module = retVal.m_Shader->GetModule();
+	retVal.m_Shader = &g_ShaderManager.FindOrCreateShader(name);
 
-	retVal.m_CreateInfo.pName = "main"; // Shader entry point
+	retVal.m_Shader->CreateSpecializationInfo(shaderCombo, retVal.m_SpecializationInfo,
+		retVal.m_SpecializationMapEntries, retVal.m_SpecializationData);
+
+	ci.stage = type;
+	ci.module = retVal.m_Shader->GetModule();
+	ci.pName = "main"; // Shader entry point
+	ci.pSpecializationInfo = &retVal.m_SpecializationInfo;
 
 	return retVal;
 }
 
-static void CreateBindings(DescriptorSetLayout& layout, const CUtlSymbolDbg& shaderName, int shaderStaticIndex)
+static void CreateBindings(DescriptorSetLayout& layout, const CUtlSymbolDbg& shaderName)
 {
 	const auto& reflectionData =
-		g_ShaderManager.FindOrCreateShader(shaderName, shaderStaticIndex).GetReflectionData();
+		g_ShaderManager.FindOrCreateShader(shaderName).GetReflectionData();
 
 	auto& bindings = layout.m_Bindings;
 
@@ -389,8 +410,8 @@ static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& ke
 	DescriptorSetLayout retVal;
 
 	// Bindings
-	CreateBindings(retVal, key.m_VSName, key.m_VSStaticIndex);
-	CreateBindings(retVal, key.m_PSName, key.m_PSStaticIndex);
+	CreateBindings(retVal, key.m_VSName);
+	CreateBindings(retVal, key.m_PSName);
 
 	// Descriptor set layout
 	{
@@ -488,9 +509,9 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 				att.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
 				att.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
 				att.samples = vk::SampleCountFlagBits::e1;
-				att.loadOp = vk::AttachmentLoadOp::eClear;
+				att.loadOp = vk::AttachmentLoadOp::eLoad; // TODO: Switch to eClear when we call ClearBuffers()
 				att.storeOp = vk::AttachmentStoreOp::eStore;
-				att.stencilLoadOp = vk::AttachmentLoadOp::eClear;
+				att.stencilLoadOp = vk::AttachmentLoadOp::eLoad; // TODO: Switch to eClear when we call ClearBuffers()
 				att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
 				att.format = colorTex.GetImageCreateInfo().format;
@@ -509,9 +530,9 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 			att.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 			att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 			att.samples = vk::SampleCountFlagBits::e1;
-			att.loadOp = vk::AttachmentLoadOp::eClear;
+			att.loadOp = vk::AttachmentLoadOp::eLoad; // TODO: Switch to eClear when we call ClearBuffers()
 			att.storeOp = vk::AttachmentStoreOp::eStore;
-			att.stencilLoadOp = vk::AttachmentLoadOp::eClear;
+			att.stencilLoadOp = vk::AttachmentLoadOp::eLoad; // TODO: Switch to eClear when we call ClearBuffers()
 			att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
 
 			att.format = FindTexture(key.m_OMDepthRT, true).GetImageCreateInfo().format;
@@ -619,7 +640,7 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 			attrs.emplace_back(VIAD(i, 0, vertexElement.m_Type->GetVKFormat(), vertexElement.m_Offset));
 		}
 
-		const auto& vertexShader = g_ShaderManager.FindOrCreateShader(key.m_VSName, key.m_VSStaticIndex);
+		const auto& vertexShader = g_ShaderManager.FindOrCreateShader(key.m_VSName);
 		for (const auto& input : vertexShader.GetReflectionData().m_VertexInputs)
 		{
 			bool found = false;
@@ -688,8 +709,9 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	{
 		auto& ci = retVal.m_RasterizationStateCI;
 
+		ci.frontFace = vk::FrontFace::eClockwise; // Reversed, because we have to invert Y in our vertex shader
 		ci.lineWidth = 1; // default
-		ci.cullMode = key.m_RSBackFaceCulling ? vk::CullModeFlagBits::eBack : vk::CullModeFlagBits::eNone;
+		ci.cullMode = key.m_RSBackFaceCulling ? vk::CullModeFlagBits::eBack : vk::CullModeFlagBits::eNone; // FIXME: Temp disabled
 		switch (key.m_RSPolyMode)
 		{
 		default:
@@ -747,20 +769,13 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	{
 		vk::GraphicsPipelineCreateInfo& ci = retVal.m_CreateInfo;
 
+		retVal.FixupPointers();
+
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
 		for (const auto& stage : retVal.m_ShaderStageCIs)
 			shaderStages.push_back(stage.m_CreateInfo);
 
 		AttachVector(ci.pStages, ci.stageCount, shaderStages);
-
-		ci.pVertexInputState = &retVal.m_VertexInputStateCI;
-		ci.pInputAssemblyState = &retVal.m_InputAssemblyStateCI;
-		ci.pViewportState = &retVal.m_ViewportStateCI;
-		ci.pRasterizationState = &retVal.m_RasterizationStateCI;
-		ci.pMultisampleState = &retVal.m_MultisampleStateCI;
-		ci.pColorBlendState = &retVal.m_ColorBlendStateCI;
-		ci.layout = retVal.m_Layout->m_Layout.get();
-		ci.renderPass = retVal.m_RenderPass->m_RenderPass.get();
 
 		// ci.subpass = 0;
 		retVal.m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(nullptr, ci);
@@ -778,8 +793,8 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 	Framebuffer retVal;
 
 	// Attachments
-	uint32_t width = std::numeric_limits<uint32_t>::max();
-	uint32_t height = width;
+	uint32_t width = 0;// std::numeric_limits<uint32_t>::max();
+	uint32_t height = 0;// width;
 
 	std::string debugName = "COL{ ";
 	// Color attachments
@@ -803,8 +818,10 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 			debugName += std::to_string((VkImageView)colorRT.m_ImageView);
 			debugName += '\'';
 
-			width = std::min(width, colorRT.m_Extent.width);
-			height = std::min(height, colorRT.m_Extent.height);
+			if (width == 0 || colorRT.m_Extent.width < width)
+				width = colorRT.m_Extent.width;
+			if (height == 0 || colorRT.m_Extent.height < height)
+				height = colorRT.m_Extent.height;
 		}
 		debugName += " }";
 	}
@@ -1084,7 +1101,7 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& 
 
 	ApplyRenderPass(*state.m_RenderPass, buf);
 
-	//ApplyDescriptorSets(state, dynamicState, buf);
+	ApplyDescriptorSets(state, dynamicState, buf);
 }
 
 static DescriptorPool CreateDescriptorPool(const DescriptorPoolKey& key)
@@ -1092,11 +1109,13 @@ static DescriptorPool CreateDescriptorPool(const DescriptorPoolKey& key)
 	LOG_FUNC();
 	DescriptorPool retVal;
 
+	constexpr auto POOL_SIZE = 1024;
+
 	// Sizes
 	for (const auto& binding : key.m_Layout->m_Bindings)
 	{
 		auto& size = retVal.m_Sizes.emplace_back();
-		size.descriptorCount = binding.descriptorCount;
+		size.descriptorCount = binding.descriptorCount * POOL_SIZE;
 		size.type = binding.descriptorType;
 	}
 
@@ -1105,7 +1124,7 @@ static DescriptorPool CreateDescriptorPool(const DescriptorPoolKey& key)
 		auto& ci = retVal.m_CreateInfo;
 		AttachVector(ci.pPoolSizes, ci.poolSizeCount, retVal.m_Sizes);
 
-		ci.maxSets = 1024;
+		ci.maxSets = POOL_SIZE;
 		ci.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
 		retVal.m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci);
@@ -1157,6 +1176,8 @@ const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const Pipel
 	return layout;
 }
 
+#include "interface/IMaterialInternal.h"
+
 VulkanStateID StateManagerVulkan::FindOrCreateState(
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
 {
@@ -1207,10 +1228,10 @@ PipelineKey::PipelineKey(
 		vp.Init(0, 0, bbWidth, bbHeight);
 	}
 
-	//if (staticState.m_OMDepthRT < 0 || (!m_DepthTest && !m_DepthWrite))
+	if (staticState.m_OMDepthRT < 0 || (!m_DepthTest && !m_DepthWrite))
 	{
-		m_OMDepthRT = -1;
 		// Normalize all these so they don't affect the hash
+		m_OMDepthRT = -1;
 		m_DepthCompareFunc = SHADER_DEPTHFUNC_ALWAYS;
 		m_DepthTest = false;
 		m_DepthWrite = false;
@@ -1235,6 +1256,7 @@ constexpr RenderPassKey::RenderPassKey(const LogicalShadowState& staticState,
 	m_OMColorRTs{ staticState.m_OMColorRTs[0], staticState.m_OMColorRTs[1], staticState.m_OMColorRTs[2], staticState.m_OMColorRTs[3] },
 	m_OMDepthRT(staticState.m_OMDepthRT)
 {
+	assert(m_OMColorRTs[0] >= 0 || m_OMColorRTs[1] >= 0 || m_OMColorRTs[2] >= 0 || m_OMColorRTs[3] >= 0);
 }
 
 FramebufferKey::RTRef::RTRef(IShaderAPITexture* tex) :
@@ -1254,4 +1276,33 @@ FramebufferKey::FramebufferKey(const RenderPass& rp) :
 	m_OMDepthRT(TryFindTexture(rp.m_Key.m_OMDepthRT, true)),
 	m_RenderPass(&rp)
 {
+	assert(!!m_OMColorRTs[0] || !!m_OMColorRTs[1] || !!m_OMColorRTs[2] || !!m_OMColorRTs[3]);
+	//if (!m_OMColorRTs[0] && !m_OMColorRTs[1] && !m_OMColorRTs[2] && !m_OMColorRTs[3])
+	//	m_OMColorRTs[0] = TryFindTexture(0);
+}
+
+void ShaderStageCreateInfo::FixupPointers()
+{
+	auto& specInfo = m_SpecializationInfo;
+
+	specInfo.pData = m_SpecializationData.data();
+	specInfo.pMapEntries = m_SpecializationMapEntries.data();
+
+	m_CreateInfo.pSpecializationInfo = &specInfo;
+}
+
+void Pipeline::FixupPointers()
+{
+	for (auto& ci : m_ShaderStageCIs)
+		ci.FixupPointers();
+
+	auto& ci = m_CreateInfo;
+	ci.pVertexInputState = &m_VertexInputStateCI;
+	ci.pInputAssemblyState = &m_InputAssemblyStateCI;
+	ci.pViewportState = &m_ViewportStateCI;
+	ci.pRasterizationState = &m_RasterizationStateCI;
+	ci.pMultisampleState = &m_MultisampleStateCI;
+	ci.pColorBlendState = &m_ColorBlendStateCI;
+	ci.layout = m_Layout->m_Layout.get();
+	ci.renderPass = m_RenderPass->m_RenderPass.get();
 }

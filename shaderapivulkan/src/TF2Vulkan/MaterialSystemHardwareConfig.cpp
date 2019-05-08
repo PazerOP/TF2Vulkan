@@ -5,6 +5,10 @@
 
 using namespace TF2Vulkan;
 
+// We don't really care about functions called in this file
+#undef TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING
+#define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING false
+
 namespace
 {
 	class MaterialSystemHardwareConfig : public IMaterialSystemHardwareConfigInternal
@@ -180,14 +184,14 @@ bool MaterialSystemHardwareConfig::SupportsCompressedTextures() const
 
 VertexCompressionType_t MaterialSystemHardwareConfig::SupportsCompressedVertices() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return VertexCompressionType_t::VERTEX_COMPRESSION_NONE;
+	LOG_FUNC();
+	return VertexCompressionType_t::VERTEX_COMPRESSION_ON;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsNormalMapCompression() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true; // ATI1 and ATI2 are BC4 and BC5
 }
 
 bool MaterialSystemHardwareConfig::SupportsVertexAndPixelShaders() const
@@ -246,8 +250,8 @@ int MaterialSystemHardwareConfig::TextureMemorySize() const
 
 bool MaterialSystemHardwareConfig::SupportsOverbright() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsCubeMaps() const
@@ -288,8 +292,10 @@ int MaterialSystemHardwareConfig::NumPixelShaderConstants() const
 
 int MaterialSystemHardwareConfig::MaxNumLights() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	// TODO: Increase this? Probably pointless, most other stuff in the
+	// engine is hardcoded to 4 lights maximum
+	LOG_FUNC();
+	return 4;
 }
 
 bool MaterialSystemHardwareConfig::SupportsHardwareLighting() const
@@ -342,13 +348,13 @@ int MaterialSystemHardwareConfig::GetDXSupportLevel() const
 
 const char* MaterialSystemHardwareConfig::GetShaderDLLName() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	LOG_FUNC();
+	return "DEFAULT";
 }
 
 bool MaterialSystemHardwareConfig::ReadPixelsFromFrontBuffer() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK(); // TODO: Probably possible
 	return false;
 }
 
@@ -390,8 +396,8 @@ bool MaterialSystemHardwareConfig::NeedsATICentroidHack() const
 
 bool MaterialSystemHardwareConfig::SupportsColorOnSecondStream() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsStaticPlusDynamicLighting() const
@@ -412,7 +418,7 @@ int MaterialSystemHardwareConfig::GetMaxDXSupportLevel() const
 	// TODO: What directx version is comparable with vulkan minimum requirements?
 
 	// NOTE: Don't say anything over 99 otherwise the material system will try
-	// to load stdshader_dx10.dll
+	// to load stdshader_dx100.dll
 	return 99;
 }
 
@@ -442,8 +448,8 @@ bool MaterialSystemHardwareConfig::CanDoSRGBReadFromRTs() const
 
 bool MaterialSystemHardwareConfig::SupportsGLMixedSizeTargets() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::IsAAEnabled() const
@@ -490,8 +496,8 @@ bool MaterialSystemHardwareConfig::SupportsPixelShaders_2_b() const
 
 bool MaterialSystemHardwareConfig::SupportsStreamOffset() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return true;  // All vulkan hardware supports this
 }
 
 int MaterialSystemHardwareConfig::StencilBufferBits() const

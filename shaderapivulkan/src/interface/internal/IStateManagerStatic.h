@@ -21,6 +21,7 @@ namespace TF2Vulkan
 		virtual bool UsesVertexAndPixelShaders(LogicalShadowStateID id) const = 0;
 		virtual bool IsDepthWriteEnabled(LogicalShadowStateID id) const = 0;
 
+		virtual bool IsAnyRenderTargetBound() const = 0;
 		virtual void SetRenderTargetEx(int rtID, ShaderAPITextureHandle_t colTex, ShaderAPITextureHandle_t depthTex) = 0;
 
 		virtual void SetState(LogicalShadowStateID id) = 0;
