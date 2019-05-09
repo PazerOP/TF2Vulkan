@@ -1,9 +1,10 @@
  #include "interface/internal/IShaderAPIInternal.h"
+#include "IShaderTextureManager.h"
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"
 #include "SamplerSettings.h"
-#include "ShaderDevice.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "shaders/VulkanShaderManager.h"
 #include "VulkanFactories.h"
 
@@ -476,7 +477,7 @@ static constexpr IShaderAPITexture* TryFindTexture(ShaderAPITextureHandle_t hand
 			return &g_ShaderDevice.GetBackBufferDepthTexture();
 	}
 
-	return &g_ShaderAPIInternal.GetTexture(handle);
+	return &g_TextureManager.GetTexture(handle);
 }
 
 static IShaderAPITexture& FindTexture(ShaderAPITextureHandle_t handle, bool depth = false)
@@ -1054,7 +1055,7 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 			case vk::DescriptorType::eSampledImage:
 			{
 				auto& imgInfo = imageInfos.emplace_front();
-				auto& tex = g_ShaderAPIInternal.TryGetTexture(
+				auto& tex = g_TextureManager.TryGetTexture(
 					dynamicState.m_BoundTextures.at(binding.binding - BINDING_TEXTURE_OFFSET),
 					TEXTURE_BLACK);
 				imgInfo.imageView = tex.FindOrCreateView();

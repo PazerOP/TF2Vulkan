@@ -1,6 +1,6 @@
 #include "IStateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
-#include "ShaderDevice.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
 #include "VulkanFactories.h"
 #include "VulkanMesh.h"

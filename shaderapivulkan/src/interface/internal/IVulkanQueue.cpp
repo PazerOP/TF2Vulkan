@@ -1,5 +1,5 @@
 #include "IVulkanQueue.h"
-#include "TF2Vulkan/ShaderDevice.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "TF2Vulkan/VulkanCommandBufferBase.h"
 
 #include <atomic>

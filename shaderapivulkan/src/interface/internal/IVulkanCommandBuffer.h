@@ -10,6 +10,13 @@ namespace TF2Vulkan
 {
 	class IVulkanQueue;
 
+	static constexpr Color PIX_COLOR_MISC(255, 93, 79);
+	static constexpr Color PIX_COLOR_DRAW(128, 255, 128);
+	static constexpr Color PIX_COLOR_CLEAR(0, 0, 0);
+	static constexpr Color PIX_COLOR_READWRITE(240, 228, 66);
+	static constexpr Color PIX_COLOR_READ(230, 159, 0);
+	static constexpr Color PIX_COLOR_WRITE(86, 180, 233);
+
 	class IVulkanCommandBuffer
 	{
 	public:
@@ -42,6 +49,7 @@ namespace TF2Vulkan
 		};
 		const ActiveRenderPass* GetActiveRenderPass() const;
 		bool IsRenderPassActive(const vk::RenderPassBeginInfo& beginInfo, const vk::SubpassContents& contents) const;
+		bool TryEndRenderPass();
 
 		virtual IVulkanQueue& GetQueue() = 0;
 
@@ -57,6 +65,8 @@ namespace TF2Vulkan
 		void endDebugUtilsLabelEXT();
 
 		void begin(const vk::CommandBufferBeginInfo& beginInfo);
+		void end();
+		void reset(vk::CommandBufferResetFlags flags = {});
 		void beginRenderPass(const vk::RenderPassBeginInfo& renderPassBegin, const vk::SubpassContents& contents);
 		void bindDescriptorSets(const vk::PipelineBindPoint& pipelineBindPoint, const vk::PipelineLayout& layout,
 			uint32_t firstSet, const vk::ArrayProxy<const vk::DescriptorSet>& descriptorSets,
@@ -73,7 +83,6 @@ namespace TF2Vulkan
 			const vk::ArrayProxy<const vk::ClearRect>& rects);
 		void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0,
 			int32_t vertexOffset = 0, uint32_t firstInstance = 0);
-		void end();
 		void endRenderPass();
 		void pipelineBarrier(const vk::PipelineStageFlags& srcStageMask, const vk::PipelineStageFlags& dstStageMask,
 			const vk::DependencyFlags& dependencyFlags, const vk::ArrayProxy<const vk::MemoryBarrier>& memoryBarriers,

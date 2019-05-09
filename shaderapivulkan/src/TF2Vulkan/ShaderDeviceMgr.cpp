@@ -1,6 +1,6 @@
 #include "MaterialSystemHardwareConfig.h"
 #include "ShaderDeviceMgr.h"
-#include "ShaderDevice.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_algorithm.h>

@@ -1,8 +1,24 @@
 #include "TF2Vulkan/VulkanUtil.h"
-#include "ShaderDevice.h"
+#include "FormatConversion.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "ShaderDeviceMgr.h"
 
+#include <TF2Vulkan/Util/Enums.h>
+
 using namespace TF2Vulkan;
+
+namespace
+{
+	enum class PackedLayoutSrcTarget : uint64_t;
+}
+
+static constexpr PackedLayoutSrcTarget PackImageLayout(const vk::ImageLayout& src, const vk::ImageLayout& dst)
+{
+	assert(Util::UValue(src) < (1ULL << 32));
+	assert(Util::UValue(dst) < (1ULL << 32));
+
+	return PackedLayoutSrcTarget((uint64_t(Util::UValue(src)) << 32) | uint64_t(Util::UValue(dst)) & ((1ULL << 32) - 1));
+}
 
 void TF2Vulkan::TransitionImageLayout(const vk::Image& image, const vk::Format& format,
 	const vk::ImageLayout& oldLayout, const vk::ImageLayout& newLayout,
@@ -14,7 +30,7 @@ void TF2Vulkan::TransitionImageLayout(const vk::Image& image, const vk::Format& 
 	barrier.image = image;
 
 	auto& srr = barrier.subresourceRange;
-	srr.aspectMask = vk::ImageAspectFlagBits::eColor;
+	srr.aspectMask = TF2Vulkan::GetAspects(format);
 	srr.baseMipLevel = mipLevel;
 	srr.levelCount = 1;
 	srr.baseArrayLayer = 0;
@@ -23,49 +39,67 @@ void TF2Vulkan::TransitionImageLayout(const vk::Image& image, const vk::Format& 
 	vk::PipelineStageFlags srcStageMask;
 	vk::PipelineStageFlags dstStageMask;
 
-	if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+	if (oldLayout == vk::ImageLayout::eUndefined)
 	{
 		srcStageMask = vk::PipelineStageFlagBits::eTopOfPipe;
 
-		dstStageMask = vk::PipelineStageFlagBits::eTransfer;
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
-	}
-	else if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::ePresentSrcKHR)
-	{
-		srcStageMask = vk::PipelineStageFlagBits::eTopOfPipe;
+		switch (newLayout)
+		{
+		case vk::ImageLayout::eTransferDstOptimal:
+			dstStageMask = vk::PipelineStageFlagBits::eTransfer;
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+			break;
 
-		dstStageMask = vk::PipelineStageFlagBits::eTransfer;
-		barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
-	}
-	else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
-	{
-		srcStageMask = vk::PipelineStageFlagBits::eTransfer;
-		barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		case vk::ImageLayout::ePresentSrcKHR:
+			dstStageMask = vk::PipelineStageFlagBits::eTransfer;
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+			break;
 
-		dstStageMask = vk::PipelineStageFlagBits::eFragmentShader;
-		barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-	}
-	else if (oldLayout == vk::ImageLayout::eColorAttachmentOptimal && newLayout == vk::ImageLayout::ePresentSrcKHR)
-	{
-		srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-		barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+		case vk::ImageLayout::eColorAttachmentOptimal:
+			dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+			break;
 
-		dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
-		//barrier.dstAccessMask = vk::AccessFlagBits::e;
-	}
-	else if (oldLayout == vk::ImageLayout::ePresentSrcKHR && newLayout == vk::ImageLayout::eColorAttachmentOptimal)
-	{
-		srcStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
-		//barrier.srcAccessMask = vk::AccessFlagBits::
+		case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+			dstStageMask = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
+			barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+			break;
 
-		dstStageMask = vk::PipelineStageFlagBits::eTopOfPipe;
-		//barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead;
+		default:
+			throw VulkanException("Unsupported layout transition", EXCEPTION_DATA());
+		}
 	}
 	else
 	{
-		throw VulkanException("Unsupported layout transition", EXCEPTION_DATA());
+		switch (PackImageLayout(oldLayout, newLayout))
+		{
+		case PackImageLayout(vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal):
+			srcStageMask = vk::PipelineStageFlagBits::eTransfer;
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			dstStageMask = vk::PipelineStageFlagBits::eFragmentShader;
+			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+			break;
+
+		case PackImageLayout(vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR):
+			srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+			barrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+			dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+			//barrier.dstAccessMask = vk::AccessFlagBits::e;
+			break;
+
+		case PackImageLayout(vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eColorAttachmentOptimal):
+			srcStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+			//barrier.srcAccessMask = vk::AccessFlagBits::
+			dstStageMask = vk::PipelineStageFlagBits::eTopOfPipe;
+			//barrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead;
+			break;
+
+		default:
+			throw VulkanException("Unsupported layout transition", EXCEPTION_DATA());
+		}
 	}
 
+	cmdBuf.TryEndRenderPass();
 	cmdBuf.pipelineBarrier(
 		srcStageMask,
 		dstStageMask,

@@ -43,6 +43,8 @@ namespace TF2Vulkan
 		MaterialFogMode_t m_SceneFogMode = MATERIAL_FOG_NONE;
 		Vector m_WorldSpaceCameraPosition;
 		bool m_ForceDepthFuncEquals = false;
+		bool m_FBLinear = false;
+		Vector m_TonemappingScale{ 1, 1, 1 };
 
 		int m_VertexShaderIndex = 0;
 		int m_PixelShaderIndex = 0;

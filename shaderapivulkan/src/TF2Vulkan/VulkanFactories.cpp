@@ -1,4 +1,4 @@
-#include "ShaderDevice.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "VulkanFactories.h"
 
 using namespace TF2Vulkan;

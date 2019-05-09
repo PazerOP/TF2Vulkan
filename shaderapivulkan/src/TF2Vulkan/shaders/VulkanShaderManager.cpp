@@ -1,4 +1,4 @@
-#include "TF2Vulkan/ShaderDevice.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "VulkanShaderManager.h"
 
 #include <TF2Vulkan/Util/Buffer.h>

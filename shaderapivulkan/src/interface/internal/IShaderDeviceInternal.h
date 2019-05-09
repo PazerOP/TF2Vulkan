@@ -32,18 +32,18 @@ namespace TF2Vulkan
 			std::optional<uint32_t> m_TransferQueueIndex;
 		};
 
-		virtual void VulkanInit(VulkanInitData&& data) = 0;
+		virtual void VulkanInit(VulkanInitData && data) = 0;
 
-		virtual const vk::Device& GetVulkanDevice() = 0;
-		virtual vma::UniqueAllocator& GetVulkanAllocator() = 0;
-		virtual const vk::DispatchLoaderDynamic& GetDynamicDispatch() const = 0;
+		virtual const vk::Device & GetVulkanDevice() = 0;
+		virtual vma::UniqueAllocator & GetVulkanAllocator() = 0;
+		virtual const vk::DispatchLoaderDynamic & GetDynamicDispatch() const = 0;
 
-		virtual IVulkanQueue& GetGraphicsQueue() = 0;
+		virtual IVulkanQueue & GetGraphicsQueue() = 0;
 
 		virtual Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() = 0;
 
-		virtual const IShaderAPITexture& GetBackBufferColorTexture() const = 0;
-		IShaderAPITexture& GetBackBufferColorTexture()
+		virtual const IShaderAPITexture & GetBackBufferColorTexture() const = 0;
+		IShaderAPITexture & GetBackBufferColorTexture()
 		{
 			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetBackBufferColorTexture());
 		}

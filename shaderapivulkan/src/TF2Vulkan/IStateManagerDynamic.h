@@ -1,7 +1,7 @@
 #pragma once
 
 #include "LogicalState.h"
-#include "interface/internal/IShaderAPIInternal.h"
+#include "IShaderTextureManager.h"
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
 
@@ -13,7 +13,7 @@
 
 namespace TF2Vulkan
 {
-	class IShaderAPI_StateManagerDynamic : public IShaderAPIInternal
+	class IShaderAPI_StateManagerDynamic : public IShaderTextureManager
 	{
 	public:
 		void ApplyState() const;
@@ -96,6 +96,11 @@ namespace TF2Vulkan
 		void SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale) override final;
 
 		void ForceDepthFuncEquals(bool enable) override final;
+
+		void EnableLinearColorSpaceFrameBuffer(bool enable) override final;
+
+		void SetToneMappingScaleLinear(const Vector& scale) override final;
+		const Vector& GetToneMappingScaleLinear() const override final;
 
 		// Helpers
 		void SetOverbright(float overbright);

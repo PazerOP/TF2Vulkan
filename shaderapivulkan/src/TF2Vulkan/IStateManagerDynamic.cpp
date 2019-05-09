@@ -110,6 +110,24 @@ void IShaderAPI_StateManagerDynamic::ForceDepthFuncEquals(bool enable)
 	Util::SetDirtyVar(m_State.m_ForceDepthFuncEquals, enable, m_Dirty);
 }
 
+void IShaderAPI_StateManagerDynamic::EnableLinearColorSpaceFrameBuffer(bool enable)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FBLinear, enable, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetToneMappingScaleLinear(const Vector& scale)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_TonemappingScale, scale, m_Dirty);
+}
+
+const Vector& IShaderAPI_StateManagerDynamic::GetToneMappingScaleLinear() const
+{
+	LOG_FUNC();
+	return m_State.m_TonemappingScale;
+}
+
 void IShaderAPI_StateManagerDynamic::SetOverbright(float overbright)
 {
 	Util::SetDirtyVar(m_State.m_SCOverbright, overbright, m_Dirty);

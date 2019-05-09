@@ -5,8 +5,7 @@
 
 using namespace TF2Vulkan;
 
-static constexpr Color PIX_TF2VULKAN_RED(255, 93, 79);
-static vk::DebugUtilsLabelEXT InitDebugUtilsLabel(const char* name, const Color& color = PIX_TF2VULKAN_RED)
+static vk::DebugUtilsLabelEXT InitDebugUtilsLabel(const char* name, const Color& color = PIX_COLOR_MISC)
 {
 	vk::DebugUtilsLabelEXT label;
 
@@ -116,6 +115,12 @@ void IVulkanCommandBuffer::end()
 	return GetCmdBuffer().end();
 }
 
+void IVulkanCommandBuffer::reset(vk::CommandBufferResetFlags flags)
+{
+	assert(!m_IsActive);
+	GetCmdBuffer().reset(flags);
+}
+
 void IVulkanCommandBuffer::endRenderPass()
 {
 	assert(m_ActiveRenderPass);
@@ -199,7 +204,8 @@ auto IVulkanCommandBuffer::GetActiveRenderPass() const -> const ActiveRenderPass
 		return nullptr;
 }
 
-bool IVulkanCommandBuffer::IsRenderPassActive(const vk::RenderPassBeginInfo& beginInfo, const vk::SubpassContents& contents) const
+bool IVulkanCommandBuffer::IsRenderPassActive(const vk::RenderPassBeginInfo& beginInfo,
+	const vk::SubpassContents& contents) const
 {
 	if (!m_ActiveRenderPass)
 		return false;
@@ -226,4 +232,15 @@ bool IVulkanCommandBuffer::IsRenderPassActive(const vk::RenderPassBeginInfo& beg
 	}
 
 	return true;
+}
+
+bool IVulkanCommandBuffer::TryEndRenderPass()
+{
+	if (GetActiveRenderPass())
+	{
+		endRenderPass();
+		return true;
+	}
+
+	return false;
 }

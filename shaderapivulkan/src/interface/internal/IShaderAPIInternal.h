@@ -1,8 +1,8 @@
 #pragma once
 
-#include "TF2Vulkan/ShaderDevice.h"
 #include "TF2Vulkan/IShaderAPI_DSA.h"
 #include "interface/internal/IShaderAPITexture.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include <TF2Vulkan/Util/ImageManip.h>
 #include <TF2Vulkan/Util/ScopeFunc.h>
 
@@ -97,32 +97,6 @@ namespace TF2Vulkan
 
 		virtual bool IsInFrame() const = 0;
 		virtual bool IsInPass() const = 0;
-
-		virtual const IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID) const = 0;
-		virtual const IShaderAPITexture& TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID) const = 0;
-		IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID)
-		{
-			return const_cast<IShaderAPITexture*>(std::as_const(*this).TryGetTexture(texID));
-		}
-		IShaderAPITexture& TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID)
-		{
-			return const_cast<IShaderAPITexture&>(std::as_const(*this).TryGetTexture(texID, fallbackID));
-		}
-		const IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID) const
-		{
-			auto found = TryGetTexture(texID);
-			if (!found)
-				throw VulkanException("TryGetTexture returned nullptr", EXCEPTION_DATA());
-
-			return *found;
-		}
-		IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID)
-		{
-			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetTexture(texID));
-		}
-
-		using IShaderAPI_DSA::CreateTexture;
-		virtual IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI) = 0;
 
 		void GetBackBufferDimensions(uint32_t& width, uint32_t& height) const
 		{

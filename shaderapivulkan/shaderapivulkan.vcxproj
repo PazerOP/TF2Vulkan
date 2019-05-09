@@ -96,7 +96,9 @@
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
+    <ClInclude Include="src\interface\internal\IShaderDeviceInternal.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\IShaderTextureManager.h" />
     <ClInclude Include="src\TF2Vulkan\PixScope.h" />
     <ClInclude Include="include\TF2Vulkan\TextureData.h" />
     <ClInclude Include="src\interface\internal\IStateManagerStatic.h" />
@@ -110,7 +112,6 @@
     <ClInclude Include="src\interface\internal\IShaderAPIInternal.h" />
     <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderConstant.h" />
-    <ClInclude Include="src\TF2Vulkan\ShaderDevice.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderDeviceMgr.h" />
     <ClInclude Include="src\TF2Vulkan\shaders\VulkanShaderManager.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerDynamic.h" />
@@ -139,6 +140,7 @@
     <ClCompile Include="src\TF2Vulkan\FormatConversion.cpp" />
     <ClCompile Include="src\TF2Vulkan\GraphicsPipeline.cpp" />
     <ClCompile Include="src\interface\internal\IVulkanQueue.cpp" />
+    <ClCompile Include="src\TF2Vulkan\IShaderTextureManager.cpp" />
     <ClCompile Include="src\TF2Vulkan\MaterialSystemHardwareConfig.cpp" />
     <ClCompile Include="src\TF2Vulkan\PixScope.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp" />

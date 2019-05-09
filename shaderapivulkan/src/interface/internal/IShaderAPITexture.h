@@ -6,7 +6,7 @@
 namespace TF2Vulkan
 {
 	// FIXME: Is it safe to assume nobody will try to cast this to ITextureInternal or something?
-	class IVulkanTexture : public ITexture
+	class IVulkanTexture
 	{
 	protected:
 		virtual ~IVulkanTexture() = default;
@@ -26,16 +26,24 @@ namespace TF2Vulkan
 			width = ci.extent.width;
 			height = ci.extent.height;
 		}
+	};
+
+	class IShaderAPITexture : public IVulkanTexture, public ITexture
+	{
+	public:
+		virtual ShaderAPITextureHandle_t GetHandle() const = 0;
 
 		// ITexture implementation
 		const char* GetName() const override final { NOT_IMPLEMENTED_FUNC(); }
 		int GetMappingWidth() const override final { NOT_IMPLEMENTED_FUNC(); }
 		int GetMappingHeight() const override final { NOT_IMPLEMENTED_FUNC(); }
-		int GetActualWidth() const override final { NOT_IMPLEMENTED_FUNC(); }
-		int GetActualHeight() const override final { NOT_IMPLEMENTED_FUNC(); }
+		int GetMappingDepth() const override final { NOT_IMPLEMENTED_FUNC(); }
+		int GetActualWidth() const override final;
+		int GetActualHeight() const override final;
+		int GetActualDepth() const override final;
 		int GetNumAnimationFrames() const override final { NOT_IMPLEMENTED_FUNC(); }
 		bool IsTranslucent() const override final { NOT_IMPLEMENTED_FUNC(); }
-		bool IsMipmapped() const override final { NOT_IMPLEMENTED_FUNC(); }
+		bool IsMipmapped() const override final;
 
 		void GetLowResColorSample(float s, float t, float* color) const override final
 		{
@@ -59,8 +67,6 @@ namespace TF2Vulkan
 		bool IsError() const override final { NOT_IMPLEMENTED_FUNC(); }
 
 		bool IsVolumeTexture() const override final { NOT_IMPLEMENTED_FUNC(); }
-		int GetMappingDepth() const override final { NOT_IMPLEMENTED_FUNC(); }
-		int GetActualDepth() const override final { NOT_IMPLEMENTED_FUNC(); }
 
 		ImageFormat GetImageFormat() const override final;
 		NormalDecodeMode_t GetNormalDecodeMode() const override final { NOT_IMPLEMENTED_FUNC(); }
@@ -83,11 +89,5 @@ namespace TF2Vulkan
 		void CopyToStagingTexture(ITexture* pDstTex) override final { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetErrorTexture(bool isErrorTexture) override final { NOT_IMPLEMENTED_FUNC(); }
-	};
-
-	class IShaderAPITexture : public IVulkanTexture
-	{
-	public:
-		virtual ShaderAPITextureHandle_t GetHandle() const = 0;
 	};
 }

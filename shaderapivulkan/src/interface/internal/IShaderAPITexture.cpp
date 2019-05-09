@@ -34,7 +34,31 @@ const vk::ImageView& IVulkanTexture::FindOrCreateView()
 	return FindOrCreateView(ci);
 }
 
-ImageFormat IVulkanTexture::GetImageFormat() const
+int IShaderAPITexture::GetActualWidth() const
+{
+	LOG_FUNC();
+	return Util::SafeConvert<int>(GetImageCreateInfo().extent.width);
+}
+
+int IShaderAPITexture::GetActualHeight() const
+{
+	LOG_FUNC();
+	return Util::SafeConvert<int>(GetImageCreateInfo().extent.height);
+}
+
+int IShaderAPITexture::GetActualDepth() const
+{
+	LOG_FUNC();
+	return Util::SafeConvert<int>(GetImageCreateInfo().extent.depth);
+}
+
+bool IShaderAPITexture::IsMipmapped() const
+{
+	LOG_FUNC();
+	return GetImageCreateInfo().mipLevels > 1;
+}
+
+ImageFormat IShaderAPITexture::GetImageFormat() const
 {
 	LOG_FUNC();
 	return ConvertImageFormat(GetImageCreateInfo().format);

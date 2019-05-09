@@ -1,7 +1,8 @@
 #include "FormatConversion.h"
 #include "interface/internal/IShaderAPIInternal.h"
 #include "interface/internal/IShaderAPITexture.h"
-#include "ShaderDevice.h"
+#include "IShaderTextureManager.h"
+#include "interface/internal/IShaderDeviceInternal.h"
 #include "ShaderDeviceMgr.h"
 #include "VulkanCommandBufferBase.h"
 #include "VulkanMesh.h"
@@ -293,6 +294,8 @@ void ShaderDevice::Present()
 
 	// Reset the command buffer
 	{
+		primaryCmdBuf.reset();
+
 		vk::CommandBufferBeginInfo beginInfo;
 		beginInfo.flags |= vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 		primaryCmdBuf.begin(beginInfo);
@@ -654,7 +657,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		ci.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
 
 		assert(!m_Data.m_DepthTexture); // TODO
-		m_Data.m_DepthTexture = &g_ShaderAPIInternal.CreateTexture("__rt_tf2vulkan_depth", ci);
+		m_Data.m_DepthTexture = &g_TextureManager.CreateTexture("__rt_tf2vulkan_depth", ci);
 	}
 
 	m_Data.m_SwapChain = std::move(newSwapChain);
