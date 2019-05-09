@@ -401,6 +401,15 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 {
 	switch (format)
 	{
+	case vk::Format::eR4G4UnormPack8:
+	case vk::Format::eR4G4B4A4UnormPack16:
+	case vk::Format::eB4G4R4A4UnormPack16:
+	case vk::Format::eR5G6B5UnormPack16:
+	case vk::Format::eB5G6R5UnormPack16:
+	case vk::Format::eR5G5B5A1UnormPack16:
+	case vk::Format::eB5G5R5A1UnormPack16:
+	case vk::Format::eA1R5G5B5UnormPack16:
+
 	case vk::Format::eR8Unorm:
 	case vk::Format::eR8Snorm:
 	case vk::Format::eR8Uscaled:
@@ -408,6 +417,30 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 	case vk::Format::eR8Uint:
 	case vk::Format::eR8Sint:
 	case vk::Format::eR8Srgb:
+
+	case vk::Format::eR8G8Unorm:
+	case vk::Format::eR8G8Snorm:
+	case vk::Format::eR8G8Uscaled:
+	case vk::Format::eR8G8Sscaled:
+	case vk::Format::eR8G8Uint:
+	case vk::Format::eR8G8Sint:
+	case vk::Format::eR8G8Srgb:
+
+	case vk::Format::eR8G8B8Unorm:
+	case vk::Format::eR8G8B8Snorm:
+	case vk::Format::eR8G8B8Uscaled:
+	case vk::Format::eR8G8B8Sscaled:
+	case vk::Format::eR8G8B8Uint:
+	case vk::Format::eR8G8B8Sint:
+	case vk::Format::eR8G8B8Srgb:
+
+	case vk::Format::eB8G8R8Unorm:
+	case vk::Format::eB8G8R8Snorm:
+	case vk::Format::eB8G8R8Uscaled:
+	case vk::Format::eB8G8R8Sscaled:
+	case vk::Format::eB8G8R8Uint:
+	case vk::Format::eB8G8R8Sint:
+	case vk::Format::eB8G8R8Srgb:
 
 	case vk::Format::eR8G8B8A8Unorm:
 	case vk::Format::eR8G8B8A8Snorm:
@@ -424,6 +457,14 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 	case vk::Format::eB8G8R8A8Uint:
 	case vk::Format::eB8G8R8A8Sint:
 	case vk::Format::eB8G8R8A8Srgb:
+
+	case vk::Format::eA8B8G8R8UnormPack32:
+	case vk::Format::eA8B8G8R8SnormPack32:
+	case vk::Format::eA8B8G8R8UscaledPack32:
+	case vk::Format::eA8B8G8R8SscaledPack32:
+	case vk::Format::eA8B8G8R8UintPack32:
+	case vk::Format::eA8B8G8R8SintPack32:
+	case vk::Format::eA8B8G8R8SrgbPack32:
 
 	case vk::Format::eR16G16B16A16Unorm:
 	case vk::Format::eR16G16B16A16Snorm:
@@ -563,3 +604,29 @@ bool TF2Vulkan::HasHardwareSupport(vk::Format format, FormatUsage usage, bool fi
 	const bool hasSupport = andResult == REQUIRED_FLAGS;
 	return hasSupport;
 }
+
+#if false
+#ifdef _DEBUG
+namespace
+{
+	struct BadUnitTesting final
+	{
+		BadUnitTesting()
+		{
+			for (int i = VK_FORMAT_BEGIN_RANGE; i <= VK_FORMAT_END_RANGE; i++)
+			{
+				const auto fmt = (vk::Format)i;
+
+				if (fmt == vk::Format::eUndefined)
+					continue;
+
+				GetAspects(fmt);
+				GetBlockSize(fmt);
+				IsCompressed(fmt);
+			}
+		}
+
+	} s_BadUnitTesting;
+}
+#endif
+#endif

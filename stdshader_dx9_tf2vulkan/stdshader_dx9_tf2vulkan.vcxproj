@@ -40,12 +40,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="stdshader_dx9_tf2vulkan_Shared_Project.props" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
+    <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="stdshader_dx9_tf2vulkan_Shared_Project.props" />
     <Import Project="..\TF2Vulkan_Shared_Solution.props" />
     <Import Project="..\TF2Vulkan_Release_Solution.props" />
+    <Import Project="..\TF2VulkanUtil\TF2VulkanUtil_Link.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -97,8 +99,10 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\stdshader_dx9_tf2vulkan\AlignedTypes.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderBlobs.h" />
-    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderShared.h" />
+    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderData.h" />
+    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderDataShared.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ShaderBlobs.cpp" />

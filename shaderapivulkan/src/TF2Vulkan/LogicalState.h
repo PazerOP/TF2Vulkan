@@ -3,6 +3,8 @@
 #include "ShaderConstant.h"
 #include "VertexFormat.h"
 
+#include <stdshader_dx9_tf2vulkan/ShaderData.h>
+
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
@@ -59,6 +61,8 @@ namespace TF2Vulkan
 
 		VertexShaderConstants m_VertexShaderConstants;
 		PixelShaderConstants m_PixelShaderConstants;
+
+		ShaderConstants::VSCommon m_VertexShaderConstants_Common;
 
 		LightState_t m_LightState;
 		std::array<LightDesc_t, 4> m_Lights;

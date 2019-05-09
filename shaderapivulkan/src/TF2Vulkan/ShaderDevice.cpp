@@ -147,6 +147,8 @@ namespace
 			VulkanSwapChain m_SwapChain;
 			vk::DispatchLoaderDynamic m_DynamicLoader;
 
+			std::unique_ptr<IVulkanCommandBuffer> m_TempPrimaryCmdBuf;
+
 			const IShaderAPITexture* m_DepthTexture = nullptr;
 
 		} m_Data;
@@ -493,6 +495,9 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 
 	m_Data.m_GraphicsQueue = CreateQueueWrapper(device.get(), m_Data.m_GraphicsQueueIndex, "Graphics");
 
+	// So GetPrimaryCmdBuf() gives something safe
+	m_Data.m_TempPrimaryCmdBuf = m_Data.m_GraphicsQueue.CreateCmdBufferAndBegin();
+
 	if (m_Data.m_TransferQueueIndex)
 		m_Data.m_TransferQueue = CreateQueueWrapper(device.get(), m_Data.m_TransferQueueIndex.value(), "Transfer");
 }
@@ -654,6 +659,12 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 
 	m_Data.m_SwapChain = std::move(newSwapChain);
 
+	if (m_Data.m_TempPrimaryCmdBuf)
+	{
+		m_Data.m_TempPrimaryCmdBuf->Submit();
+		m_Data.m_TempPrimaryCmdBuf.reset();
+	}
+
 	return true;
 }
 
@@ -721,5 +732,9 @@ bool ShaderDevice::IsReady() const
 IVulkanCommandBuffer& ShaderDevice::GetPrimaryCmdBuf()
 {
 	auto& scData = m_Data.m_SwapChain;
-	return *scData.m_Images[scData.m_CurrentFrame].m_PrimaryCmdBuf;
+
+	if (scData.m_Images.size() > scData.m_CurrentFrame)
+		return *scData.m_Images[scData.m_CurrentFrame].m_PrimaryCmdBuf;
+	else
+		return *m_Data.m_TempPrimaryCmdBuf;
 }

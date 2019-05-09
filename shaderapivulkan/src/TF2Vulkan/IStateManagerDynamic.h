@@ -83,6 +83,7 @@ namespace TF2Vulkan
 		void SetAmbientLight(float r, float g, float b) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetAmbientLightCube(Vector4D cube[6]) override final;
 		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override final;
+		void CommitPixelShaderLighting(int pshReg) override final;
 		void GetDX9LightState(LightState_t* state) const override final;
 
 		void CullMode(MaterialCullMode_t mode) override final;

@@ -10,7 +10,7 @@
 #include <TF2Vulkan/Util/MemoryPool.h>
 #include <TF2Vulkan/Util/std_array.h>
 
-#include <stdshader_dx9_tf2vulkan/ShaderShared.h>
+#include <stdshader_dx9_tf2vulkan/ShaderData.h>
 
 #undef min
 #undef max

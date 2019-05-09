@@ -13,7 +13,7 @@ static std::aligned_storage_t<256> s_FallbackMeshData;
 static void AssertCheckHeap()
 {
 #ifdef _DEBUG
-	assert(_CrtCheckMemory());
+	//assert(_CrtCheckMemory());
 #endif
 }
 

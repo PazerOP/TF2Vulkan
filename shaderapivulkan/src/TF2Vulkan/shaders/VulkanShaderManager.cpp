@@ -126,6 +126,8 @@ static const std::unordered_map<std::string_view, ShaderInfo> s_ShaderBlobMappin
 	{ "bik_ps20b", ShaderBlob::Bik_PS },
 	{ "vertexlit_and_unlit_generic_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, s_SpecConstMap_VertexLitGeneric_VS } },
 	{ "vertexlit_and_unlit_generic_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
+	{ "vertexlit_and_unlit_generic_bump_vs30", ShaderBlob::VertexLitAndUnlitGeneric_VS },
+	{ "vertexlit_and_unlit_generic_bump_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
 };
 
 auto VulkanShaderManager::FindOrCreateShader(const CUtlSymbolDbg& id) -> const IShader&

@@ -60,6 +60,11 @@ void IShaderAPI_StateManagerDynamic::SetPixelShaderStateAmbientLightCube(int psh
 	// TODO: Remove this function, we write directly into ps state via uniform buffers?
 }
 
+void IShaderAPI_StateManagerDynamic::CommitPixelShaderLighting(int pshReg)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
 void IShaderAPI_StateManagerDynamic::GetDX9LightState(LightState_t* state) const
 {
 	LOG_FUNC();

@@ -14,8 +14,8 @@ const vk::ImageView& IVulkanTexture::FindOrCreateView()
 	switch (imgCreateInfo.imageType)
 	{
 	case vk::ImageType::e1D:
-		ci.viewType = vk::ImageViewType::e1D;
-		break;
+	//	ci.viewType = vk::ImageViewType::e1D;
+	//	break;
 	case vk::ImageType::e2D:
 		ci.viewType = vk::ImageViewType::e2D;
 		break;

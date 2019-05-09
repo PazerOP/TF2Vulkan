@@ -1,7 +1,7 @@
 #ifndef INCLUDE_GUARD_COMMON_FXC_HLSLI
 #define INCLUDE_GUARD_COMMON_FXC_HLSLI
 
-#include "../../include/stdshader_dx9_tf2vulkan/ShaderShared.h"
+#include "../../include/stdshader_dx9_tf2vulkan/ShaderDataShared.h"
 
 #define VTX_SHADER_START_ID 1024
 #define PIX_SHADER_START_ID 2048
@@ -23,6 +23,7 @@
 [[vk::constant_id(14)]] const bool SKINNING = false;
 [[vk::constant_id(15)]] const bool LIGHTING_PREVIEW = false;
 [[vk::constant_id(16)]] const bool MORPHING = false;
+[[vk::constant_id(17)]] const bool NORMALMAPPING = false;
 
 static const int BINDING_CBUF_VS_STANDARD = 10;
 static const int BINDING_CBUF_VS_CUSTOM = 11;

@@ -17,21 +17,16 @@
 #define FOGTYPE_RANGE				0
 #define FOGTYPE_HEIGHT				1
 
-struct LightInfo
-{
-	float4 color;						// {xyz} is color	w is light type code (see comment below)
-	float4 dir;							// {xyz} is dir		w is light type code
-	float4 pos;
-	float4 spotParams;
-	float4 atten;
-};
-
 [[vk::binding(BINDING_CBUF_VS_STANDARD)]] cbuffer VertexShaderStandardConstants
 {
-	float4 cConstants1;
-	bool4 g_bLightEnabled;
+	float cOOGamma;
+	float cOneThird;
 	int g_nLightCountRegister;
-	float4 cEyePosWaterZ;
+	bool4 g_bLightEnabled;
+
+	float3 cEyePos;
+	float cWaterZ;
+
 	float4 cFlexScale;
 
 	float4x4 cModelViewProj;
@@ -40,30 +35,23 @@ struct LightInfo
 	float4 cModelViewProjZ;
 	float4 cViewProjZ;
 
-	float4 cFogParams;
+	FogParams cFogParams;
 
 	LightInfo cLightInfo[4];
-
-	float3 cAmbientCubeX[2];
-	float3 cAmbientCubeY[2];
-	float3 cAmbientCubeZ[2];
+	AmbientLightCube cAmbientCube;
 
 	float4x3 cModel[53];
 };
 
-#define cOOGamma            cConstants1.x
-#define cOverbright         2.0f
-#define cOneThird           cConstants1.z
-#define cOOOverbright       ( 1.0f / 2.0f )
+static const float cOverbright = 2.0f;
+static const float cOOOverbright = 1.0f / cOverbright;
 
 #define g_nLightCount       g_nLightCountRegister.x
 
-#define cEyePos             cEyePosWaterZ.xyz
-
-#define cFogEndOverFogRange cFogParams.x
-#define cFogOne             cFogParams.y
-#define cFogMaxDensity      cFogParams.z
-#define cOOFogRange         cFogParams.w
+#define cFogEndOverFogRange cFogParams.endOverRange
+#define cFogOne             cFogParams.one
+#define cFogMaxDensity      cFogParams.maxDensity
+#define cOOFogRange         cFogParams.OORange
 
 void _DecompressShort2Tangent(float2 inputTangent, out float4 outputTangent)
 {
@@ -81,6 +69,16 @@ void _DecompressShort2Normal(float2 inputNormal, out float3 outputNormal)
 	float4 result;
 	_DecompressShort2Tangent(inputNormal, result);
 	outputNormal = result.xyz;
+}
+
+//-----------------------------------------------------------------------------------
+// Decompress normal+tangent together
+void _DecompressShort2NormalTangent(float2 inputNormal, float2 inputTangent, out float3 outputNormal, out float4 outputTangent)
+{
+	// FIXME: if we end up sticking with the SHORT2 format, pack the normal and tangent into a single SHORT4 element
+	//        (that would make unpacking normal+tangent here together much cheaper than the sum of their parts)
+	_DecompressShort2Normal(inputNormal, outputNormal);
+	_DecompressShort2Tangent(inputTangent, outputTangent);
 }
 
 //-----------------------------------------------------------------------------------
@@ -104,6 +102,38 @@ void _DecompressUByte4Normal(float4 inputNormal,
 	outputNormal.z *= lerp(fOne.x, -fOne.x, ztSigns.x);			// Restore z sign
 }
 
+//=======================================================================================
+// Decompress a normal and tangent from four-component compressed format
+// We expect this data to come from an unsigned UBYTE4 stream in the range of 0..255
+// The final vTangent.w contains the sign to use in the cross product when generating a binormal
+void _DecompressUByte4NormalTangent(float4 inputNormal,
+	out float3 outputNormal,   // {nX, nY, nZ}
+	out float4 outputTangent)   // {tX, tY, tZ, sign of binormal}
+{
+	float fOne = 1.0f;
+
+	float4 ztztSignBits = (inputNormal - 128.0f) < 0;						// sign bits for zs and binormal (1 or 0)  set-less-than (slt) asm instruction
+	float4 xyxyAbs = abs(inputNormal - 128.0f) - ztztSignBits;		// 0..127
+	float4 xyxySignBits = (xyxyAbs - 64.0f) < 0;							// sign bits for xs and ys (1 or 0)
+	float4 normTan = (abs(xyxyAbs - 64.0f) - xyxySignBits) / 63.0f;	// abs({nX, nY, tX, tY})
+	outputNormal.xy = normTan.xy;										// abs({nX, nY, __, __})
+	outputTangent.xy = normTan.zw;										// abs({tX, tY, __, __})
+
+	float4 xyxySigns = 1 - 2 * xyxySignBits;								// Convert sign bits to signs
+	float4 ztztSigns = 1 - 2 * ztztSignBits;								// ( [1,0] -> [-1,+1] )
+
+	outputNormal.z = 1.0f - outputNormal.x - outputNormal.y;			// Project onto x+y+z=1
+	outputNormal.xyz = normalize(outputNormal.xyz);					// Normalize onto unit sphere
+	outputNormal.xy *= xyxySigns.xy;										// Restore x and y signs
+	outputNormal.z *= ztztSigns.x;										// Restore z sign
+
+	outputTangent.z = 1.0f - outputTangent.x - outputTangent.y;			// Project onto x+y+z=1
+	outputTangent.xyz = normalize(outputTangent.xyz);					// Normalize onto unit sphere
+	outputTangent.xy *= xyxySigns.zw;										// Restore x and y signs
+	outputTangent.z *= ztztSigns.z;										// Restore z sign
+	outputTangent.w = ztztSigns.w;										// Binormal sign
+}
+
 void DecompressVertex_Normal(float4 inputNormal, out float3 outputNormal)
 {
 	if (COMPRESSED_VERTS == 1)
@@ -120,6 +150,26 @@ void DecompressVertex_Normal(float4 inputNormal, out float3 outputNormal)
 	else
 	{
 		outputNormal = inputNormal.xyz;
+	}
+}
+
+void DecompressVertex_NormalTangent(float4 inputNormal, float4 inputTangent, out float3 outputNormal, out float4 outputTangent)
+{
+	if (COMPRESSED_VERTS == 1)
+	{
+		if (COMPRESSED_NORMALS_TYPE == COMPRESSED_NORMALS_SEPARATETANGENTS_SHORT2)
+		{
+			_DecompressShort2NormalTangent(inputNormal.xy, inputTangent.xy, outputNormal, outputTangent);
+		}
+		else // ( COMPRESSED_NORMALS_TYPE == COMPRESSED_NORMALS_COMBINEDTANGENTS_UBYTE4 )
+		{
+			_DecompressUByte4NormalTangent(inputNormal, outputNormal, outputTangent);
+		}
+	}
+	else
+	{
+		outputNormal = inputNormal.xyz;
+		outputTangent = inputTangent;
 	}
 }
 
@@ -368,6 +418,41 @@ void SkinPositionAndNormal(bool bSkinning, const float4 modelPos, const float3 m
 	}
 }
 
+// Is it worth keeping SkinPosition and SkinPositionAndNormal around since the optimizer
+// gets rid of anything that isn't used?
+void SkinPositionNormalAndTangentSpace(
+	bool bSkinning,
+	const float4 modelPos, const float3 modelNormal,
+	const float4 modelTangentS,
+	const float4 boneWeights, float4 fBoneIndices,
+	out float3 worldPos, out float3 worldNormal,
+	out float3 worldTangentS, out float3 worldTangentT)
+{
+	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices);
+
+	if (!bSkinning)
+	{
+		worldPos = mul4x3(modelPos, cModel[0]);
+		worldNormal = mul3x3(modelNormal, (float3x3)cModel[0]);
+		worldTangentS = mul3x3((float3)modelTangentS, (float3x3)cModel[0]);
+	}
+	else // skinning - always three bones
+	{
+		float4x3 mat1 = cModel[boneIndices[0]];
+		float4x3 mat2 = cModel[boneIndices[1]];
+		float4x3 mat3 = cModel[boneIndices[2]];
+
+		float3 weights = DecompressBoneWeights(boneWeights).xyz;
+		weights[2] = 1 - (weights[0] + weights[1]);
+
+		float4x3 blendMatrix = mat1 * weights[0] + mat2 * weights[1] + mat3 * weights[2];
+		worldPos = mul4x3(modelPos, blendMatrix);
+		worldNormal = mul3x3(modelNormal, (float3x3)blendMatrix);
+		worldTangentS = mul3x3((float3)modelTangentS, (float3x3)blendMatrix);
+	}
+	worldTangentT = cross(worldNormal, worldTangentS) * modelTangentS.w;
+}
+
 float RangeFog(const float3 projPos)
 {
 	return max(cFogMaxDensity, (-projPos.z * cOOFogRange + cFogEndOverFogRange));
@@ -377,7 +462,7 @@ float WaterFog(const float3 worldPos, const float3 projPos)
 {
 	float4 tmp;
 
-	tmp.xy = cEyePosWaterZ.wz - worldPos.z;
+	tmp.xy = float2(cWaterZ, cEyePos.z) - worldPos.z;
 
 	// tmp.x is the distance from the water surface to the vert
 	// tmp.y is the distance from the eye position to the vert
@@ -444,9 +529,9 @@ float3 AmbientLight(const float3 worldNormal)
 	float3 nSquared = worldNormal * worldNormal;
 	int3 isNegative = (worldNormal < 0.0);
 	float3 linearColor;
-	linearColor = nSquared.x * cAmbientCubeX[isNegative.x] +
-		nSquared.y * cAmbientCubeY[isNegative.y] +
-		nSquared.z * cAmbientCubeZ[isNegative.z];
+	linearColor = nSquared.x * cAmbientCube.x[isNegative.x] +
+		nSquared.y * cAmbientCube.y[isNegative.y] +
+		nSquared.z * cAmbientCube.z[isNegative.z];
 	return linearColor;
 }
 

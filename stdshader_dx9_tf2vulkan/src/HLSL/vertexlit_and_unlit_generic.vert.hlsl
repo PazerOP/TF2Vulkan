@@ -35,6 +35,10 @@ struct VS_INPUT
 	float4 vTexCoord2       : TEXCOORD2;
 	float4 vTexCoord3       : TEXCOORD3;
 
+	float3 vTangentS        : TANGENT1;
+	float3 vTangentT        : BINORMAL;
+	float4 vUserData        : TANGENT2;
+
 	// Position and normal/tangent deltas
 	float3 vPosFlex         : POSITION1;
 	float3 vNormalFlex      : NORMAL1;
@@ -51,7 +55,7 @@ struct VS_OUTPUT
 	float4 color                : TEXCOORD2;
 
 	float3 worldVertToEyeVector : TEXCOORD3;
-	float3 worldSpaceNormal     : TEXCOORD4;
+	float3 vWorldNormal     : TEXCOORD4;
 
 	float4 vProjPos             : TEXCOORD6;
 	float4 worldPos_ProjPosZ    : TEXCOORD7;
@@ -66,6 +70,7 @@ VS_OUTPUT main(const VS_INPUT v)
 
 	float4 vPosition = v.vPos;
 	float3 vNormal = 0;
+	float4 vTangent;
 	if ((!VERTEXCOLOR && (DYNAMIC_LIGHT || STATIC_LIGHT_VERTEX)) ||
 		FLASHLIGHT ||
 		SEAMLESS_BASE ||
@@ -74,7 +79,10 @@ VS_OUTPUT main(const VS_INPUT v)
 		g_bDecalOffset ||
 		CUBEMAP)
 	{
-		DecompressVertex_Normal(v.vNormal, vNormal);
+		if (NORMALMAPPING)
+			DecompressVertex_NormalTangent(v.vNormal, v.vUserData, vNormal, vTangent);
+		else
+			DecompressVertex_Normal(v.vNormal, vNormal);
 	}
 
 	float3 NNormal;
@@ -85,28 +93,61 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 
 	if (!MORPHING)
-		ApplyMorph(v.vPosFlex, v.vNormalFlex, vPosition.xyz, vNormal);
+	{
+		if (NORMALMAPPING)
+			ApplyMorph(v.vPosFlex, v.vNormalFlex, vPosition.xyz, vNormal, vTangent.xyz);
+		else
+			ApplyMorph(v.vPosFlex, v.vNormalFlex, vPosition.xyz, vNormal);
+	}
 	else
 	{
-		ApplyMorph(morphTexture, morphSampler, cMorphTargetTextureDim, cMorphSubrect,
-			v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal);
+		if (NORMALMAPPING)
+		{
+			ApplyMorph(morphTexture, morphSampler, cMorphTargetTextureDim, cMorphSubrect,
+				v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal, vTangent.xyz);
+		}
+		else
+		{
+			ApplyMorph(morphTexture, morphSampler, cMorphTargetTextureDim, cMorphSubrect,
+				v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal);
+		}
 	}
 
 	// Perform skinning
-	float3 worldNormal, worldPos;
-	SkinPositionAndNormal(
-		g_bSkinning,
-		vPosition, vNormal,
-		v.vBoneWeights, v.vBoneIndices,
-		worldPos, worldNormal);
+	float3 worldNormal, worldPos, worldTangentS, worldTangentT;
 
-	if (!VERTEXCOLOR)
+	if (NORMALMAPPING)
+	{
+		SkinPositionNormalAndTangentSpace(g_bSkinning, vPosition, vNormal, vTangent,
+			v.vBoneWeights, v.vBoneIndices, worldPos,
+			worldNormal, worldTangentS, worldTangentT);
+	}
+	else
+	{
+		SkinPositionAndNormal(
+			g_bSkinning,
+			vPosition, vNormal,
+			v.vBoneWeights, v.vBoneIndices,
+			worldPos, worldNormal);
+	}
+
+	if (NORMALMAPPING)
+	{
 		worldNormal = normalize(worldNormal);
+		worldTangentS = normalize(worldTangentS);
+		worldTangentT = normalize(worldTangentT);
+	}
+	else if (!VERTEXCOLOR)
+	{
+		worldNormal = normalize(worldNormal);
+	}
 
 	if (MORPHING && DECAL)
 		worldPos += worldNormal * 0.05f * v.vTexCoord2.z;
 
-	o.worldSpaceNormal = worldNormal;
+	o.vWorldNormal = worldNormal;
+	//if (NORMALMAPPING)
+	//	o.vWorldTangent = float4(worldTangentS.xyz, vTangent.w);
 
 	// Transform into projection space
 	float4 vProjPos = mul(float4(worldPos, 1), cViewProj);

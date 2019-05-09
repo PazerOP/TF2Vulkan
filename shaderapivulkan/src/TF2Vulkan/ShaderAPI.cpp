@@ -80,7 +80,6 @@ namespace
 		const LightDesc_t& GetLight(int lightNum) const override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetVertexShaderStateAmbientLightCube() override;
-		void CommitPixelShaderLighting(int pshReg) override { NOT_IMPLEMENTED_FUNC(); }
 
 		CMeshBuilder* GetVertexModifyBuilder() override;
 		bool InEditorMode() const override;
@@ -180,7 +179,6 @@ namespace
 		void TexUnlock() override { NOT_IMPLEMENTED_FUNC(); }
 
 		void TexSetPriority(int priority) override { NOT_IMPLEMENTED_FUNC(); }
-
 
 		void SetRenderTarget(ShaderAPITextureHandle_t colTexHandle,
 			ShaderAPITextureHandle_t depthTexHandle) override;
@@ -538,17 +536,8 @@ void ShaderAPI::FlushBufferedPrimitives()
 
 void ShaderAPI::SetPIXMarker(const Color& color, const char* name)
 {
-	vk::DebugUtilsLabelEXT label;
-
-	label.color[0] = color.r() / 255.0f;
-	label.color[1] = color.g() / 255.0f;
-	label.color[2] = color.b() / 255.0f;
-	label.color[3] = color.a() / 255.0f;
-
-	label.pLabelName = name;
-
-	// FIXME move to IVulkanQueue
-	g_ShaderDevice.GetGraphicsQueue().GetQueue().insertDebugUtilsLabelEXT(label, g_ShaderDevice.GetDynamicDispatch());
+	LOG_FUNC();
+	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(color, name);
 }
 
 IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount,
@@ -987,22 +976,54 @@ bool ShaderAPI::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureD
 
 	// Copy staging buffer into destination texture
 	{
-		auto uniqueCmdBuffer = queue.CreateCmdBufferAndBegin();
-		auto& cmdBuffer = *uniqueCmdBuffer;
+		//auto uniqueCmdBuffer = queue.CreateCmdBufferAndBegin();
+		auto& cmdBuffer = g_ShaderDevice.GetPrimaryCmdBuf();//*uniqueCmdBuffer;
 
 		auto pixScope = cmdBuffer.DebugRegionBegin("ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
 
-		TransitionImageLayout(tex.m_Image.GetImage(), tex.m_CreateInfo.format,
-			vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal, cmdBuffer, 0);
+		const vk::PipelineStageFlags stageMask = vk::PipelineStageFlagBits::eTransfer;
+
+		// TODO: Use stack allocation
+		std::vector<vk::ImageMemoryBarrier> barriers;
+		for (size_t i = 0; i < count; i++)
+		{
+			auto& barrier = barriers.emplace_back();
+			const auto& slice = data[i];
+
+			barrier.image = tex.m_Image.GetImage();
+			barrier.oldLayout = vk::ImageLayout::eUndefined;
+			barrier.newLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+			auto& srr = barrier.subresourceRange;
+			srr.aspectMask = GetAspects(tex.m_CreateInfo.format);
+			srr.baseMipLevel = slice.m_MipLevel;
+			srr.baseArrayLayer = 0;
+			srr.layerCount = 1;
+			srr.levelCount = 1;
+		}
+
+		cmdBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer,
+			vk::PipelineStageFlagBits::eTransfer,
+			{}, {}, {}, barriers);
 
 		cmdBuffer.copyBufferToImage(stagingBuf.GetBuffer(), tex.m_Image.GetImage(),
 			vk::ImageLayout::eTransferDstOptimal, copyRegions);
 		cmdBuffer.AddResource(std::move(stagingBuf));
 
-		TransitionImageLayout(tex.m_Image.GetImage(), tex.m_CreateInfo.format,
-			vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal, cmdBuffer, 0);
+		for (auto& barrier : barriers)
+		{
+			barrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+			barrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+		}
 
-		cmdBuffer.Submit();
+		cmdBuffer.pipelineBarrier(
+			vk::PipelineStageFlagBits::eTransfer,
+			vk::PipelineStageFlagBits::eFragmentShader,
+			{}, {}, {}, barriers);
 	}
 
 	return true;
@@ -1231,7 +1252,9 @@ namespace
 		struct : BaseCommandBufferCmd
 		{
 			int m_DestRegister;
-		} m_SetPixelShaderFogParams;
+		} m_SetPixelShaderFogParams,
+			m_SetPixelShaderStateAmbientLightCube,
+			m_CommitPixelShaderLighting;
 
 		struct : BaseCommandBufferCmd
 		{
@@ -1255,11 +1278,6 @@ namespace
 			Sampler_t m_Sampler;
 			StandardTextureId_t m_StdTexture;
 		} m_BindStdTexture;
-
-		struct : BaseCommandBufferCmd
-		{
-			int m_Register;
-		} m_SetPixelShaderStateAmbientLightCube;
 	};
 }
 
@@ -1313,7 +1331,7 @@ void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
 	const auto& cmdBufTyped = *reinterpret_cast<CommandBufferCmd**>(&cmdBuf);
 	while (cmdBufTyped->m_Command != CBCMD_END)
 	{
-		PrintCommandBufferCommand(cmdBufTyped->m_Command);
+		//PrintCommandBufferCommand(cmdBufTyped->m_Command);
 
 		switch (cmdBufTyped->m_Command)
 		{
@@ -1402,7 +1420,15 @@ void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
 		case CBCMD_SETPIXELSHADERSTATEAMBIENTLIGHTCUBE:
 		{
 			const auto& cmd = cmdBufTyped->m_SetPixelShaderStateAmbientLightCube;
-			SetPixelShaderStateAmbientLightCube(cmd.m_Register, false); // TODO: force to black???
+			SetPixelShaderStateAmbientLightCube(cmd.m_DestRegister, false); // TODO: force to black???
+			cmdBuf += sizeof(cmd);
+			break;
+		}
+
+		case CBCMD_COMMITPIXELSHADERLIGHTING:
+		{
+			const auto& cmd = cmdBufTyped->m_CommitPixelShaderLighting;
+			CommitPixelShaderLighting(cmd.m_DestRegister);
 			cmdBuf += sizeof(cmd);
 			break;
 		}

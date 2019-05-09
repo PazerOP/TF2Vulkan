@@ -232,9 +232,12 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 			}
 		}
 #endif
+		const auto& type = GetElemTypes(compression)[elemType];
+		if (type.m_ComponentSize <= 0)
+			return; // TODO: Why does the normal mapping path try to use USERDATA4
 
 		Element& e = elements[elemCount++];
-		e.m_Type = &GetElemTypes(compression)[elemType];
+		e.m_Type = &type;
 		e.m_Offset = totalSizeTemp;
 		totalSizeTemp += e.m_Type->GetTotalSize();
 	};
