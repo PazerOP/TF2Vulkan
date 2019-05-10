@@ -15,7 +15,7 @@ namespace
 	public:
 		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override
 		{
-			auto& xlit = data.m_Custom.m_XLitGenericBump;
+			auto& xlit = data.m_Custom.m_XLitGeneric;
 			switch (var)
 			{
 			default:
@@ -68,7 +68,7 @@ namespace
 		}
 		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override
 		{
-			auto& xlit = data.m_Custom.m_XLitGenericBump;
+			auto& xlit = data.m_Custom.m_XLitGeneric;
 			switch (var)
 			{
 			default:
@@ -84,9 +84,9 @@ namespace
 				xlit.m_EnvmapContrast_ShadowTweaks = vec4;
 				break;
 			case 3:
-				xlit.m_EnvmapSaturation.x = vec4.x;
-				xlit.m_EnvmapSaturation.y = vec4.y;
-				xlit.m_EnvmapSaturation.z = vec4.z;
+				xlit.m_EnvmapSaturation_SelfIllumMask.x = vec4.x;
+				xlit.m_EnvmapSaturation_SelfIllumMask.y = vec4.y;
+				xlit.m_EnvmapSaturation_SelfIllumMask.z = vec4.z;
 				break;
 			case 4:
 				xlit.m_SelfIllumTint_and_BlendFactor = vec4;

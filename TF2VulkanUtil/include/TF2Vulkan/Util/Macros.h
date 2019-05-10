@@ -28,7 +28,19 @@ namespace Util
 	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
 	[[noreturn]] void EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line);
 	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
+
+	struct StaticTypeInfo final
+	{
+		size_t m_Size;
+		size_t m_Offset;
+		size_t m_Alignment;
+	};
 }
+
+#define ALL_STATIC_TYPE_INFO_MEMBER(type, member) \
+	::Util::StaticDataInfo{ sizeof(type ## :: ## member), offsetof(type, member), alignof(type ## :: ## member) }
+#define ALL_STATIC_TYPE_INFO(type) \
+	::Util::StaticTypeInfo{ sizeof(type), 0, alignof(type) }
 
 #define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 

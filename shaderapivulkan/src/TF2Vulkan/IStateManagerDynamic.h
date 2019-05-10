@@ -17,7 +17,7 @@ namespace TF2Vulkan
 	{
 		using BaseClass = IShaderTextureManager;
 	public:
-		void ApplyState() const;
+		void PreDraw();
 
 		void ClearColor3ub(uint8_t r, uint8_t g, uint8_t b) override final;
 		void ClearColor4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override final;

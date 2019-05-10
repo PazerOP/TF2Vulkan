@@ -243,6 +243,9 @@ void IShaderTextureManager::DeleteTexture(ShaderAPITextureHandle_t tex)
 	}
 
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
+
+	// Attach this image and imageviews to the primary command buffer so they
+	// stick around until submission
 	cmdBuf.AddResource(std::move(realTex.m_Image));
 	for (auto& iv : realTex.m_ImageViews)
 		cmdBuf.AddResource(std::move(iv.second));

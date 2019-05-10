@@ -3,11 +3,12 @@
 [[vk::binding(BINDING_CBUF_VS_CUSTOM)]] cbuffer VertexShaderCustomConstants
 {
 	float4 cBaseTexCoordTransform[2];
-	float cSeamlessScale;
 	float4 cDetailTexCoordTransform[2];
 
-	float3 cMorphTargetTextureDim;
 	float4 cMorphSubrect;
+	float3 cMorphTargetTextureDim;
+	float cSeamlessScale;
+	float4x4 g_FlashlightWorldToTexture;
 };
 
 [[vk::binding(11)]] SamplerState morphSampler;

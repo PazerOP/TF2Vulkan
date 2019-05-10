@@ -7,7 +7,7 @@
 
 namespace TF2Vulkan{ namespace ShaderConstants
 {
-	struct VSMatrices final
+	struct alignas(0x100) VSMatrices final
 	{
 		constexpr VSMatrices() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(VSMatrices);
@@ -19,15 +19,15 @@ namespace TF2Vulkan{ namespace ShaderConstants
 		float4 m_ViewProjZ;
 	};
 
-	struct VSModelMatrices final
+	struct alignas(0x100) VSModelMatrices final
 	{
 		constexpr VSModelMatrices() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(VSModelMatrices);
 
-		std::array<float4x3, 53> m_Model;
+		std::array<matrix3x4_t, 53> m_Model;
 	};
 
-	struct VSCommon final
+	struct alignas(0x100) VSCommon final
 	{
 		constexpr VSCommon() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(VSCommon);
@@ -48,7 +48,7 @@ namespace TF2Vulkan{ namespace ShaderConstants
 		AmbientLightCube m_AmbientCube;
 	};
 
-	struct PSCommon final
+	struct alignas(0x100) PSCommon final
 	{
 		constexpr PSCommon() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(PSCommon);
@@ -60,39 +60,32 @@ namespace TF2Vulkan{ namespace ShaderConstants
 		std::array<PixelShaderLightInfo, 3> m_LightInfo;
 	};
 
-	union VSCustom final
+	union alignas(0x100) VSCustom final
 	{
-		struct XLitGenericShared
+		struct
 		{
 			float4 m_BaseTexCoordTransform[2];
 			float4 m_DetailTexCoordTransform[2];
-			float3 m_MorphTargetTextureDim;
 			float4 m_MorphSubrect;
-		};
-
-		struct : XLitGenericShared
-		{
+			float3 m_MorphTargetTextureDim;
 			float1 m_SeamlessScale;
+			float4x4 m_FlashlightWorldToTexture;
 
 		} m_XLitGeneric;
-
-		struct : XLitGenericShared
-		{
-			float4x4 m_FlashlightWorldToTexture;
-		} m_XLitGenericBump;
 	};
 
-	struct VSData final
+	struct alignas(0x100) VSData final
 	{
 		constexpr VSData() = default;
 		VSCommon m_Common;
+		VSMatrices m_Matrices;
 		VSCustom m_Custom;
 		VSModelMatrices m_ModelMatrices;
 	};
 
-	union PSCustom final
+	union alignas(0x100) PSCustom final
 	{
-		struct XLitGenericShared
+		struct
 		{
 			float4 m_EnvmapTint_TintReplaceFactor;
 			float4 m_DiffuseModulation;
@@ -106,30 +99,28 @@ namespace TF2Vulkan{ namespace ShaderConstants
 			float4 m_FlashlightAttenuationFactors;
 			float3 m_FlashlightPos;
 			float4x4 m_FlashlightWorldToTexture;
-		};
 
-		struct : XLitGenericShared
-		{
 			float4 m_EnvmapSaturation_SelfIllumMask;
 
 			float4 m_DepthFeatheringConstants;
 
-		} m_XLitGeneric;
-
-		struct : XLitGenericShared
-		{
-			float3 m_EnvmapSaturation;
 			AmbientLightCube m_AmbientCube;
 			float4 m_SelfIllumScaleBiasExpBrightness;
 			PixelShaderLightInfo m_LightInfo[3];
 
-		} m_XLitGenericBump;
+		} m_XLitGeneric;
 	};
 
-	struct PSData final
+	struct alignas(0x100) PSData final
 	{
 		constexpr PSData() = default;
 		PSCommon m_Common;
 		PSCustom m_Custom;
+	};
+
+	struct alignas(0x100) ShaderData final
+	{
+		VSData m_VSData;
+		PSData m_PSData;
 	};
 } }

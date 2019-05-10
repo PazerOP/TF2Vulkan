@@ -1,6 +1,7 @@
 #pragma once
 
 #include <TF2Vulkan/Util/std_compare.h>
+#include <TF2Vulkan/Util/vmatrix.h>
 
 #include <cstdint>
 
@@ -32,6 +33,7 @@ namespace TF2Vulkan{ namespace ShaderConstants
 	{
 		using ThisType = vector<T, 1>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 1;
 
 		operator T& () { return x; }
 		operator const T& () const { return x; }
@@ -46,6 +48,7 @@ namespace TF2Vulkan{ namespace ShaderConstants
 	{
 		using ThisType = vector<T, 2>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 2;
 
 		T x;
 		T y;
@@ -55,6 +58,7 @@ namespace TF2Vulkan{ namespace ShaderConstants
 	{
 		using ThisType = vector<T, 3>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 3;
 
 		void SetFrom(const T* src)
 		{
@@ -72,6 +76,7 @@ namespace TF2Vulkan{ namespace ShaderConstants
 	{
 		using ThisType = vector<T, 4>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 4;
 
 		void SetFrom(const T* src)
 		{
@@ -87,50 +92,58 @@ namespace TF2Vulkan{ namespace ShaderConstants
 		T w;
 	};
 
-	template<typename T, int sizeX>
-	struct matrix<T, sizeX, 1>
+	template<typename T, int sizeY>
+	struct matrix<T, sizeY, 1>
 	{
 		constexpr matrix() = default;
-		using ThisType = matrix<T, sizeX, 1>;
+		using ThisType = matrix<T, sizeY, 1>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		vector<T, sizeX> x;
+		vector<T, sizeY> x;
 	};
-	template<typename T, int sizeX>
-	struct matrix<T, sizeX, 2>
+	template<typename T, int sizeY>
+	struct matrix<T, sizeY, 2>
 	{
 		constexpr matrix() = default;
-		using ThisType = matrix<T, sizeX, 2>;
+		using ThisType = matrix<T, sizeY, 2>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		vector<T, sizeX> x;
-		vector<T, sizeX> y;
+		vector<T, sizeY> x;
+		vector<T, sizeY> y;
 	};
-	template<typename T, int sizeX>
-	struct matrix<T, sizeX, 3>
+	template<typename T, int sizeY>
+	struct matrix<T, sizeY, 3>
 	{
 		constexpr matrix() = default;
-		using ThisType = matrix<T, sizeX, 3>;
+		using ThisType = matrix<T, sizeY, 3>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		vector<T, sizeX> x;
-		vector<T, sizeX> y;
-		vector<T, sizeX> z;
+		vector<T, sizeY> x;
+		vector<T, sizeY> y;
+		vector<T, sizeY> z;
 	};
-	template<typename T, int sizeX>
-	struct matrix<T, sizeX, 4>
+	template<typename T, int sizeY>
+	struct matrix<T, sizeY, 4>
 	{
 		constexpr matrix() = default;
-		using ThisType = matrix<T, sizeX, 4>;
+		using ThisType = matrix<T, sizeY, 4>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
 		auto& operator[](size_t i) { return *(&x + i); }
 		auto& operator[](size_t i) const { return *(&x + i); }
 
-		vector<T, sizeX> x;
-		vector<T, sizeX> y;
-		vector<T, sizeX> z;
-		vector<T, sizeX> w;
+		void SetFrom(const VMatrix& mtx)
+		{
+			x.SetFrom(mtx.Base());
+			y.SetFrom(mtx.Base() + 4);
+			z.SetFrom(mtx.Base() + 8);
+			w.SetFrom(mtx.Base() + 12);
+		}
+
+		vector<T, sizeY> x;
+		vector<T, sizeY> y;
+		vector<T, sizeY> z;
+		vector<T, sizeY> w;
 	};
 
 	using bool1 = vector<bool32, 1>;

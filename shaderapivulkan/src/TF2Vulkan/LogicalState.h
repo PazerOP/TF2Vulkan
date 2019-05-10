@@ -60,8 +60,7 @@ namespace TF2Vulkan
 
 		MaterialCullMode_t m_CullMode = MATERIAL_CULLMODE_CCW;
 
-		ShaderConstants::VSData m_VSConstants;
-		ShaderConstants::PSData m_PSConstants;
+		ShaderConstants::ShaderData m_ShaderData;
 
 		LightState_t m_LightState;
 		std::array<LightDesc_t, 4> m_Lights;
@@ -139,16 +138,6 @@ STD_HASH_DEFINITION(ShaderViewport_t,
 	v.m_nHeight,
 	v.m_flMinZ,
 	v.m_flMaxZ
-);
-
-STD_HASH_DEFINITION(TF2Vulkan::LogicalDynamicState,
-	v.m_BoundMaterial,
-	v.m_BoneCount,
-	v.m_FullScreenTexture,
-	v.m_AnisotropicLevel,
-	v.m_Viewports,
-	v.m_ClearColor,
-	v.m_SCOverbright
 );
 
 STD_HASH_DEFINITION(TF2Vulkan::LogicalShadowState::Sampler,

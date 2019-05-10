@@ -55,47 +55,6 @@ namespace
 		std::unordered_map<CUtlSymbolDbg, CompiledShader> m_Shaders;
 	};
 
-	union vertexlit_and_unlit_generic_vs30_static_index
-	{
-		uint32_t m_Index;
-		struct
-		{
-			uint32_t : 1;                                  // 0
-			uint32_t : 1;                                  // 1
-			uint32_t : 1;                                  // 2
-			uint32_t : 1;                                  // 3
-			uint32_t : 1;                                  // 4
-			uint32_t : 1;                                  // 5
-			uint32_t : 1;                                  // 6
-			uint32_t : 1;                                  // 7
-			uint32_t VERTEXCOLOR : 1;                      // 8
-			uint32_t CUBEMAP : 1;                          // 9
-			uint32_t HALFLAMBERT : 1;                      // 10
-			uint32_t FLASHLIGHT : 1;                       // 11
-			uint32_t SEAMLESS_BASE : 1;                    // 12
-			uint32_t SEAMLESS_DETAIL : 1;                  // 13
-			uint32_t SEPARATE_DETAIL_UVS : 1;              // 14
-			uint32_t USE_STATIC_CONTROL_FLOW : 1;          // 15
-			uint32_t DONT_GAMMA_CONVERT_VERTEX_COLOR : 1;  // 16
-		};
-	};
-	static_assert(sizeof(vertexlit_and_unlit_generic_vs30_static_index) == sizeof(uint32_t));
-
-	struct vertexlit_and_unlit_generic_vs30_dynamic_index
-	{
-		uint32_t m_Index;
-		union
-		{
-			uint32_t : 1;              // 0
-			uint32_t : 1;              // 1
-			uint32_t : 1;              // 2
-			uint32_t : 1;              // 3
-			uint32_t : 1;              // 4
-			uint32_t : 1;              // 5
-			uint32_t : 1;              // 6
-		};
-	};
-
 	struct EmptyShaderCompatData final : IShaderCompatData
 	{
 		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override

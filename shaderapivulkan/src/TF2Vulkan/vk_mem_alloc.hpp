@@ -47,6 +47,11 @@ namespace vma
 		void Write(const void* srcData, size_t srcSize, size_t dstOffset = 0);
 		void Read(void* dstData, size_t srcSize) const;
 
+		template<typename T> void Write(const T& data, size_t dstOffset = 0)
+		{
+			return Write(&data, sizeof(data), dstOffset);
+		}
+
 		operator bool() const;
 
 		VmaAllocation GetAllocation() const;

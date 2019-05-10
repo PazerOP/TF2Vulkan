@@ -471,7 +471,7 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	size_t totalVtxSize;
 
 	auto uncompressedFormat = m_Format;
-	uncompressedFormat.SetCompressionEnabled(false);
+	//uncompressedFormat.SetCompressionEnabled(false);
 
 	const auto vtxElemsCount = uncompressedFormat.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
@@ -561,6 +561,7 @@ void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	AssertCheckHeap();
+	ValidateData(vertexCount, desc);
 	// TODO: Send data to GPU
 }
 
@@ -569,9 +570,35 @@ void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)
 	NOT_IMPLEMENTED_FUNC();
 }
 
+template<typename T>
+static void ValidateType(const void* base, int elementIndex, int elementSize)
+{
+	if (elementSize <= 0)
+		return;
+
+	const T& typed = *reinterpret_cast<const T*>(reinterpret_cast<const std::byte*>(base) + elementSize * elementIndex);
+	using namespace ShaderConstants;
+	if constexpr (std::is_same_v<T, float1> || std::is_same_v<T, float2> || std::is_same_v<T, float3> || std::is_same_v<T, float4>)
+	{
+		if constexpr (T::ELEM_COUNT >= 1)
+			assert(std::isfinite(typed.x));
+		if constexpr (T::ELEM_COUNT >= 2)
+			assert(std::isfinite(typed.y));
+		if constexpr (T::ELEM_COUNT >= 3)
+			assert(std::isfinite(typed.z));
+		if constexpr (T::ELEM_COUNT >= 4)
+			assert(std::isfinite(typed.w));
+	}
+}
+
 void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+
+	for (int i = 0; i < vertexCount; i++)
+	{
+		ValidateType<ShaderConstants::float3>(desc.m_pPosition, i, desc.m_VertexSize_Position);
+	}
 }
 
 const std::byte* VulkanVertexBuffer::VertexData() const
