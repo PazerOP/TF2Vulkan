@@ -3,32 +3,7 @@
 
 namespace TF2Vulkan
 {
-	class VulkanCommandBufferBase : public IVulkanCommandBuffer
-	{
-	public:
-		void AddResource(vk::UniqueBuffer&& buffer) override final;
-		void AddResource(vma::AllocatedBuffer&& buffer) override final;
-		void AddResource(vk::UniqueDescriptorSet&& descriptorSet) override final;
-
-		struct IResource
-		{
-			virtual ~IResource() = default;
-			std::unique_ptr<IResource> m_Next;
-		};
-
-	private:
-		void ReleaseAttachedResources() override final;
-
-		struct BufferNode;
-		struct AllocatedBufferNode;
-		struct DescriptorSetNode;
-
-		void AddResource(std::unique_ptr<IResource>&& node);
-
-		std::unique_ptr<IResource> m_FirstNode;
-	};
-
-	class VulkanCommandBufferWrapper final : public VulkanCommandBufferBase
+	class VulkanCommandBufferWrapper final : public IVulkanCommandBuffer
 	{
 	public:
 		VulkanCommandBufferWrapper(const vk::CommandBuffer& buffer, IVulkanQueue& queue) :

@@ -29,38 +29,23 @@ AllocationInfo UniqueAllocation::getAllocationInfo() const
 	return retVal;
 }
 
-MappedMemory::MappedMemory(UniqueAllocation* alloc) :
-	m_Allocation(alloc)
+void UniqueAllocation::Write(const void* srcData, size_t srcSize, size_t dstOffset)
 {
-}
-
-void MappedMemory::Write(const void* srcData, size_t srcSize, size_t dstOffset)
-{
-	auto allocInfo = m_Allocation->getAllocationInfo();
+	auto allocInfo = getAllocationInfo();
 
 	if ((srcSize + dstOffset) > allocInfo.size)
 		NOT_IMPLEMENTED_FUNC(); // How should we handle this?
 
-	auto err = memcpy_s((std::byte*)m_Allocation->m_MappedData + dstOffset,
+	assert(allocInfo.pMappedData);
+	auto err = memcpy_s((std::byte*)allocInfo.pMappedData + dstOffset,
 		allocInfo.size, srcData, srcSize);
 
 	assert(err == errno_t{});
 }
 
-void MappedMemory::Read(void* dstData, size_t srcSize) const
+void UniqueAllocation::Read(void* dstData, size_t srcSize) const
 {
 	NOT_IMPLEMENTED_FUNC();
-}
-
-MappedMemory UniqueAllocation::map()
-{
-	assert(!m_MappedData);
-
-	if (auto result = vk::Result(vmaMapMemory(GetAllocator(), GetAllocation(), &m_MappedData));
-		result != vk::Result::eSuccess)
-		throw TF2Vulkan::VulkanException(result, EXCEPTION_DATA());
-
-	return MappedMemory(this);
 }
 
 UniqueAllocation::operator bool() const
@@ -164,13 +149,6 @@ void detail::Deleter::operator()(VmaAllocator allocator) const
 {
 	if (allocator)
 		vmaDestroyAllocator(allocator);
-}
-
-void MappedMemory::Unmapper::operator()(UniqueAllocation* alloc) const
-{
-	assert(alloc->m_MappedData);
-	vmaUnmapMemory(alloc->m_Allocation.get_deleter().m_Allocator, alloc->m_Allocation.get());
-	alloc->m_MappedData = nullptr;
 }
 
 void detail::AllocatedObjectDeleter::operator()(vk::Image& image) noexcept

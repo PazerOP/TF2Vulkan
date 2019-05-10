@@ -23,25 +23,6 @@ namespace vma
 		};
 	}
 
-	class UniqueAllocation;
-
-	class MappedMemory final
-	{
-	public:
-		void Write(const void* srcData, size_t srcSize, size_t dstOffset = 0);
-		void Read(void* dstData, size_t srcSize) const;
-
-	private:
-		MappedMemory(UniqueAllocation* allocation);
-		struct Unmapper
-		{
-			void operator()(UniqueAllocation* alloc) const;
-		};
-
-		std::unique_ptr<UniqueAllocation, Unmapper> m_Allocation;
-		friend class UniqueAllocation;
-	};
-
 	struct AllocationInfo : public VmaAllocationInfo
 	{
 		constexpr AllocationInfo() :
@@ -63,19 +44,17 @@ namespace vma
 
 		AllocationInfo getAllocationInfo() const;
 
-		[[nodiscard]] MappedMemory map();
+		void Write(const void* srcData, size_t srcSize, size_t dstOffset = 0);
+		void Read(void* dstData, size_t srcSize) const;
 
 		operator bool() const;
 
 		VmaAllocation GetAllocation() const;
 		VmaAllocator GetAllocator() const;
 
-		void ReleaseAllocation();
-
 	private:
 		friend class MappedMemory;
 		friend struct detail::AllocatedObjectDeleter;
-		void* m_MappedData = nullptr;
 
 		std::unique_ptr<std::remove_pointer_t<VmaAllocation>, detail::AllocationDeleter> m_Allocation;
 	};

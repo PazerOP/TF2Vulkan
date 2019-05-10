@@ -1,6 +1,6 @@
 #include "IVulkanQueue.h"
 #include "interface/internal/IShaderDeviceInternal.h"
-#include "TF2Vulkan/VulkanCommandBufferBase.h"
+#include "interface/internal/IVulkanCommandBuffer.h"
 
 #include <atomic>
 
@@ -12,7 +12,7 @@ namespace
 {
 #pragma warning(push)
 #pragma warning(disable : 4996)
-	class UniqueCmdBuffer final : public VulkanCommandBufferBase
+	class UniqueCmdBuffer final : public IVulkanCommandBuffer
 	{
 	public:
 		IVulkanQueue& GetQueue() override { return *m_Queue; }

@@ -110,6 +110,7 @@
     <ClInclude Include="src\TF2Vulkan\LogicalState.h" />
     <ClInclude Include="src\TF2Vulkan\MaterialSystemHardwareConfig.h" />
     <ClInclude Include="src\interface\internal\IShaderAPIInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\ResourceBlob.h" />
     <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderConstant.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderDeviceMgr.h" />
@@ -151,7 +152,7 @@
     <ClCompile Include="src\TF2Vulkan\StateManagerVulkan.cpp" />
     <ClCompile Include="src\TF2Vulkan\VBAllocTracker.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanBuffer.cpp" />
-    <ClCompile Include="src\TF2Vulkan\VulkanCommandBufferBase.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ResourceBlob.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanFactories.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerStatic.cpp" />
     <ClCompile Include="src\TF2Vulkan\IStateManagerDynamic.cpp" />

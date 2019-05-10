@@ -4,6 +4,9 @@
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Factories;
 
+static const auto MAP_REQUIRED_FLAGS = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+static const auto& MAP_REQUIRED_FLAGS_VK = *reinterpret_cast<const VkMemoryPropertyFlags*>(&MAP_REQUIRED_FLAGS);
+
 template<typename T>
 T& FactoryBase<T>::SetDebugName(std::string&& dbgName)
 {
@@ -20,6 +23,21 @@ T& FactoryBase<T>::SetDebugName(const std::string_view& dbgName)
 template struct FactoryBase<BufferFactory>;
 template struct FactoryBase<ImageFactory>;
 
+BufferFactory& BufferFactory::SetAllowMapping(bool allow)
+{
+	if (allow)
+	{
+		m_AllocInfo.requiredFlags |= MAP_REQUIRED_FLAGS_VK;
+		m_AllocInfo.flags |= VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	}
+	else
+	{
+		m_AllocInfo.flags &= ~VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	}
+
+	return *this;
+}
+
 BufferFactory& BufferFactory::SetUsage(const vk::BufferUsageFlags& usage)
 {
 	m_CreateInfo.usage = usage;
@@ -35,6 +53,9 @@ BufferFactory& BufferFactory::SetSize(size_t size)
 BufferFactory& BufferFactory::SetInitialData(const void* initialData, size_t initialDataSize,
 	size_t writeOffset)
 {
+	// TODO: Use a staging buffer instead of forcing the whole resource to be mappable forever
+	SetAllowMapping(true);
+
 	m_InitialData = initialData;
 	m_InitialDataSize = initialDataSize;
 	m_InitialDataWriteOffset = writeOffset;
@@ -61,14 +82,10 @@ vma::AllocatedBuffer BufferFactory::Create() const
 {
 	const bool hasInitialData = m_InitialData && m_InitialDataSize > 0;
 
-	const auto mapRequiredFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-	const auto mapRequiredFlagsVk = VkMemoryPropertyFlags(mapRequiredFlags);
-
 	if (hasInitialData)
 	{
-		// TODO: Create a staging buffer etc right here. For now, just make the output texture
-		// mappable directly, and map that.
-		const_cast<BufferFactory*>(this)->m_AllocInfo.requiredFlags |= mapRequiredFlagsVk;
+		// TODO: Create a staging buffer etc right here.
+		assert((m_AllocInfo.requiredFlags & MAP_REQUIRED_FLAGS_VK) == MAP_REQUIRED_FLAGS_VK);
 	}
 
 	auto created = g_ShaderDevice.GetVulkanAllocator().createBufferUnique(m_CreateInfo, m_AllocInfo);
@@ -77,10 +94,7 @@ vma::AllocatedBuffer BufferFactory::Create() const
 		g_ShaderDevice.SetDebugName(created.GetBuffer(), m_DebugName.c_str());
 
 	if (hasInitialData)
-	{
-		auto mapped = created.GetAllocation().map();
-		mapped.Write(m_InitialData, m_InitialDataSize, m_InitialDataWriteOffset);
-	}
+		created.GetAllocation().Write(m_InitialData, m_InitialDataSize, m_InitialDataWriteOffset);
 
 	return created;
 }

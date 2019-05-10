@@ -358,6 +358,7 @@ IShaderTextureManager& TF2Vulkan::g_TextureManager = s_ShaderAPI;
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
 	LOG_FUNC();
+	return;
 	if (!g_StateManagerStatic.IsAnyRenderTargetBound())
 		return;
 
@@ -367,10 +368,11 @@ void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil
 		PRINTF_BOOL(clearColor), PRINTF_BOOL(clearDepth), PRINTF_BOOL(clearStencil),
 		rtWidth, rtHeight);
 
-	g_StateManagerStatic.ApplyCurrentState(cmdBuf);
+	const auto curSnapshot = g_StateManagerStatic.TakeSnapshot();
+	g_StateManagerStatic.ApplyState(curSnapshot, cmdBuf);
+	const auto& curState = g_StateManagerStatic.GetState(curSnapshot);
 
 	Util::InPlaceVector<vk::ClearAttachment, 2> atts;
-
 	vk::ClearRect rects[2];
 	{
 		Util::SafeConvert(rtWidth, rects[0].rect.extent.width);
@@ -379,7 +381,7 @@ void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil
 		rects[1] = rects[0];
 	}
 
-	if (clearColor)
+	if (clearColor && curState.m_OMColorRTs[0] >= 0)
 	{
 		auto& att = atts.emplace_back();
 		att.aspectMask |= vk::ImageAspectFlagBits::eColor;
@@ -387,7 +389,7 @@ void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil
 		att.colorAttachment = 0;
 	}
 
-	if (clearDepth || clearStencil)
+	if ((clearDepth || clearStencil) && curState.m_OMDepthRT >= 0)
 	{
 		auto& att = atts.emplace_back();
 

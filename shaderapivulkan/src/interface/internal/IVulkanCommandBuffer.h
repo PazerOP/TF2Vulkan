@@ -1,6 +1,7 @@
 #pragma once
 
 #include "TF2Vulkan/PixScope.h"
+#include "TF2Vulkan/ResourceBlob.h"
 
 #include <Color.h>
 
@@ -17,21 +18,10 @@ namespace TF2Vulkan
 	static constexpr Color PIX_COLOR_READ(230, 159, 0);
 	static constexpr Color PIX_COLOR_WRITE(86, 180, 233);
 
-	class IVulkanCommandBuffer
+	class IVulkanCommandBuffer : public ResourceBlob
 	{
 	public:
 		virtual ~IVulkanCommandBuffer() = default;
-
-		virtual void AddResource(vk::UniqueBuffer&& buffer) = 0;
-		virtual void AddResource(vma::AllocatedBuffer&& buffer) = 0;
-		virtual void AddResource(vk::UniqueDescriptorSet&& descriptor) = 0;
-
-		template<typename TContainer>
-		auto AddResource(TContainer&& container) -> decltype(std::begin(container), std::end(container), AddResource(std::move(*std::begin(container))))
-		{
-			for (auto&& val : container)
-				AddResource(std::move(val));
-		}
 
 		void InsertDebugLabel(const Color& color, const char* text);
 		void InsertDebugLabel(const char* text);
@@ -93,7 +83,6 @@ namespace TF2Vulkan
 
 	protected:
 		virtual const vk::CommandBuffer& GetCmdBuffer() const = 0;
-		virtual void ReleaseAttachedResources() = 0;
 
 	private:
 		bool m_IsActive = false; // Is inside begin()..end()

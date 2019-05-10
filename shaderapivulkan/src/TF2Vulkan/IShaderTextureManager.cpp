@@ -242,6 +242,11 @@ void IShaderTextureManager::DeleteTexture(ShaderAPITextureHandle_t tex)
 		}
 	}
 
+	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
+	cmdBuf.AddResource(std::move(realTex.m_Image));
+	for (auto& iv : realTex.m_ImageViews)
+		cmdBuf.AddResource(std::move(iv.second));
+
 	m_Textures.erase(tex);
 }
 
@@ -340,17 +345,18 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 			.SetSize(totalSize)
 			.SetUsage(vk::BufferUsageFlagBits::eTransferSrc)
 			.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+			.SetAllowMapping(true)
 			.SetDebugName(Util::string::concat(tex.m_DebugName, ": UpdateTexture() staging buffer"))
 			.Create();
 
 		// Copy the data into the staging buffer
-		auto mapped = stagingBuf.GetAllocation().map();
+		auto& allocation = stagingBuf.GetAllocation();
 		size_t currentOffset = 0;
 		for (size_t i = 0; i < count; i++)
 		{
 			const TextureData& slice = data[i];
 
-			mapped.Write(slice.m_Data, slice.m_DataLength, currentOffset);
+			allocation.Write(slice.m_Data, slice.m_DataLength, currentOffset);
 
 			// Record this copy region
 			{

@@ -15,6 +15,7 @@ namespace TF2Vulkan{ namespace Factories
 	{
 		BufferFactory() = default;
 
+		BufferFactory& SetAllowMapping(bool allow);
 		BufferFactory& SetUsage(const vk::BufferUsageFlags& usage);
 		BufferFactory& SetSize(size_t size);
 		BufferFactory& SetInitialData(const void* initialData, size_t initialDataSize, size_t writeOffset = 0);

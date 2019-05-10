@@ -358,9 +358,9 @@ bool VulkanIndexBuffer::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 
 	desc.m_nFirstIndex = 0;
 	desc.m_nOffset = 0;
-	desc.m_nIndexSize = sizeof(m_Indices[0]); // FIXME: = (sizeof(...) >> 1)? Who even came up with this....
+	desc.m_nIndexSize = sizeof(m_Indices[0]) >> 1; // Why?
 
-	m_Indices.resize(maxIndexCount * 2); // FIXME REALLY SOON: Additional space to avoid heap corruption
+	m_Indices.resize(maxIndexCount);
 	desc.m_pIndices = m_Indices.data();
 
 	return true;
