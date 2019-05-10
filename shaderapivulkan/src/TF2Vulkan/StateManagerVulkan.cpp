@@ -257,7 +257,7 @@ namespace
 
 	struct ShaderStageCreateInfo
 	{
-		const IVulkanShaderManager::IShader* m_Shader = nullptr;
+		const IVulkanShader* m_Shader = nullptr;
 
 		std::vector<std::byte> m_SpecializationData;
 		std::vector<vk::SpecializationMapEntry> m_SpecializationMapEntries;
@@ -631,6 +631,8 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	{
 		auto& attrs = retVal.m_VertexInputAttributeDescriptions;
 
+		const auto& vertexShaderRefl = g_ShaderManager.FindOrCreateShader(key.m_VSName).GetReflectionData();
+
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
 		const auto vertexElementCount = key.m_VSVertexFormat.GetVertexElements(vertexElements, std::size(vertexElements), &totalVertexSize);
@@ -638,11 +640,33 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 		for (uint_fast8_t i = 0; i < vertexElementCount; i++)
 		{
 			const auto& vertexElement = vertexElements[i];
-			attrs.emplace_back(VIAD(i, 0, vertexElement.m_Type->GetVKFormat(), vertexElement.m_Offset));
+
+			VIAD attr;
+			attr.offset = vertexElement.m_Offset;
+			attr.format = vertexElement.m_Type->GetVKFormat();
+			attr.binding = 0;
+
+			static constexpr auto INVALID_LOCATION = std::numeric_limits<uint32_t>::max();
+			attr.location = INVALID_LOCATION;
+			for (const auto& input : vertexShaderRefl.m_VertexInputs)
+			{
+				if (input.m_Semantic == vertexElement.m_Type->m_Semantic)
+				{
+					attr.location = input.m_Location;
+					break;
+				}
+			}
+
+			if (attr.location == INVALID_LOCATION)
+			{
+				assert(!"Failed to find matching semantic");
+				continue;
+			}
+
+			attrs.emplace_back(attr);
 		}
 
-		const auto& vertexShader = g_ShaderManager.FindOrCreateShader(key.m_VSName);
-		for (const auto& input : vertexShader.GetReflectionData().m_VertexInputs)
+		for (const auto& input : vertexShaderRefl.m_VertexInputs)
 		{
 			bool found = false;
 			for (auto& attr : attrs)

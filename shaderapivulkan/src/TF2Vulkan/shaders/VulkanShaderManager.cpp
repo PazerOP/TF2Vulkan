@@ -13,52 +13,32 @@
 #include <unordered_map>
 
 using namespace TF2Vulkan;
+using namespace TF2Vulkan::ShaderCompatData;
 using namespace TF2Vulkan::ShaderReflection;
 
 namespace
 {
-	struct SpecConstMapping final
-	{
-		const char* m_SpecConstName;
-		uint_fast8_t m_ComboOffset;
-		uint32_t m_ComboMask = 0x1;
-	};
-
-	static constexpr SpecConstMapping s_SpecConstMap_VertexLitGeneric_VS[] =
-	{
-		{ "VERTEXCOLOR", 8, },
-		{ "CUBEMAP", 9 },
-		{ "HALFLAMBERT", 10 },
-		{ "FLASHLIGHT", 11 },
-		{ "SEAMLESS_BASE", 12 },
-		{ "SEAMLESS_DETAIL", 13 },
-		{ "SEPARATE_DETAIL_UVS", 14 },
-		{ "DONT_GAMMA_CONVERT_VERTEX_COLOR", 16 },
-	};
-
 	struct ShaderInfo
 	{
-		constexpr ShaderInfo(ShaderBlob blob) : m_Blob(blob) {}
-		template<size_t size>
-		constexpr ShaderInfo(ShaderBlob blob, const SpecConstMapping(&specConstMappings)[size]) :
-			m_Blob(blob), m_SpecConstMappings(specConstMappings), m_SpecConstMappingsCount(size)
+		constexpr ShaderInfo(ShaderBlob blob, const IShaderCompatData& compatData) :
+			m_Blob(blob), m_CompatData(&compatData)
 		{
 		}
 
 		ShaderBlob m_Blob;
-		const SpecConstMapping* m_SpecConstMappings = nullptr;
-		size_t m_SpecConstMappingsCount = 0;
+		const IShaderCompatData* m_CompatData = nullptr;
 	};
 
 	class VulkanShaderManager final : public IVulkanShaderManager
 	{
 	public:
-		const IShader& FindOrCreateShader(const CUtlSymbolDbg& name) override;
+		const TF2Vulkan::IVulkanShader& FindOrCreateShader(const CUtlSymbolDbg& name) override;
 
 	private:
-		struct CompiledShader final : IShader
+		struct CompiledShader final : TF2Vulkan::IVulkanShader
 		{
 			CompiledShader(const CUtlSymbolDbg& name);
+			const ShaderCompatData::IShaderCompatData& GetCompatData() const override { return *m_Info->m_CompatData; }
 			vk::ShaderModule GetModule() const override { return m_Shader.get(); }
 			const CUtlSymbolDbg& GetName() const override { return m_Name; }
 			const ReflectionData& GetReflectionData() const override { return m_ReflectionData; }
@@ -115,6 +95,38 @@ namespace
 			uint32_t : 1;              // 6
 		};
 	};
+
+	struct EmptyShaderCompatData final : IShaderCompatData
+	{
+		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::int4& vec4) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::bool4& vec4) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::int4& vec4) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::bool4& vec4) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+		const SpecConstMapping* GetSpecConstMappings(size_t& count) const override
+		{
+			NOT_IMPLEMENTED_FUNC();
+		}
+	} static const s_EmptyShaderCompatData;
 }
 
 static VulkanShaderManager s_ShaderManager;
@@ -122,15 +134,15 @@ IVulkanShaderManager& TF2Vulkan::g_ShaderManager = s_ShaderManager;
 
 static const std::unordered_map<std::string_view, ShaderInfo> s_ShaderBlobMapping =
 {
-	{ "bik_vs20", ShaderBlob::Bik_VS },
-	{ "bik_ps20b", ShaderBlob::Bik_PS },
-	{ "vertexlit_and_unlit_generic_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, s_SpecConstMap_VertexLitGeneric_VS } },
-	{ "vertexlit_and_unlit_generic_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
-	{ "vertexlit_and_unlit_generic_bump_vs30", ShaderBlob::VertexLitAndUnlitGeneric_VS },
-	{ "vertexlit_and_unlit_generic_bump_ps30", ShaderBlob::VertexLitAndUnlitGeneric_PS },
+	{ "bik_vs20", { ShaderBlob::Bik_VS, s_EmptyShaderCompatData } },
+	{ "bik_ps20b", { ShaderBlob::Bik_PS, s_EmptyShaderCompatData } },
+	{ "vertexlit_and_unlit_generic_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, g_XLitGeneric } },
+	{ "vertexlit_and_unlit_generic_ps30", { ShaderBlob::VertexLitAndUnlitGeneric_PS, g_XLitGeneric } },
+	{ "vertexlit_and_unlit_generic_bump_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, g_XLitGenericBump } },
+	{ "vertexlit_and_unlit_generic_bump_ps30", { ShaderBlob::VertexLitAndUnlitGeneric_PS, g_XLitGenericBump } },
 };
 
-auto VulkanShaderManager::FindOrCreateShader(const CUtlSymbolDbg& id) -> const IShader&
+auto VulkanShaderManager::FindOrCreateShader(const CUtlSymbolDbg& id) -> const TF2Vulkan::IVulkanShader&
 {
 	std::lock_guard lock(m_Mutex);
 
@@ -310,9 +322,11 @@ void VulkanShaderManager::CompiledShader::CreateSpecializationInfo(uint32_t comb
 	const auto& reflData = GetReflectionData();
 
 	// TODO: Don't set spec constants to their default values
-	for (size_t i = 0; i < m_Info->m_SpecConstMappingsCount; i++)
+	size_t specConstMappingsCount;
+	const auto* specConstMappings = m_Info->m_CompatData->GetSpecConstMappings(specConstMappingsCount);
+	for (size_t i = 0; i < specConstMappingsCount; i++)
 	{
-		const auto& mapping = m_Info->m_SpecConstMappings[i];
+		const auto& mapping = specConstMappings[i];
 
 		auto value = (combo >> mapping.m_ComboOffset) & mapping.m_ComboMask;
 

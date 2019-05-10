@@ -15,6 +15,7 @@ namespace TF2Vulkan
 {
 	class IShaderAPI_StateManagerDynamic : public IShaderTextureManager
 	{
+		using BaseClass = IShaderTextureManager;
 	public:
 		void ApplyState() const;
 

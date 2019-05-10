@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdshader_dx9_tf2vulkan/ShaderCompatData.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
 
 namespace spirv_cross
@@ -115,25 +116,26 @@ namespace TF2Vulkan
 		};
 	}
 
+	class IVulkanShader
+	{
+	public:
+		virtual vk::ShaderModule GetModule() const = 0;
+		virtual const ShaderCompatData::IShaderCompatData& GetCompatData() const = 0;
+		virtual const CUtlSymbolDbg& GetName() const = 0;
+		virtual const ShaderReflection::ReflectionData& GetReflectionData() const = 0;
+		virtual void CreateSpecializationInfo(uint32_t combo, vk::SpecializationInfo& info,
+			std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const = 0;
+
+	protected:
+		virtual ~IVulkanShader() = default;
+	};
+
 	class IVulkanShaderManager
 	{
 	public:
 		virtual ~IVulkanShaderManager() = default;
 
-		class IShader
-		{
-		public:
-			virtual vk::ShaderModule GetModule() const = 0;
-			virtual const CUtlSymbolDbg& GetName() const = 0;
-			virtual const ShaderReflection::ReflectionData& GetReflectionData() const = 0;
-			virtual void CreateSpecializationInfo(uint32_t combo, vk::SpecializationInfo& info,
-				std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const = 0;
-
-		protected:
-			virtual ~IShader() = default;
-		};
-
-		virtual const IShader& FindOrCreateShader(const CUtlSymbolDbg& id) = 0;
+		virtual const IVulkanShader& FindOrCreateShader(const CUtlSymbolDbg& id) = 0;
 	};
 
 	extern IVulkanShaderManager& g_ShaderManager;

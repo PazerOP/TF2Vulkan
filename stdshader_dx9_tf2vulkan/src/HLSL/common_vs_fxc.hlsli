@@ -17,6 +17,11 @@
 #define FOGTYPE_RANGE				0
 #define FOGTYPE_HEIGHT				1
 
+cbuffer VertexShaderModelMatrices
+{
+	float4x3 cModel[53];
+};
+
 [[vk::binding(BINDING_CBUF_VS_STANDARD)]] cbuffer VertexShaderStandardConstants
 {
 	float cOOGamma;
@@ -39,8 +44,6 @@
 
 	LightInfo cLightInfo[4];
 	AmbientLightCube cAmbientCube;
-
-	float4x3 cModel[53];
 };
 
 static const float cOverbright = 2.0f;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdshader_dx9_tf2vulkan/AlignedTypes.h>
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/std_compare.h>
 
@@ -7,7 +8,7 @@ namespace TF2Vulkan
 {
 	union ShaderConstant
 	{
-		constexpr ShaderConstant() : m_Int{ 0, 0, 0, 0 } {}
+		constexpr ShaderConstant() : m_Int{} {}
 
 #ifndef __INTELLISENSE__
 		std::weak_equality operator<=>(const ShaderConstant& other) const
@@ -16,18 +17,11 @@ namespace TF2Vulkan
 		}
 #endif
 		bool operator!=(const ShaderConstant& other) const { return !operator==(other); }
-		bool operator==(const ShaderConstant& other) const
-		{
-			return
-				m_Int[0] == other.m_Int[0] &&
-				m_Int[1] == other.m_Int[1] &&
-				m_Int[2] == other.m_Int[2] &&
-				m_Int[3] == other.m_Int[3];
-		}
+		bool operator==(const ShaderConstant& other) const { return m_Int == other.m_Int; }
 
-		std::array<float, 4> m_Float;
-		std::array<int, 4> m_Int;
-		std::array<BOOL, 4> m_Bool;
+		ShaderConstants::float4 m_Float;
+		ShaderConstants::int4 m_Int;
+		ShaderConstants::bool4 m_Bool;
 	};
 
 	struct ShaderConstantValues

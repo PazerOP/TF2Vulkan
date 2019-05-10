@@ -23,11 +23,11 @@ struct VS_INPUT
 	// This is all of the stuff that we ever use.
 	float4 vPos             : POSITION;
 	float4 vNormal          : NORMAL;
-	float4 vColor           : COLOR0;
-	float3 vSpecular        : COLOR1;
+	float4 vColor           : COLOR;
+	float3 vSpecular        : SPECULAR;
 
-	float4 vBoneWeights     : BLENDWEIGHT;
-	float4 vBoneIndices     : BLENDINDICES;
+	float4 vBoneWeights     : BONEWEIGHTS;
+	float4 vBoneIndices     : BONEINDICES;
 
 	// make these float2's and stick the [n n 0 1] in the dot math.
 	float4 vTexCoord0       : TEXCOORD0;
@@ -35,19 +35,19 @@ struct VS_INPUT
 	float4 vTexCoord2       : TEXCOORD2;
 	float4 vTexCoord3       : TEXCOORD3;
 
-	float3 vTangentS        : TANGENT1;
-	float3 vTangentT        : BINORMAL;
-	float4 vUserData        : TANGENT2;
+	float3 vTangentS        : TANGENT_S;
+	float3 vTangentT        : TANGENT_T;
+	float4 vUserData        : USERDATA;
 
 	// Position and normal/tangent deltas
 	float3 vPosFlex         : POSITION1;
 	float3 vNormalFlex      : NORMAL1;
-	float vVertexID         : POSITION2;
+	int vVertexID           : SV_VertexID;
 };
 
 struct VS_OUTPUT
 {
-	float4 projPos              : POSITION;
+	float4 projPos              : SV_Position;
 	float fog                   : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;
@@ -55,7 +55,7 @@ struct VS_OUTPUT
 	float4 color                : TEXCOORD2;
 
 	float3 worldVertToEyeVector : TEXCOORD3;
-	float3 vWorldNormal     : TEXCOORD4;
+	float3 vWorldNormal         : TEXCOORD4;
 
 	float4 vProjPos             : TEXCOORD6;
 	float4 worldPos_ProjPosZ    : TEXCOORD7;

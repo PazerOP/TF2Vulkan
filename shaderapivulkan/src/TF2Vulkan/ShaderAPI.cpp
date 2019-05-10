@@ -358,7 +358,7 @@ IShaderTextureManager& TF2Vulkan::g_TextureManager = s_ShaderAPI;
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
 	LOG_FUNC();
-	return;
+	return; // TODO: Fix renderdoc crash when this is enabled
 	if (!g_StateManagerStatic.IsAnyRenderTargetBound())
 		return;
 

@@ -8,6 +8,7 @@
 namespace TF2Vulkan
 {
 	class IVulkanCommandBuffer;
+	class IVulkanShader;
 
 	class IStateManagerStatic : public IShaderShadow
 	{
@@ -52,6 +53,9 @@ namespace TF2Vulkan
 		{
 			return GetState(Util::SafeConvert<LogicalShadowStateID>(id));
 		}
+
+		virtual const IVulkanShader& GetPixelShader() const = 0;
+		virtual const IVulkanShader& GetVertexShader() const = 0;
 	};
 
 	extern IStateManagerStatic& g_StateManagerStatic;

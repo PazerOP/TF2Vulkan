@@ -2,7 +2,7 @@
 
 struct PS_INPUT
 {
-	float4 projPos              : POSITION;
+	//float4 projPos              : SV_Position;
 	float fog                   : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;

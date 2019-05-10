@@ -59,12 +59,14 @@ namespace TF2Vulkan
 
 		struct ElementType final
 		{
-			constexpr ElementType(VertexElement_t elem, DataFormat fmt, uint_fast8_t compCount, uint_fast8_t compSize);
+			constexpr ElementType(VertexElement_t elem, DataFormat fmt, uint_fast8_t compCount,
+				uint_fast8_t compSize, const std::string_view& semantic);
 
 			VertexElement_t m_Element = VERTEX_ELEMENT_NONE;
 			DataFormat m_Format = DataFormat::Invalid;
 			uint_fast8_t m_Components = 0;
 			uint_fast8_t m_ComponentSize = 0;
+			std::string_view m_Semantic;
 
 			uint_fast8_t GetTotalSize() const;
 			vk::Format GetVKFormat() const;

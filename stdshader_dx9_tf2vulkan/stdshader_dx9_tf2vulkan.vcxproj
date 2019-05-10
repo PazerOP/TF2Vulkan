@@ -22,14 +22,14 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>Unicode</CharacterSet>
+    <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -101,11 +101,14 @@
   <ItemGroup>
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\AlignedTypes.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderBlobs.h" />
+    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderCompatData.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderData.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderDataShared.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ShaderBlobs.cpp" />
+    <ClCompile Include="src\ShaderCompatData\XLitGeneric.cpp" />
+    <ClCompile Include="src\ShaderCompatData\XLitGenericBump.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\HLSL\vertexlit_and_unlit_generic.frag.hlsl">

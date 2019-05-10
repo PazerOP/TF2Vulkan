@@ -29,7 +29,6 @@ namespace TF2Vulkan
 	struct LogicalDynamicState final
 	{
 		constexpr LogicalDynamicState() = default;
-		DEFAULT_WEAK_EQUALITY_OPERATOR(LogicalDynamicState); // weak because we have floats
 
 		std::array<VMatrix, NUM_MATRIX_MODES> m_Matrices;
 
@@ -61,10 +60,8 @@ namespace TF2Vulkan
 
 		MaterialCullMode_t m_CullMode = MATERIAL_CULLMODE_CCW;
 
-		VertexShaderConstants m_VertexShaderConstants;
-		PixelShaderConstants m_PixelShaderConstants;
-
-		ShaderConstants::VSCommon m_VertexShaderConstants_Common;
+		ShaderConstants::VSData m_VSConstants;
+		ShaderConstants::PSData m_PSConstants;
 
 		LightState_t m_LightState;
 		std::array<LightDesc_t, 4> m_Lights;

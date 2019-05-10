@@ -1,6 +1,7 @@
 #include "interface/internal/IStateManagerStatic.h"
 #include "IStateManagerDynamic.h"
 #include "IStateManagerVulkan.h"
+#include "shaders/VulkanShaderManager.h"
 
 #include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/interface.h>
@@ -110,6 +111,9 @@ namespace
 		void SetState(LogicalShadowStateID id) override;
 		using IStateManagerStatic::GetState;
 		const LogicalShadowState& GetState(LogicalShadowStateID id) const override;
+
+		const TF2Vulkan::IVulkanShader& GetPixelShader() const override;
+		const TF2Vulkan::IVulkanShader& GetVertexShader() const override;
 
 	protected:
 		bool HasStateChanged() const;
@@ -523,4 +527,13 @@ bool ShadowStateManager::IsAnyRenderTargetBound() const
 	}
 
 	return false;
+}
+
+const TF2Vulkan::IVulkanShader& ShadowStateManager::GetPixelShader() const
+{
+	return g_ShaderManager.FindOrCreateShader(m_State.m_PSName);
+}
+const TF2Vulkan::IVulkanShader& ShadowStateManager::GetVertexShader() const
+{
+	return g_ShaderManager.FindOrCreateShader(m_State.m_VSName);
 }

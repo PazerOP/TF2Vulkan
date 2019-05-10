@@ -20,6 +20,15 @@ namespace TF2Vulkan{ namespace ShaderConstants
 		float4 atten;
 	};
 
+	struct PixelShaderLightInfo
+	{
+#ifdef __cplusplus
+		DEFAULT_WEAK_EQUALITY_OPERATOR(PixelShaderLightInfo);
+#endif
+		float4 color;
+		float4 pos;
+	};
+
 	struct AmbientLightCube
 	{
 		float3 x[2];
@@ -32,10 +41,10 @@ namespace TF2Vulkan{ namespace ShaderConstants
 #ifdef __cplusplus
 		DEFAULT_WEAK_EQUALITY_OPERATOR(FogParams);
 #endif
-		float endOverRange;
-		float one;
-		float maxDensity;
-		float OORange;
+		float1 endOverRange;
+		float1 one;
+		float1 maxDensity;
+		float1 OORange;
 	};
 
 #ifdef __cplusplus

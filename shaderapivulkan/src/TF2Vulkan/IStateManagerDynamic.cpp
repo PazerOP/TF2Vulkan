@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "IStateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
+#include "interface/internal/IStateManagerStatic.h"
+#include "shaders/VulkanShaderManager.h"
 
 #include <TF2Vulkan/Util/DirtyVar.h>
 
@@ -279,49 +281,60 @@ void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITex
 	Util::SetDirtyVar(m_State.m_BoundTextures, sampler, textureHandle, m_Dirty);
 }
 
-template<typename T>
-static void SetShaderConstantsSafe(ShaderConstantValues& constants, int var, const T* vec, int numConst)
-{
-	constants.SetData(
-		Util::SafeConvert<size_t>(var),
-		reinterpret_cast<const ShaderConstant*>(vec),
-		Util::SafeConvert<size_t>(numConst));
-}
-
 void IShaderAPI_StateManagerDynamic::SetVertexShaderConstant(int var, const float* vec, int numConst, bool force)
 {
 	LOG_FUNC();
-	SetShaderConstantsSafe(m_State.m_VertexShaderConstants, var, vec, numConst);
+	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
+		m_State.m_VSConstants, Util::SafeConvert<uint32_t>(var),
+		reinterpret_cast<const ShaderConstants::float4*>(vec),
+		Util::SafeConvert<uint32_t>(numConst));
 }
 
 void IShaderAPI_StateManagerDynamic::SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force)
 {
 	LOG_FUNC();
-	SetShaderConstantsSafe(m_State.m_VertexShaderConstants, var, vec, numBools);
+	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
+		m_State.m_VSConstants, Util::SafeConvert<uint32_t>(var),
+		reinterpret_cast<const ShaderConstants::bool4*>(vec),
+		Util::SafeConvert<uint32_t>(numBools));
 }
 
 void IShaderAPI_StateManagerDynamic::SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force)
 {
 	LOG_FUNC();
-	SetShaderConstantsSafe(m_State.m_VertexShaderConstants, var, vec, numIntVecs);
+	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
+		m_State.m_VSConstants, Util::SafeConvert<uint32_t>(var),
+		reinterpret_cast<const ShaderConstants::int4*>(vec),
+		Util::SafeConvert<uint32_t>(numIntVecs));
 }
 
-void IShaderAPI_StateManagerDynamic::SetPixelShaderConstant(int var, const float* vec, int numConst, bool force)
+void IShaderAPI_StateManagerDynamic::SetPixelShaderConstant(int var, const float* vec, int numVecs, bool force)
 {
 	LOG_FUNC();
-	SetShaderConstantsSafe(m_State.m_PixelShaderConstants, var, vec, numConst);
+	auto& ps = g_StateManagerStatic.GetPixelShader();
+	[[maybe_unused]] auto dbgName = ps.GetName();
+	ps.GetCompatData().SetConstants(
+		m_State.m_PSConstants, Util::SafeConvert<uint32_t>(var),
+		reinterpret_cast<const ShaderConstants::float4*>(vec),
+		Util::SafeConvert<uint32_t>(numVecs));
 }
 
 void IShaderAPI_StateManagerDynamic::SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force)
 {
 	LOG_FUNC();
-	SetShaderConstantsSafe(m_State.m_PixelShaderConstants, var, vec, numBools);
+	g_StateManagerStatic.GetPixelShader().GetCompatData().SetConstants(
+		m_State.m_PSConstants, Util::SafeConvert<uint32_t>(var),
+		reinterpret_cast<const ShaderConstants::bool4*>(vec),
+		Util::SafeConvert<uint32_t>(numBools));
 }
 
 void IShaderAPI_StateManagerDynamic::SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force)
 {
 	LOG_FUNC();
-	SetShaderConstantsSafe(m_State.m_PixelShaderConstants, var, vec, numIntVecs);
+	g_StateManagerStatic.GetPixelShader().GetCompatData().SetConstants(
+		m_State.m_PSConstants, Util::SafeConvert<uint32_t>(var),
+		reinterpret_cast<const ShaderConstants::int4*>(vec),
+		Util::SafeConvert<uint32_t>(numIntVecs));
 }
 
 void IShaderAPI_StateManagerDynamic::SetFloatRenderingParameter(RenderParamFloat_t param, float value)

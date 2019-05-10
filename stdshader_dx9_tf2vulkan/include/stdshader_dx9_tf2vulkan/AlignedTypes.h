@@ -30,44 +30,61 @@ namespace TF2Vulkan{ namespace ShaderConstants
 	template<typename T>
 	struct alignas(sizeof(T)) vector<T, 1>
 	{
-		constexpr vector() = default;
 		using ThisType = vector<T, 1>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		T x = {};
+		operator T& () { return x; }
+		operator const T& () const { return x; }
+		ThisType& operator=(const ThisType&) = default;
+		ThisType& operator=(ThisType&&) noexcept = default;
+		ThisType& operator=(const T& rhs) noexcept { x = rhs; return *this; }
+
+		T x;
 	};
 	template<typename T>
 	struct alignas(sizeof(T) * 2) vector<T, 2>
 	{
-		constexpr vector() = default;
 		using ThisType = vector<T, 2>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		T x = {};
-		T y = {};
+		T x;
+		T y;
 	};
 	template<typename T>
 	struct vector<T, 3>
 	{
-		constexpr vector() = default;
 		using ThisType = vector<T, 3>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		T x = {};
-		T y = {};
-		T z = {};
+		void SetFrom(const T* src)
+		{
+			x = src[0];
+			y = src[1];
+			z = src[2];
+		}
+
+		T x;
+		T y;
+		T z;
 	};
 	template<typename T>
 	struct alignas(sizeof(T) * 4) vector<T, 4>
 	{
-		constexpr vector() = default;
 		using ThisType = vector<T, 4>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 
-		T x = {};
-		T y = {};
-		T z = {};
-		T w = {};
+		void SetFrom(const T* src)
+		{
+			x = src[0];
+			y = src[1];
+			z = src[2];
+			w = src[3];
+		}
+
+		T x;
+		T y;
+		T z;
+		T w;
 	};
 
 	template<typename T, int sizeX>
@@ -106,6 +123,9 @@ namespace TF2Vulkan{ namespace ShaderConstants
 		constexpr matrix() = default;
 		using ThisType = matrix<T, sizeX, 4>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+
+		auto& operator[](size_t i) { return *(&x + i); }
+		auto& operator[](size_t i) const { return *(&x + i); }
 
 		vector<T, sizeX> x;
 		vector<T, sizeX> y;
