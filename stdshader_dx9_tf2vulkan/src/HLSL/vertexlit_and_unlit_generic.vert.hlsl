@@ -23,8 +23,8 @@ struct VS_INPUT
 {
 	// This is all of the stuff that we ever use.
 	float4 vPos             : POSITION;
-	float4 vNormal          : NORMAL;
 	float4 vColor           : COLOR;
+	float4 vNormal          : NORMAL;
 	float3 vSpecular        : SPECULAR;
 
 	float4 vBoneWeights     : BONEWEIGHTS;

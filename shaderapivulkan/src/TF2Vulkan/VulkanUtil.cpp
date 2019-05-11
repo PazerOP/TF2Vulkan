@@ -30,7 +30,7 @@ void TF2Vulkan::TransitionImageLayout(const vk::Image& image, const vk::Format& 
 	barrier.image = image;
 
 	auto& srr = barrier.subresourceRange;
-	srr.aspectMask = TF2Vulkan::GetAspects(format);
+	srr.aspectMask = FormatInfo::GetAspects(format);
 	srr.baseMipLevel = mipLevel;
 	srr.levelCount = 1;
 	srr.baseArrayLayer = 0;

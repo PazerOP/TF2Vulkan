@@ -23,5 +23,12 @@ SamplerState BaseTextureSampler;
 
 float4 main(const PS_INPUT i) : SV_Target
 {
-	return BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
+	float4 color = (float4)1;
+
+	//if (VERTEXCOLOR)
+		color *= i.color;
+
+	color *= BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
+
+	return color;
 }

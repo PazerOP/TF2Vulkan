@@ -25,6 +25,9 @@
 [[vk::constant_id(16)]] const bool MORPHING = false;
 [[vk::constant_id(17)]] const bool NORMALMAPPING = false;
 
+[[vk::constant_id(18)]] const bool DIFFUSELIGHTING = false;
+[[vk::constant_id(19)]] const bool SELFILLUM = false;
+
 static const int BINDING_CBUF_VS_STANDARD = 10;
 static const int BINDING_CBUF_VS_CUSTOM = 11;
 

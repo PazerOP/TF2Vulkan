@@ -257,5 +257,5 @@ uint_fast8_t VertexFormat::ElementType::GetTotalSize() const
 
 vk::Format VertexFormat::ElementType::GetVKFormat() const
 {
-	return TF2Vulkan::ConvertDataFormat(m_Format, m_Components, m_ComponentSize);
+	return FormatInfo::ConvertDataFormat(m_Format, m_Components, m_ComponentSize);
 }

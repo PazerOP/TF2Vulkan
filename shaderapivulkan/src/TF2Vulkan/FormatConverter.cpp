@@ -213,9 +213,7 @@ namespace
 
 		template<ImageChannel channel> static constexpr auto GetChannelMax()
 		{
-			using ChannelType = decltype(GetChannelType<channel>());
-			static constexpr auto CHANNEL_BITS = GetChannelBits<channel>();
-			return GetMaxValue<ChannelType, CHANNEL_BITS>();
+			return GetMaxValue<decltype(GetChannelType<channel>()), GetChannelBits<channel>()>();
 		}
 
 		template<ImageChannel channel> constexpr auto GetChannelValue() const
@@ -308,6 +306,9 @@ static void ConvertImpl(const std::byte* RESTRICT srcRaw, size_t srcSize,
 	const auto* RESTRICT srcPtr = reinterpret_cast<const SrcType*>(srcRaw);
 	auto* RESTRICT dstPtr = reinterpret_cast<DstType*>(dstRaw);
 
+	assert(srcStride >= sizeof(SrcType) * width);
+	assert(dstStride >= sizeof(DstType) * width);
+
 	for (uint32_t y = 0; y < height; y++)
 	{
 		for (uint32_t x = 0; x < height; x++)
@@ -324,6 +325,9 @@ static void ConvertImpl(const std::byte* RESTRICT srcRaw, size_t srcSize,
 		*reinterpret_cast<const std::byte**>(&srcPtr) += srcStride;
 		*reinterpret_cast<std::byte**>(&dstPtr) += dstStride;
 	}
+
+	assert(reinterpret_cast<const std::byte*>(srcPtr) <= (srcRaw + srcSize));
+	assert(reinterpret_cast<const std::byte*>(dstPtr) <= (dstRaw + dstSize));
 }
 
 void FormatConverter::Convert(
@@ -331,6 +335,9 @@ void FormatConverter::Convert(
 	std::byte* dst, ImageFormat dstFormat, size_t dstSize,
 	uint32_t width, uint32_t height, size_t srcStride, size_t dstStride)
 {
+	assert(srcSize > 0);
+	assert(dstSize > 0);
+
 	ImageFormatVisit(srcFormat, [&](const auto & srcFormatType)
 		{
 			ImageFormatVisit(dstFormat, [&](const auto & dstFormatType)

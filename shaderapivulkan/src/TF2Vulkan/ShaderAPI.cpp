@@ -358,7 +358,7 @@ IShaderTextureManager& TF2Vulkan::g_TextureManager = s_ShaderAPI;
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
 	LOG_FUNC();
-	//return; // TODO: Fix renderdoc crash when this is enabled
+	return; // TODO: Fix renderdoc crash when this is enabled
 	if (!g_StateManagerStatic.IsAnyRenderTargetBound())
 		return;
 
@@ -568,13 +568,13 @@ VertexFormat_t ShaderAPI::ComputeVertexUsage(int snapshotCount, StateSnapshot_t*
 ImageFormat ShaderAPI::GetNearestSupportedFormat(ImageFormat fmt, bool filteringRequired) const
 {
 	LOG_FUNC();
-	return PromoteToHardware(fmt, FormatUsage::ImmutableTexture, filteringRequired);
+	return FormatInfo::PromoteToHardware(fmt, FormatUsage::ImmutableTexture, filteringRequired);
 }
 
 ImageFormat ShaderAPI::GetNearestRenderTargetFormat(ImageFormat fmt) const
 {
 	LOG_FUNC();
-	return PromoteToHardware(fmt, FormatUsage::RenderTarget, true);
+	return FormatInfo::PromoteToHardware(fmt, FormatUsage::RenderTarget, true);
 }
 
 bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
@@ -715,7 +715,7 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 	LOG_FUNC();
 
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
-	auto scope = cmdBuf.DebugRegionBegin("ShaderAPI::RenderPass(%i, %i)", passID, passCount);
+	cmdBuf.InsertDebugLabel("ShaderAPI::RenderPass(%i, %i)", passID, passCount);
 
 	g_StateManagerDynamic.PreDraw();
 	g_StateManagerStatic.ApplyCurrentState(cmdBuf);

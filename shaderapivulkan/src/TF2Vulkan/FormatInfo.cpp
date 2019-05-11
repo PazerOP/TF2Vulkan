@@ -6,6 +6,7 @@
 #include <mutex>
 
 using namespace TF2Vulkan;
+using namespace TF2Vulkan::FormatInfo;
 
 #define VK_FMT_CASE(base, interpretation) case vk::Format::e ## base ## interpretation :
 
@@ -21,7 +22,11 @@ using namespace TF2Vulkan;
 	VK_FMT_CASE_ALL(base) \
 	VK_FMT_CASE(base, Srgb)
 
-vk::Format TF2Vulkan::ConvertImageFormat(ImageFormat format)
+#define VK_FMT_CASE_ALL_FLOAT(base) \
+	VK_FMT_CASE_ALL(base) \
+	VK_FMT_CASE(base, Sfloat)
+
+vk::Format FormatInfo::ConvertImageFormat(ImageFormat format)
 {
 	switch (format)
 	{
@@ -96,7 +101,7 @@ vk::Format TF2Vulkan::ConvertImageFormat(ImageFormat format)
 	}
 }
 
-ImageFormat TF2Vulkan::ConvertImageFormat(vk::Format format)
+ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 {
 	switch (format)
 	{
@@ -138,7 +143,7 @@ static ImageFormat FindSupportedFormat(FormatUsage usage, bool filtering, std::i
 {
 	for (auto fmt : formats)
 	{
-		if (TF2Vulkan::HasHardwareSupport(fmt, usage, filtering))
+		if (FormatInfo::HasHardwareSupport(fmt, usage, filtering))
 			return fmt;
 	}
 
@@ -149,7 +154,7 @@ static vk::Format FindSupportedFormat(FormatUsage usage, bool filtering, std::in
 {
 	for (auto fmt : formats)
 	{
-		if (TF2Vulkan::HasHardwareSupport(fmt, usage, filtering))
+		if (FormatInfo::HasHardwareSupport(fmt, usage, filtering))
 			return fmt;
 	}
 
@@ -314,7 +319,7 @@ namespace
 	}
 }
 
-ImageFormat TF2Vulkan::PromoteToHardware(ImageFormat format, FormatUsage usage, bool filtering)
+ImageFormat FormatInfo::PromoteToHardware(ImageFormat format, FormatUsage usage, bool filtering)
 {
 	InitHardwareFormats();
 
@@ -325,7 +330,7 @@ ImageFormat TF2Vulkan::PromoteToHardware(ImageFormat format, FormatUsage usage, 
 	return result;
 }
 
-vk::Format TF2Vulkan::PromoteToHardware(vk::Format format, FormatUsage usage, bool filtering)
+vk::Format FormatInfo::PromoteToHardware(vk::Format format, FormatUsage usage, bool filtering)
 {
 	switch (format)
 	{
@@ -349,12 +354,12 @@ vk::Format TF2Vulkan::PromoteToHardware(vk::Format format, FormatUsage usage, bo
 	}
 }
 
-vk::Extent2D TF2Vulkan::GetBlockSize(ImageFormat format)
+vk::Extent2D FormatInfo::GetBlockSize(ImageFormat format)
 {
 	return GetBlockSize(ConvertImageFormat(format));
 }
 
-vk::Extent2D TF2Vulkan::GetBlockSize(vk::Format format)
+vk::Extent2D FormatInfo::GetBlockSize(vk::Format format)
 {
 	switch (format)
 	{
@@ -371,52 +376,51 @@ vk::Extent2D TF2Vulkan::GetBlockSize(vk::Format format)
 	default:
 		assert(!"Unknown format");
 
-	case vk::Format::eR8Srgb:
-	case vk::Format::eR8Unorm:
-	case vk::Format::eR8Snorm:
-	case vk::Format::eR8Uscaled:
-	case vk::Format::eR8Sscaled:
-	case vk::Format::eR8Uint:
-	case vk::Format::eR8Sint:
-
-	case vk::Format::eR8G8B8Unorm:
-	case vk::Format::eR8G8B8Snorm:
-	case vk::Format::eR8G8B8Uscaled:
-	case vk::Format::eR8G8B8Sscaled:
-	case vk::Format::eR8G8B8Uint:
-	case vk::Format::eR8G8B8Sint:
-	case vk::Format::eR8G8B8Srgb:
-
-	case vk::Format::eR8G8B8A8Srgb:
-	case vk::Format::eR8G8B8A8Unorm:
-	case vk::Format::eR8G8B8A8Snorm:
-	case vk::Format::eR8G8B8A8Uscaled:
-	case vk::Format::eR8G8B8A8Sscaled:
-	case vk::Format::eR8G8B8A8Uint:
-	case vk::Format::eR8G8B8A8Sint:
-
-	case vk::Format::eB8G8R8A8Srgb:
-	case vk::Format::eB8G8R8A8Unorm:
-	case vk::Format::eB8G8R8A8Snorm:
-	case vk::Format::eB8G8R8A8Uint:
-	case vk::Format::eB8G8R8A8Sint:
-	case vk::Format::eB8G8R8A8Uscaled:
-	case vk::Format::eB8G8R8A8Sscaled:
-
-	case vk::Format::eR16G16B16A16Unorm:
-	case vk::Format::eR16G16B16A16Snorm:
-	case vk::Format::eR16G16B16A16Uscaled:
-	case vk::Format::eR16G16B16A16Sscaled:
-	case vk::Format::eR16G16B16A16Uint:
-	case vk::Format::eR16G16B16A16Sint:
-	case vk::Format::eR16G16B16A16Sfloat:
+		VK_FMT_CASE_ALL_SRGB(R8);
+		VK_FMT_CASE_ALL_SRGB(R8G8);
+		VK_FMT_CASE_ALL_SRGB(R8G8B8);
+		VK_FMT_CASE_ALL_SRGB(R8G8B8A8);
+		VK_FMT_CASE_ALL_SRGB(B8G8R8);
+		VK_FMT_CASE_ALL_SRGB(B8G8R8A8);
+		VK_FMT_CASE_ALL_FLOAT(R16G16B16A16);
 
 	case vk::Format::eD24UnormS8Uint:
 		return vk::Extent2D(1, 1);
 	}
 }
 
-vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
+size_t FormatInfo::GetPixelSize(ImageFormat format)
+{
+	return GetPixelSize(ConvertImageFormat(format));
+}
+
+size_t FormatInfo::GetPixelSize(vk::Format format)
+{
+	switch (format)
+	{
+		VK_FMT_CASE_ALL_SRGB(R8)
+			return 1;
+
+		VK_FMT_CASE_ALL_SRGB(R8G8)
+			return 2;
+
+		VK_FMT_CASE_ALL_SRGB(B8G8R8)
+		VK_FMT_CASE_ALL_SRGB(R8G8B8)
+			return 3;
+
+		VK_FMT_CASE_ALL_SRGB(B8G8R8A8)
+		VK_FMT_CASE_ALL_SRGB(R8G8B8A8)
+			return 4;
+
+		VK_FMT_CASE_ALL_FLOAT(R16G16B16A16)
+			return 8;
+	}
+
+	assert(!"Unknown/unsupported format");
+	return 0;
+}
+
+vk::ImageAspectFlags FormatInfo::GetAspects(const vk::Format& format)
 {
 	switch (format)
 	{
@@ -429,53 +433,12 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 	case vk::Format::eB5G5R5A1UnormPack16:
 	case vk::Format::eA1R5G5B5UnormPack16:
 
-	case vk::Format::eR8Unorm:
-	case vk::Format::eR8Snorm:
-	case vk::Format::eR8Uscaled:
-	case vk::Format::eR8Sscaled:
-	case vk::Format::eR8Uint:
-	case vk::Format::eR8Sint:
-	case vk::Format::eR8Srgb:
-
-	case vk::Format::eR8G8Unorm:
-	case vk::Format::eR8G8Snorm:
-	case vk::Format::eR8G8Uscaled:
-	case vk::Format::eR8G8Sscaled:
-	case vk::Format::eR8G8Uint:
-	case vk::Format::eR8G8Sint:
-	case vk::Format::eR8G8Srgb:
-
-	case vk::Format::eR8G8B8Unorm:
-	case vk::Format::eR8G8B8Snorm:
-	case vk::Format::eR8G8B8Uscaled:
-	case vk::Format::eR8G8B8Sscaled:
-	case vk::Format::eR8G8B8Uint:
-	case vk::Format::eR8G8B8Sint:
-	case vk::Format::eR8G8B8Srgb:
-
-	case vk::Format::eB8G8R8Unorm:
-	case vk::Format::eB8G8R8Snorm:
-	case vk::Format::eB8G8R8Uscaled:
-	case vk::Format::eB8G8R8Sscaled:
-	case vk::Format::eB8G8R8Uint:
-	case vk::Format::eB8G8R8Sint:
-	case vk::Format::eB8G8R8Srgb:
-
-	case vk::Format::eR8G8B8A8Unorm:
-	case vk::Format::eR8G8B8A8Snorm:
-	case vk::Format::eR8G8B8A8Uscaled:
-	case vk::Format::eR8G8B8A8Sscaled:
-	case vk::Format::eR8G8B8A8Uint:
-	case vk::Format::eR8G8B8A8Sint:
-	case vk::Format::eR8G8B8A8Srgb:
-
-	case vk::Format::eB8G8R8A8Unorm:
-	case vk::Format::eB8G8R8A8Snorm:
-	case vk::Format::eB8G8R8A8Uscaled:
-	case vk::Format::eB8G8R8A8Sscaled:
-	case vk::Format::eB8G8R8A8Uint:
-	case vk::Format::eB8G8R8A8Sint:
-	case vk::Format::eB8G8R8A8Srgb:
+		VK_FMT_CASE_ALL_SRGB(R8);
+		VK_FMT_CASE_ALL_SRGB(R8G8);
+		VK_FMT_CASE_ALL_SRGB(R8G8B8);
+		VK_FMT_CASE_ALL_SRGB(R8G8B8A8);
+		VK_FMT_CASE_ALL_SRGB(B8G8R8);
+		VK_FMT_CASE_ALL_SRGB(B8G8R8A8);
 
 	case vk::Format::eA8B8G8R8UnormPack32:
 	case vk::Format::eA8B8G8R8SnormPack32:
@@ -485,13 +448,7 @@ vk::ImageAspectFlags TF2Vulkan::GetAspects(const vk::Format& format)
 	case vk::Format::eA8B8G8R8SintPack32:
 	case vk::Format::eA8B8G8R8SrgbPack32:
 
-	case vk::Format::eR16G16B16A16Unorm:
-	case vk::Format::eR16G16B16A16Snorm:
-	case vk::Format::eR16G16B16A16Uscaled:
-	case vk::Format::eR16G16B16A16Sscaled:
-	case vk::Format::eR16G16B16A16Uint:
-	case vk::Format::eR16G16B16A16Sint:
-	case vk::Format::eR16G16B16A16Sfloat:
+		VK_FMT_CASE_ALL_FLOAT(R16G16B16A16);
 
 	case vk::Format::eBc1RgbUnormBlock:
 	case vk::Format::eBc1RgbSrgbBlock:
@@ -520,7 +477,7 @@ static constexpr uint_fast32_t PackDataFormat(DataFormat fmt,
 template<DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize>
 static constexpr auto PACK_DFMT = PackDataFormat(fmt, components, componentSize);
 
-vk::Format TF2Vulkan::ConvertDataFormat(DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize)
+vk::Format FormatInfo::ConvertDataFormat(DataFormat fmt, uint_fast8_t components, uint_fast8_t componentSize)
 {
 	switch (PackDataFormat(fmt, components, componentSize))
 	{
@@ -559,12 +516,12 @@ vk::Format TF2Vulkan::ConvertDataFormat(DataFormat fmt, uint_fast8_t components,
 	return vk::Format::eUndefined;
 }
 
-bool TF2Vulkan::IsCompressed(ImageFormat format)
+bool FormatInfo::IsCompressed(ImageFormat format)
 {
 	return IsCompressed(ConvertImageFormat(format));
 }
 
-bool TF2Vulkan::IsCompressed(vk::Format format)
+bool FormatInfo::IsCompressed(vk::Format format)
 {
 	switch (format)
 	{
@@ -586,7 +543,7 @@ bool TF2Vulkan::IsCompressed(vk::Format format)
 	}
 }
 
-bool TF2Vulkan::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering)
+bool FormatInfo::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering)
 {
 	auto vkFormat = ConvertImageFormat(format);
 	if (vkFormat == vk::Format::eUndefined)
@@ -595,7 +552,7 @@ bool TF2Vulkan::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool f
 	return HasHardwareSupport(vkFormat, usage, filtering);
 }
 
-bool TF2Vulkan::HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering)
+bool FormatInfo::HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering)
 {
 	auto formatProperties = g_ShaderDeviceMgr.GetAdapter().getFormatProperties(format);
 

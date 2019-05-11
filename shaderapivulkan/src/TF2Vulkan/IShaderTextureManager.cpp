@@ -146,11 +146,11 @@ ShaderAPITextureHandle_t IShaderTextureManager::CreateTexture(int width, int hei
 		createInfo.usage |= vk::ImageUsageFlagBits::eTransferDst;
 	}
 
-	createInfo.format = ConvertImageFormat(PromoteToHardware(dstImgFormat, fmtUsage, true));
+	createInfo.format = FormatInfo::ConvertImageFormat(FormatInfo::PromoteToHardware(dstImgFormat, fmtUsage, true));
 
 	// Make sure it's a multiple of the block size
 	{
-		const auto blockSize = TF2Vulkan::GetBlockSize(createInfo.format);
+		const auto blockSize = FormatInfo::GetBlockSize(createInfo.format);
 		const auto wDelta = createInfo.extent.width % blockSize.width;
 		const auto hDelta = createInfo.extent.height % blockSize.height;
 
@@ -282,7 +282,7 @@ void IShaderTextureManager::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, 
 	auto * texDatas = (TextureData*)stackalloc(arraySize * sizeof(TextureData));
 
 	const auto format = vtf->Format();
-	const auto blockSize = GetBlockSize(format);
+	const auto blockSize = FormatInfo::GetBlockSize(format);
 
 	for (uint32_t mip = 0; mip < mipCount; mip++)
 	{
@@ -331,7 +331,7 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 	}
 
 	auto& tex = m_Textures.at(texHandle);
-	const ImageFormat targetFormat = ConvertImageFormat(tex.m_CreateInfo.format);
+	const ImageFormat targetFormat = FormatInfo::ConvertImageFormat(tex.m_CreateInfo.format);
 
 	auto& device = g_ShaderDevice.GetVulkanDevice();
 	auto& alloc = g_ShaderDevice.GetVulkanAllocator();
@@ -342,15 +342,64 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 	// Prepare the staging buffer
 	vma::AllocatedBuffer stagingBuf;
 	{
+		// Calculate required buffer size and initialize copy regions (offsets)
 		size_t totalSize = 0;
 		for (size_t i = 0; i < count; i++)
 		{
 			const auto& slice = data[i];
-			totalSize += ImageLoader::GetMemRequired(
-				Util::SafeConvert<int>(slice.m_Width),
-				Util::SafeConvert<int>(slice.m_Height),
-				Util::SafeConvert<int>(slice.m_Depth),
-				targetFormat, false);
+
+			vk::BufferImageCopy& region = copyRegions.emplace_back();
+			region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+			region.imageSubresource.baseArrayLayer = slice.m_CubeFace;
+			region.imageSubresource.layerCount = 1;
+			region.imageSubresource.mipLevel = slice.m_MipLevel;
+
+			Util::SafeConvert(slice.m_XOffset, region.imageOffset.x);
+			Util::SafeConvert(slice.m_YOffset, region.imageOffset.y);
+			Util::SafeConvert(slice.m_ZOffset, region.imageOffset.z);
+
+			Util::SafeConvert(slice.m_Width, region.imageExtent.width);
+			Util::SafeConvert(slice.m_Height, region.imageExtent.height);
+			Util::SafeConvert(slice.m_Depth, region.imageExtent.depth);
+
+			region.bufferOffset = totalSize;
+
+			// bufferRowLength and bufferImageHeight are in texels
+			if (slice.m_Stride > 0)
+				region.bufferRowLength = slice.m_Stride / (slice.m_Stride / slice.m_Width);
+			else
+				region.bufferRowLength = slice.m_Width;    // Assume tightly packed
+
+			if (slice.m_SliceStride > 0 && slice.m_Stride > 0)
+				region.bufferImageHeight = slice.m_SliceStride / slice.m_Stride;
+			else
+				region.bufferImageHeight = slice.m_Height; // Assume tightly packed
+
+			if (slice.m_Format != targetFormat)
+			{
+				totalSize += ImageLoader::GetMemRequired(
+					Util::SafeConvert<int>(slice.m_Width),
+					Util::SafeConvert<int>(slice.m_Height),
+					Util::SafeConvert<int>(slice.m_Depth),
+					targetFormat, false);
+			}
+			else
+			{
+				if (slice.m_Stride > 0)
+				{
+					const auto sliceSize = slice.m_Stride * slice.m_Height;
+
+					assert(slice.m_Depth > 0);
+					if (slice.m_SliceStride > 0)
+						totalSize += slice.m_SliceStride * slice.m_Depth;
+					else
+						totalSize += sliceSize * slice.m_Depth;
+				}
+				else
+				{
+					totalSize += slice.m_DataLength;
+				}
+			}
 		}
 
 		// Allocate staging buffer
@@ -364,77 +413,33 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 
 		// Copy the data into the staging buffer
 		auto& allocation = stagingBuf.GetAllocation();
-		size_t currentOffset = 0;
 		for (size_t i = 0; i < count; i++)
 		{
 			const TextureData& slice = data[i];
-
-			const auto targetSliceSize = ImageLoader::GetMemRequired(
-				Util::SafeConvert<int>(slice.m_Width),
-				Util::SafeConvert<int>(slice.m_Height),
-				Util::SafeConvert<int>(slice.m_Depth),
-				targetFormat, false);
 
 			const auto srcTightlyPackedStride = Util::SafeConvert<uint32_t>(ImageLoader::GetMemRequired(
 				Util::SafeConvert<int>(slice.m_Width), Util::SafeConvert<int>(1), 1, slice.m_Format, false));
 
 			// Record this copy region
 			{
-				vk::BufferImageCopy& region = copyRegions.emplace_back();
-				region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
-				region.imageSubresource.baseArrayLayer = slice.m_CubeFace;
-				region.imageSubresource.layerCount = 1;
-				region.imageSubresource.mipLevel = slice.m_MipLevel;
-
-				region.bufferOffset = currentOffset;
-				if (slice.m_Stride > 0)
-					region.bufferRowLength = slice.m_Stride / (slice.m_Stride / slice.m_Width); // bufferRowLength is in texels
-
-				if (slice.m_SliceStride > 0)
+				const auto& region = copyRegions.at(i);
+				if (slice.m_Format != targetFormat)
 				{
-					// bufferImageHeight is in texels
-					if (slice.m_Stride > 0)
-						region.bufferImageHeight = slice.m_SliceStride / slice.m_Stride;
-					else
-						region.bufferImageHeight = slice.m_Height;
-				}
+					assert(!FormatInfo::IsCompressed(slice.m_Format));
+					assert(!FormatInfo::IsCompressed(targetFormat));
+					const auto targetSliceSize = region.bufferRowLength * region.bufferImageHeight * FormatInfo::GetPixelSize(targetFormat);
 
-				if (ConvertImageFormat(slice.m_Format) != tex.m_CreateInfo.format)
-				{
 					FormatConverter::Convert(
 						reinterpret_cast<const std::byte*>(slice.m_Data), slice.m_Format, slice.m_DataLength,
-						reinterpret_cast<std::byte*>(allocation.data() + currentOffset), targetFormat, targetSliceSize,
+						reinterpret_cast<std::byte*>(allocation.data() + region.bufferOffset), targetFormat, targetSliceSize,
 						slice.m_Width, slice.m_Height, slice.m_Stride);
 				}
 				else
 				{
 					// No conversion necessary
-					if (slice.m_Stride == 0 || slice.m_Stride == srcTightlyPackedStride)
-						allocation.Write(slice.m_Data, slice.m_DataLength, currentOffset);
-					else
-					{
-						// Differing stride, write one row at a time
-						assert(!IsCompressed(slice.m_Format));
-						for (uint32_t r = 0; r < slice.m_Height; r++)
-						{
-							allocation.Write(
-								reinterpret_cast<const std::byte*>(slice.m_Data) + slice.m_Stride * r,
-								srcTightlyPackedStride,
-								currentOffset + srcTightlyPackedStride * r);
-						}
-					}
+					allocation.Write(slice.m_Data, slice.m_DataLength, region.bufferOffset);
 				}
-
-				Util::SafeConvert(slice.m_XOffset, region.imageOffset.x);
-				Util::SafeConvert(slice.m_YOffset, region.imageOffset.y);
-				Util::SafeConvert(slice.m_ZOffset, region.imageOffset.z);
-
-				Util::SafeConvert(slice.m_Width, region.imageExtent.width);
-				Util::SafeConvert(slice.m_Height, region.imageExtent.height);
-				Util::SafeConvert(slice.m_Depth, region.imageExtent.depth);
 			}
-
-			currentOffset += targetSliceSize;
 		}
 	}
 
@@ -464,7 +469,7 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
 			auto& srr = barrier.subresourceRange;
-			srr.aspectMask = GetAspects(tex.m_CreateInfo.format);
+			srr.aspectMask = FormatInfo::GetAspects(tex.m_CreateInfo.format);
 			srr.baseMipLevel = slice.m_MipLevel;
 			srr.baseArrayLayer = slice.m_CubeFace;
 			srr.layerCount = 1;

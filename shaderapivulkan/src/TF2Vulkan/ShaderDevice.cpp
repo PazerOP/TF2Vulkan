@@ -184,7 +184,7 @@ void ShaderDevice::ReacquireResources()
 ImageFormat ShaderDevice::GetBackBufferFormat() const
 {
 	LOG_FUNC();
-	return TF2Vulkan::ConvertImageFormat(m_Data.m_SwapChain.m_SwapChainCreateInfo.imageFormat);
+	return FormatInfo::ConvertImageFormat(m_Data.m_SwapChain.m_SwapChainCreateInfo.imageFormat);
 }
 
 void ShaderDevice::GetBackBufferDimensions(uint32_t& width, uint32_t& height) const
@@ -647,7 +647,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 	// Depth buffer
 	{
 		vk::ImageCreateInfo ci;
-		ci.format = TF2Vulkan::PromoteToHardware(vk::Format::eD24UnormS8Uint, FormatUsage::DepthStencil, false);
+		ci.format = FormatInfo::PromoteToHardware(vk::Format::eD24UnormS8Uint, FormatUsage::DepthStencil, false);
 		ci.extent.width = newSwapChain.m_SwapChainCreateInfo.imageExtent.width;
 		ci.extent.height = newSwapChain.m_SwapChainCreateInfo.imageExtent.height;
 		ci.extent.depth = 1;

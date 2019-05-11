@@ -27,7 +27,7 @@ const vk::ImageView& IVulkanTexture::FindOrCreateView()
 		throw VulkanException("Unknown vk::ImageType", EXCEPTION_DATA());
 	}
 
-	ci.subresourceRange.aspectMask = TF2Vulkan::GetAspects(ci.format);
+	ci.subresourceRange.aspectMask = FormatInfo::GetAspects(ci.format);
 	ci.subresourceRange.layerCount = imgCreateInfo.arrayLayers;
 	ci.subresourceRange.levelCount = imgCreateInfo.mipLevels;
 
@@ -61,5 +61,5 @@ bool IShaderAPITexture::IsMipmapped() const
 ImageFormat IShaderAPITexture::GetImageFormat() const
 {
 	LOG_FUNC();
-	return ConvertImageFormat(GetImageCreateInfo().format);
+	return FormatInfo::ConvertImageFormat(GetImageCreateInfo().format);
 }

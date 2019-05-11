@@ -49,7 +49,7 @@ template<bool assertEnabled> static bool Validate(const TextureData& data)
 
 	// Verify that width/height are a multiple of block size
 	{
-		auto blockSize = GetBlockSize(data.m_Format);
+		auto blockSize = FormatInfo::GetBlockSize(data.m_Format);
 		if ((data.m_Width % blockSize.width) || (data.m_Height % blockSize.height))
 		{
 			assert(!assertEnabled);
