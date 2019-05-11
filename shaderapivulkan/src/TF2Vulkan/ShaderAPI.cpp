@@ -1,4 +1,4 @@
-#include "FormatConversion.h"
+#include "FormatInfo.h"
 #include "IStateManagerDynamic.h"
 #include "SamplerSettings.h"
 #include "interface/internal/IShaderDeviceInternal.h"

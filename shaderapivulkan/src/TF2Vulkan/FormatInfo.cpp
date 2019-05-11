@@ -1,4 +1,4 @@
-#include "FormatConversion.h"
+#include "FormatInfo.h"
 #include "ShaderDeviceMgr.h"
 
 #include <bitmap/imageformat.h>
@@ -6,6 +6,20 @@
 #include <mutex>
 
 using namespace TF2Vulkan;
+
+#define VK_FMT_CASE(base, interpretation) case vk::Format::e ## base ## interpretation :
+
+#define VK_FMT_CASE_ALL(base) \
+	VK_FMT_CASE(base, Unorm) \
+	VK_FMT_CASE(base, Snorm) \
+	VK_FMT_CASE(base, Uscaled) \
+	VK_FMT_CASE(base, Sscaled) \
+	VK_FMT_CASE(base, Uint) \
+	VK_FMT_CASE(base, Sint)
+
+#define VK_FMT_CASE_ALL_SRGB(base) \
+	VK_FMT_CASE_ALL(base) \
+	VK_FMT_CASE(base, Srgb)
 
 vk::Format TF2Vulkan::ConvertImageFormat(ImageFormat format)
 {
@@ -99,19 +113,24 @@ ImageFormat TF2Vulkan::ConvertImageFormat(vk::Format format)
 		// BGR
 
 		// RGBA
+	case vk::Format::eR8G8B8A8Unorm:        return IMAGE_FORMAT_RGBA8888;
+	case vk::Format::eR16G16B16A16Sfloat:   return IMAGE_FORMAT_RGBA16161616F;
+	case vk::Format::eR16G16B16A16Unorm:    return IMAGE_FORMAT_RGBA16161616;
 
 		// ABGR
+	case vk::Format::eA8B8G8R8UnormPack32:  return IMAGE_FORMAT_ABGR8888;
 
 		// BGRA
 	case vk::Format::eB8G8R8A8Unorm:        return IMAGE_FORMAT_BGRA8888;
 
 		// DXT1
+	case vk::Format::eBc1RgbaSrgbBlock:
+	case vk::Format::eBc1RgbUnormBlock:     return IMAGE_FORMAT_DXT1;
 
 		// DXT3
 
 		// DXT5
-	case vk::Format::eR8G8B8A8Unorm:        return IMAGE_FORMAT_RGBA8888;
-	case vk::Format::eA8B8G8R8UnormPack32:  return IMAGE_FORMAT_ABGR8888;
+	case vk::Format::eBc3UnormBlock:        return IMAGE_FORMAT_DXT5;
 	}
 }
 
@@ -551,7 +570,12 @@ bool TF2Vulkan::IsCompressed(vk::Format format)
 	{
 	default:
 		assert(!"Unknown/unsupported format");
+
 	case vk::Format::eUndefined:
+
+		VK_FMT_CASE_ALL_SRGB(R8G8B8A8);
+		VK_FMT_CASE_ALL_SRGB(B8G8R8A8);
+
 		return false;
 
 	case vk::Format::eBc1RgbaSrgbBlock:

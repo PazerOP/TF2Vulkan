@@ -1,6 +1,8 @@
 #include "IShaderTextureManager.h"
-#include "FormatConversion.h"
+#include "FormatInfo.h"
 #include "VulkanFactories.h"
+#include "TF2Vulkan/TextureData.h"
+#include "FormatConverter.h"
 
 #include <TF2Vulkan/Util/std_string.h>
 
@@ -329,6 +331,7 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 	}
 
 	auto& tex = m_Textures.at(texHandle);
+	const ImageFormat targetFormat = ConvertImageFormat(tex.m_CreateInfo.format);
 
 	auto& device = g_ShaderDevice.GetVulkanDevice();
 	auto& alloc = g_ShaderDevice.GetVulkanAllocator();
@@ -341,7 +344,14 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 	{
 		size_t totalSize = 0;
 		for (size_t i = 0; i < count; i++)
-			totalSize += data[i].m_DataLength;
+		{
+			const auto& slice = data[i];
+			totalSize += ImageLoader::GetMemRequired(
+				Util::SafeConvert<int>(slice.m_Width),
+				Util::SafeConvert<int>(slice.m_Height),
+				Util::SafeConvert<int>(slice.m_Depth),
+				targetFormat, false);
+		}
 
 		// Allocate staging buffer
 		stagingBuf = Factories::BufferFactory{}
@@ -359,7 +369,14 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 		{
 			const TextureData& slice = data[i];
 
-			allocation.Write(slice.m_Data, slice.m_DataLength, currentOffset);
+			const auto targetSliceSize = ImageLoader::GetMemRequired(
+				Util::SafeConvert<int>(slice.m_Width),
+				Util::SafeConvert<int>(slice.m_Height),
+				Util::SafeConvert<int>(slice.m_Depth),
+				targetFormat, false);
+
+			const auto srcTightlyPackedStride = Util::SafeConvert<uint32_t>(ImageLoader::GetMemRequired(
+				Util::SafeConvert<int>(slice.m_Width), Util::SafeConvert<int>(1), 1, slice.m_Format, false));
 
 			// Record this copy region
 			{
@@ -382,6 +399,32 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 						region.bufferImageHeight = slice.m_Height;
 				}
 
+				if (ConvertImageFormat(slice.m_Format) != tex.m_CreateInfo.format)
+				{
+					FormatConverter::Convert(
+						reinterpret_cast<const std::byte*>(slice.m_Data), slice.m_Format, slice.m_DataLength,
+						reinterpret_cast<std::byte*>(allocation.data() + currentOffset), targetFormat, targetSliceSize,
+						slice.m_Width, slice.m_Height, slice.m_Stride);
+				}
+				else
+				{
+					// No conversion necessary
+					if (slice.m_Stride == 0 || slice.m_Stride == srcTightlyPackedStride)
+						allocation.Write(slice.m_Data, slice.m_DataLength, currentOffset);
+					else
+					{
+						// Differing stride, write one row at a time
+						assert(!IsCompressed(slice.m_Format));
+						for (uint32_t r = 0; r < slice.m_Height; r++)
+						{
+							allocation.Write(
+								reinterpret_cast<const std::byte*>(slice.m_Data) + slice.m_Stride * r,
+								srcTightlyPackedStride,
+								currentOffset + srcTightlyPackedStride * r);
+						}
+					}
+				}
+
 				Util::SafeConvert(slice.m_XOffset, region.imageOffset.x);
 				Util::SafeConvert(slice.m_YOffset, region.imageOffset.y);
 				Util::SafeConvert(slice.m_ZOffset, region.imageOffset.z);
@@ -391,7 +434,7 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 				Util::SafeConvert(slice.m_Depth, region.imageExtent.depth);
 			}
 
-			currentOffset += slice.m_DataLength;
+			currentOffset += targetSliceSize;
 		}
 	}
 
@@ -487,4 +530,76 @@ void IShaderTextureManager::GetStandardTextureDimensions(int* width, int* height
 
 	if (height)
 		Util::SafeConvert(ci.extent.height, *height);
+}
+
+void IShaderTextureManager::ModifyTexture(ShaderAPITextureHandle_t tex)
+{
+	LOG_FUNC();
+	m_ModifyTexture = tex;
+}
+
+void IShaderTextureManager::TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat,
+	int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData)
+{
+	LOG_FUNC();
+
+	if (dstFormat != srcFormat)
+		NOT_IMPLEMENTED_FUNC();
+
+	return TexSubImage2D(level, cubeFaceID,
+		0, 0, zOffset,
+		width, height,
+		srcFormat,
+		ImageLoader::GetMemRequired(width, 1, 1, srcFormat, false), // Assume tightly packed
+		srcIsTiled,
+		imgData);
+}
+
+void IShaderTextureManager::TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset,
+	int zOffset, int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled, void* imgData)
+{
+	LOG_FUNC();
+
+	assert(!srcIsTiled); // Not valid on PC
+
+	TextureData data;
+	data.m_CubeFace = CubeMapFaceIndex_t(cubeFaceID);
+	data.m_Format = srcFormat;
+	Util::SafeConvert(level, data.m_MipLevel);
+	Util::SafeConvert(xOffset, data.m_XOffset);
+	Util::SafeConvert(yOffset, data.m_YOffset);
+	Util::SafeConvert(zOffset, data.m_ZOffset);
+	Util::SafeConvert(width, data.m_Width);
+	Util::SafeConvert(height, data.m_Height);
+	Util::SafeConvert(srcStride, data.m_Stride);
+	Util::SafeConvert(srcStride * height, data.m_DataLength);
+	data.m_Data = imgData;
+
+	data.Validate();
+
+	UpdateTexture(m_ModifyTexture, &data, 1);
+}
+
+void IShaderTextureManager::TexImageFromVTF(IVTFTexture* vtf, int frameIndex)
+{
+	LOG_FUNC();
+	return TexImageFromVTF(m_ModifyTexture, vtf, frameIndex);
+}
+
+void IShaderTextureManager::TexMinFilter(ShaderTexFilterMode_t mode)
+{
+	LOG_FUNC();
+	return TexMinFilter(m_ModifyTexture, mode);
+}
+
+void IShaderTextureManager::TexMagFilter(ShaderTexFilterMode_t mode)
+{
+	LOG_FUNC();
+	return TexMagFilter(m_ModifyTexture, mode);
+}
+
+void IShaderTextureManager::TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
+{
+	LOG_FUNC();
+	return TexWrap(m_ModifyTexture, coord, wrapMode);
 }

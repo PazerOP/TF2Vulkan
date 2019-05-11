@@ -92,18 +92,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\Exceptions.h" />
-    <ClInclude Include="include\TF2Vulkan\IShaderAPI_DSA.h" />
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceInternal.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\FormatConverter.h" />
     <ClInclude Include="src\TF2Vulkan\IShaderTextureManager.h" />
     <ClInclude Include="src\TF2Vulkan\PixScope.h" />
     <ClInclude Include="include\TF2Vulkan\TextureData.h" />
     <ClInclude Include="src\interface\internal\IStateManagerStatic.h" />
     <ClInclude Include="src\stdafx.h" />
-    <ClInclude Include="src\TF2Vulkan\FormatConversion.h" />
+    <ClInclude Include="src\TF2Vulkan\FormatInfo.h" />
     <ClInclude Include="src\TF2Vulkan\GraphicsPipeline.h" />
     <ClInclude Include="src\interface\internal\IShaderAPITexture.h" />
     <ClInclude Include="src\interface\internal\IVulkanQueue.h" />
@@ -138,7 +138,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp" />
-    <ClCompile Include="src\TF2Vulkan\FormatConversion.cpp" />
+    <ClCompile Include="src\TF2Vulkan\FormatConverter.cpp" />
+    <ClCompile Include="src\TF2Vulkan\FormatInfo.cpp" />
     <ClCompile Include="src\TF2Vulkan\GraphicsPipeline.cpp" />
     <ClCompile Include="src\interface\internal\IVulkanQueue.cpp" />
     <ClCompile Include="src\TF2Vulkan\IShaderTextureManager.cpp" />

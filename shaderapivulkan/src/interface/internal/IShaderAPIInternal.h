@@ -1,12 +1,12 @@
 #pragma once
 
-#include "TF2Vulkan/IShaderAPI_DSA.h"
 #include "interface/internal/IShaderAPITexture.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include <TF2Vulkan/Util/ImageManip.h>
 #include <TF2Vulkan/Util/ScopeFunc.h>
 
 #include <Color.h>
+#include <shaderapi/ishaderapi.h>
 
 #include <stack>
 
@@ -29,7 +29,7 @@ namespace TF2Vulkan
 		int m_IndexCount;
 	};
 
-	class IShaderAPIInternal : public IShaderAPI_DSA
+	class IShaderAPIInternal : public IShaderAPI
 	{
 	public:
 		virtual void CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID,

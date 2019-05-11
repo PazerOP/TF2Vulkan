@@ -21,16 +21,14 @@ namespace TF2Vulkan
 		IShaderAPITexture& GetTexture(ShaderAPITextureHandle_t texID);
 		ShaderAPITextureHandle_t GetStdTextureHandle(StandardTextureId_t stdTex) const;
 
-		void TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int ivtfFrame) override final;
+		void TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int ivtfFrame);
 		bool UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data,
-			size_t count) override final;
-		void TexMinFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode) override final;
-		void TexMagFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode) override final;
-		void TexWrap(ShaderAPITextureHandle_t tex, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode) override final;
-		void TexLodClamp(int something) override final;
-		void TexLodBias(float bias) override final;
+			size_t count);
+		void TexMinFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode);
+		void TexMagFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode);
+		void TexWrap(ShaderAPITextureHandle_t tex, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode);
 
-		using IShaderAPI_DSA::CreateTexture;
+		using IShaderAPI::CreateTexture;
 		IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI);
 		ShaderAPITextureHandle_t CreateTexture(int width, int height, int depth, ImageFormat dstImgFormat,
 			int mipLevelCount, int copyCount, CreateTextureFlags_t flags, const char* dbgName, const char* texGroupName) override final;
@@ -71,6 +69,22 @@ namespace TF2Vulkan
 		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
 
 		std::array<ShaderAPITextureHandle_t, TEXTURE_MAX_STD_TEXTURES> m_StdTextures;
+
+		// IShaderAPI global state based API
+		ShaderAPITextureHandle_t m_ModifyTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
+		void ModifyTexture(ShaderAPITextureHandle_t tex) override final;
+		void TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat, int zOffset,
+			int width, int height, ImageFormat srcFormat, bool srcIsTiled,
+			void* imgData) override final;
+		void TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset, int zOffset,
+			int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled,
+			void* imgData) override final;
+		void TexImageFromVTF(IVTFTexture* vtf, int frameIndex) override final;
+		void TexMinFilter(ShaderTexFilterMode_t mode) override final;
+		void TexMagFilter(ShaderTexFilterMode_t mode) override final;
+		void TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode) override final;
+		void TexLodClamp(int something) override final;
+		void TexLodBias(float bias) override final;
 	};
 
 	extern IShaderTextureManager& g_TextureManager;

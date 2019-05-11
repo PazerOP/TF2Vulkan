@@ -38,7 +38,7 @@ void UniqueAllocation::Write(const void* srcData, size_t srcSize, size_t dstOffs
 
 	assert(allocInfo.pMappedData);
 	auto err = memcpy_s((std::byte*)allocInfo.pMappedData + dstOffset,
-		allocInfo.size, srcData, srcSize);
+		allocInfo.size - dstOffset, srcData, srcSize);
 
 	assert(err == errno_t{});
 }
@@ -46,6 +46,21 @@ void UniqueAllocation::Write(const void* srcData, size_t srcSize, size_t dstOffs
 void UniqueAllocation::Read(void* dstData, size_t srcSize) const
 {
 	NOT_IMPLEMENTED_FUNC();
+}
+
+std::byte* UniqueAllocation::data()
+{
+	return const_cast<std::byte*>(std::as_const(*this).data());
+}
+
+const std::byte* UniqueAllocation::data() const
+{
+	return reinterpret_cast<const std::byte*>(getAllocationInfo().pMappedData);
+}
+
+size_t UniqueAllocation::size()
+{
+	return getAllocationInfo().size;
 }
 
 UniqueAllocation::operator bool() const

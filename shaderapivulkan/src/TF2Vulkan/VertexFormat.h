@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FormatConversion.h"
+#include "FormatInfo.h"
 
 #include <materialsystem/imaterial.h>
 

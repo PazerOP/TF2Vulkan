@@ -52,6 +52,12 @@ namespace vma
 			return Write(&data, sizeof(data), dstOffset);
 		}
 
+		// ONLY USE THESE IF YOU REALLY NEED TO DIRECTLY WRITE INTO THE BUFFER.
+		// OTHERWISE, *PLEASE* JUST USE READ/WRITE ABOVE FOR SAFER ACCESS.
+		std::byte* data();
+		const std::byte* data() const;
+		size_t size();
+
 		operator bool() const;
 
 		VmaAllocation GetAllocation() const;

@@ -1,4 +1,4 @@
-#include "TF2Vulkan/FormatConversion.h"
+#include "TF2Vulkan/FormatInfo.h"
 #include "TextureData.h"
 
 using namespace TF2Vulkan;

@@ -809,8 +809,8 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 		auto& att = retVal.m_ColorBlendAttachmentStates.emplace_back();
 
 		att.blendEnable = true;
-		att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(SHADER_BLEND_ONE);// key.m_OMSrcFactor);
-		att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(SHADER_BLEND_ONE);// key.m_OMDstFactor);
+		att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(key.m_OMSrcFactor);
+		att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(key.m_OMDstFactor);
 
 		att.colorWriteMask =
 			vk::ColorComponentFlagBits::eR |
