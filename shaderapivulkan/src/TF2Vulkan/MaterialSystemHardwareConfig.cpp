@@ -599,8 +599,7 @@ const char* MaterialSystemHardwareConfig::GetHWSpecificShaderDLLName() const
 {
 	LOG_FUNC();
 	// TODO: Do we want/need to take advantage of this?
-	//NOT_IMPLEMENTED_FUNC();
-	return nullptr;
+	return "stdshader_vulkan";
 }
 
 const vk::PhysicalDeviceLimits& MaterialSystemHardwareConfig::GetLimits() const

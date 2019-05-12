@@ -9,6 +9,7 @@
 #include "VulkanFactories.h"
 
 #include <TF2Vulkan/Util/MemoryPool.h>
+#include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
 #include <TF2Vulkan/Util/std_array.h>
 
 #include <stdshader_dx9_tf2vulkan/ShaderData.h>

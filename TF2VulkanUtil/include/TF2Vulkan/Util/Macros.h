@@ -69,8 +69,11 @@ static constexpr const char* PRINTF_BOOL(bool val) { return val ? "true" : "fals
 #define NOT_IMPLEMENTED_FUNC() NOT_IMPLEMENTED_FUNC_NOBREAK()
 #endif
 
-#define ORDERING_OP_LT_IMPL(varName) \
-	if ((varName) < (other. ## varName)) \
+#define ORDERING_OP_LT_IMPL_GENERIC(varNameLHS, varNameRHS) \
+	if (varNameLHS < varNameRHS) \
 		return true; \
-	else if ((other. ## varName) < (varName)) \
+	else if (varNameRHS < varNameLHS) \
 		return false;
+
+#define ORDERING_OP_LT_IMPL(varName) ORDERING_OP_LT_IMPL_GENERIC(varName, other. ## varName)
+#define ORDERING_OP_LT_IMPL_PUB(varName) ORDERING_OP_LT_IMPL_GENERIC(lhs. ## varName, rhs. ## varName)
