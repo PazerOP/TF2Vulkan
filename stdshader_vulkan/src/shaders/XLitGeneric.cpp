@@ -1,4 +1,5 @@
 #include "IVulkanShader.h"
+#include "ParamGroups.h"
 
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
@@ -14,34 +15,9 @@ using namespace TF2Vulkan::Shaders;
 
 namespace
 {
-	static int s_ParamCount = 0;
-	struct XLitGenericParams
+	struct XLitGenericParams : BumpmapParams, WrinkleParams, EnvMapParams, PhongParams, RimlightParams, SelfillumParams, DetailParams, EmissiveScrollParams, WeaponSheenParams, SeamlessScaleParams, CloakParams, FleshParams, DistanceAlphaParams
 	{
-		const VulkanShaderParam* GetParams() const { return reinterpret_cast<const VulkanShaderParam*>(this); }
-
 		VSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)")
-		VSHADER_PARAM(COMPRESS, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "compression wrinklemap")
-		VSHADER_PARAM(STRETCH, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "expansion wrinklemap")
-		VSHADER_PARAM(SELFILLUMTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Self-illumination tint")
-		VSHADER_PARAM(DETAIL, SHADER_PARAM_TYPE_TEXTURE, "shadertest/detail", "detail texture")
-		VSHADER_PARAM(DETAILFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $detail")
-		VSHADER_PARAM(DETAILSCALE, SHADER_PARAM_TYPE_FLOAT, "4", "scale of the detail texture")
-		VSHADER_PARAM(ENVMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/shadertest_env", "envmap")
-		VSHADER_PARAM(ENVMAPFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "envmap frame number")
-		VSHADER_PARAM(ENVMAPMASK, SHADER_PARAM_TYPE_TEXTURE, "shadertest/shadertest_envmask", "envmap mask")
-		VSHADER_PARAM(ENVMAPMASKFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "")
-		VSHADER_PARAM(ENVMAPMASKTRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$envmapmask texcoord transform")
-		VSHADER_PARAM(ENVMAPTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "envmap tint")
-		VSHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader1_normal", "bump map")
-		VSHADER_PARAM(BUMPCOMPRESS, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader3_normal", "compression bump map")
-		VSHADER_PARAM(BUMPSTRETCH, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader1_normal", "expansion bump map")
-		VSHADER_PARAM(BUMPFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $bumpmap")
-		VSHADER_PARAM(BUMPTRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$bumpmap texcoord transform")
-		VSHADER_PARAM(ENVMAPCONTRAST, SHADER_PARAM_TYPE_FLOAT, "0.0", "contrast 0 == normal 1 == color*color")
-		VSHADER_PARAM(ENVMAPSATURATION, SHADER_PARAM_TYPE_FLOAT, "1.0", "saturation 0 == greyscale 1 == normal")
-		VSHADER_PARAM(SELFILLUM_ENVMAPMASK_ALPHA, SHADER_PARAM_TYPE_FLOAT, "0.0", "defines that self illum value comes from env map mask alpha")
-		VSHADER_PARAM(SELFILLUMFRESNEL, SHADER_PARAM_TYPE_BOOL, "0", "Self illum fresnel")
-		VSHADER_PARAM(SELFILLUMFRESNELMINMAXEXP, SHADER_PARAM_TYPE_VEC4, "0", "Self illum fresnel min, max, exp")
 		VSHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "")
 		VSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0")
 		VSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine")
@@ -49,88 +25,8 @@ namespace
 		// Debugging term for visualizing ambient data on its own
 		VSHADER_PARAM(AMBIENTONLY, SHADER_PARAM_TYPE_INTEGER, "0", "Control drawing of non-ambient light ()")
 
-		VSHADER_PARAM(PHONGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "5.0", "Phong exponent for local specular lights")
-		VSHADER_PARAM(PHONGTINT, SHADER_PARAM_TYPE_VEC3, "5.0", "Phong tint for local specular lights")
-		VSHADER_PARAM(PHONGALBEDOTINT, SHADER_PARAM_TYPE_BOOL, "1.0", "Apply tint by albedo (controlled by spec exponent texture")
 		VSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term")
-		VSHADER_PARAM(PHONGWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "warp the specular term")
-		VSHADER_PARAM(PHONGFRESNELRANGES, SHADER_PARAM_TYPE_VEC3, "[0  0.5  1]", "Parameters for remapping fresnel output")
-		VSHADER_PARAM(PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)")
-		VSHADER_PARAM(PHONGEXPONENTTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "Phong Exponent map")
-		VSHADER_PARAM(PHONGEXPONENTFACTOR, SHADER_PARAM_TYPE_FLOAT, "0.0", "When using a phong exponent texture, this will be multiplied by the 0..1 that comes out of the texture.")
-		VSHADER_PARAM(PHONG, SHADER_PARAM_TYPE_BOOL, "0", "enables phong lighting")
-		VSHADER_PARAM(BASEMAPALPHAPHONGMASK, SHADER_PARAM_TYPE_INTEGER, "0", "indicates that there is no normal map and that the phong mask is in base alpha")
-		VSHADER_PARAM(INVERTPHONGMASK, SHADER_PARAM_TYPE_INTEGER, "0", "invert the phong mask (0=full phong, 1=no phong)")
 		VSHADER_PARAM(ENVMAPFRESNEL, SHADER_PARAM_TYPE_FLOAT, "0", "Degree to which Fresnel should be applied to env map")
-		VSHADER_PARAM(SELFILLUMMASK, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "If we bind a texture here, it overrides base alpha (if any) for self illum")
-
-		// detail (multi-) texturing
-		VSHADER_PARAM(DETAILBLENDMODE, SHADER_PARAM_TYPE_INTEGER, "0", "mode for combining detail texture with base. 0=normal, 1= additive, 2=alpha blend detail over base, 3=crossfade")
-		VSHADER_PARAM(DETAILBLENDFACTOR, SHADER_PARAM_TYPE_FLOAT, "1", "blend amount for detail texture.")
-		VSHADER_PARAM(DETAILTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "detail texture tint")
-		VSHADER_PARAM(DETAILTEXTURETRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$detail texcoord transform")
-
-		// Rim lighting terms
-		VSHADER_PARAM(RIMLIGHT, SHADER_PARAM_TYPE_BOOL, "0", "enables rim lighting")
-		VSHADER_PARAM(RIMLIGHTEXPONENT, SHADER_PARAM_TYPE_FLOAT, "4.0", "Exponent for rim lights")
-		VSHADER_PARAM(RIMLIGHTBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Boost for rim lights")
-		VSHADER_PARAM(RIMMASK, SHADER_PARAM_TYPE_BOOL, "0", "Indicates whether or not to use alpha channel of exponent texture to mask the rim term")
-
-		// Seamless mapping scale
-		VSHADER_PARAM(SEAMLESS_BASE, SHADER_PARAM_TYPE_BOOL, "0", "whether to apply seamless mapping to the base texture. requires a smooth model.")
-		VSHADER_PARAM(SEAMLESS_DETAIL, SHADER_PARAM_TYPE_BOOL, "0", "where to apply seamless mapping to the detail texture.")
-		VSHADER_PARAM(SEAMLESS_SCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "the scale for the seamless mapping. # of repetions of texture per inch.")
-
-		// Emissive Scroll Pass
-		VSHADER_PARAM(EMISSIVEBLENDENABLED, SHADER_PARAM_TYPE_BOOL, "0", "Enable emissive blend pass")
-		VSHADER_PARAM(EMISSIVEBLENDBASETEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "self-illumination map")
-		VSHADER_PARAM(EMISSIVEBLENDSCROLLVECTOR, SHADER_PARAM_TYPE_VEC2, "[0.11 0.124]", "Emissive scroll vec")
-		VSHADER_PARAM(EMISSIVEBLENDSTRENGTH, SHADER_PARAM_TYPE_FLOAT, "1.0", "Emissive blend strength")
-		VSHADER_PARAM(EMISSIVEBLENDTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "self-illumination map")
-		VSHADER_PARAM(EMISSIVEBLENDTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Self-illumination tint")
-		VSHADER_PARAM(EMISSIVEBLENDFLOWTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "flow map")
-		VSHADER_PARAM(TIME, SHADER_PARAM_TYPE_FLOAT, "0.0", "Needs CurrentTime Proxy")
-
-		// Cloak Pass
-		VSHADER_PARAM(CLOAKPASSENABLED, SHADER_PARAM_TYPE_BOOL, "0", "Enables cloak render in a second pass")
-		VSHADER_PARAM(CLOAKFACTOR, SHADER_PARAM_TYPE_FLOAT, "0.0", "")
-		VSHADER_PARAM(CLOAKCOLORTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Cloak color tint")
-		VSHADER_PARAM(REFRACTAMOUNT, SHADER_PARAM_TYPE_FLOAT, "2", "")
-
-		// Weapon Sheen Pass
-		VSHADER_PARAM(SHEENPASSENABLED, SHADER_PARAM_TYPE_BOOL, "0", "Enables weapon sheen render in a second pass")
-		VSHADER_PARAM(SHEENMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/shadertest_env", "sheenmap")
-		VSHADER_PARAM(SHEENMAPMASK, SHADER_PARAM_TYPE_TEXTURE, "shadertest/shadertest_envmask", "sheenmap mask")
-		VSHADER_PARAM(SHEENMAPMASKFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "")
-		VSHADER_PARAM(SHEENMAPTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "sheenmap tint")
-		VSHADER_PARAM(SHEENMAPMASKSCALEX, SHADER_PARAM_TYPE_FLOAT, "1", "X Scale the size of the map mask to the size of the target")
-		VSHADER_PARAM(SHEENMAPMASKSCALEY, SHADER_PARAM_TYPE_FLOAT, "1", "Y Scale the size of the map mask to the size of the target")
-		VSHADER_PARAM(SHEENMAPMASKOFFSETX, SHADER_PARAM_TYPE_FLOAT, "0", "X Offset of the mask relative to model space coords of target")
-		VSHADER_PARAM(SHEENMAPMASKOFFSETY, SHADER_PARAM_TYPE_FLOAT, "0", "Y Offset of the mask relative to model space coords of target")
-		VSHADER_PARAM(SHEENMAPMASKDIRECTION, SHADER_PARAM_TYPE_INTEGER, "0", "The direction the sheen should move (length direction of weapon) XYZ, 0,1,2")
-		VSHADER_PARAM(SHEENINDEX, SHADER_PARAM_TYPE_INTEGER, "0", "Index of the Effect Type (Color Additive, Override etc...)")
-
-		// Flesh Interior Pass
-		VSHADER_PARAM(FLESHINTERIORENABLED, SHADER_PARAM_TYPE_BOOL, "0", "Enable Flesh interior blend pass")
-		VSHADER_PARAM(FLESHINTERIORTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Flesh color texture")
-		VSHADER_PARAM(FLESHINTERIORNOISETEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Flesh noise texture")
-		VSHADER_PARAM(FLESHBORDERTEXTURE1D, SHADER_PARAM_TYPE_TEXTURE, "", "Flesh border 1D texture")
-		VSHADER_PARAM(FLESHNORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Flesh normal texture")
-		VSHADER_PARAM(FLESHSUBSURFACETEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Flesh subsurface texture")
-		VSHADER_PARAM(FLESHCUBETEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Flesh cubemap texture")
-		VSHADER_PARAM(FLESHBORDERNOISESCALE, SHADER_PARAM_TYPE_FLOAT, "1.5", "Flesh Noise UV scalar for border")
-		VSHADER_PARAM(FLESHDEBUGFORCEFLESHON, SHADER_PARAM_TYPE_BOOL, "0", "Flesh Debug full flesh")
-		VSHADER_PARAM(FLESHEFFECTCENTERRADIUS1, SHADER_PARAM_TYPE_VEC4, "[0 0 0 0.001]", "Flesh effect center and radius")
-		VSHADER_PARAM(FLESHEFFECTCENTERRADIUS2, SHADER_PARAM_TYPE_VEC4, "[0 0 0 0.001]", "Flesh effect center and radius")
-		VSHADER_PARAM(FLESHEFFECTCENTERRADIUS3, SHADER_PARAM_TYPE_VEC4, "[0 0 0 0.001]", "Flesh effect center and radius")
-		VSHADER_PARAM(FLESHEFFECTCENTERRADIUS4, SHADER_PARAM_TYPE_VEC4, "[0 0 0 0.001]", "Flesh effect center and radius")
-		VSHADER_PARAM(FLESHSUBSURFACETINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Subsurface Color")
-		VSHADER_PARAM(FLESHBORDERWIDTH, SHADER_PARAM_TYPE_FLOAT, "0.3", "Flesh border")
-		VSHADER_PARAM(FLESHBORDERSOFTNESS, SHADER_PARAM_TYPE_FLOAT, "0.42", "Flesh border softness (> 0.0 && <= 0.5)")
-		VSHADER_PARAM(FLESHBORDERTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Flesh border Color")
-		VSHADER_PARAM(FLESHGLOBALOPACITY, SHADER_PARAM_TYPE_FLOAT, "1.0", "Flesh global opacity")
-		VSHADER_PARAM(FLESHGLOSSBRIGHTNESS, SHADER_PARAM_TYPE_FLOAT, "0.66", "Flesh gloss brightness")
-		VSHADER_PARAM(FLESHSCROLLSPEED, SHADER_PARAM_TYPE_FLOAT, "1.0", "Flesh scroll speed")
 
 		VSHADER_PARAM(SEPARATEDETAILUVS, SHADER_PARAM_TYPE_BOOL, "0", "Use texcoord1 for detail texture")
 		VSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.")
@@ -141,24 +37,22 @@ namespace
 		VSHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
 
 		VSHADER_PARAM(VERTEXALPHATEST, SHADER_PARAM_TYPE_INTEGER, "0", "");
-
+		VSHADER_PARAM(HDRCOLORSCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "hdr color scale");
+		VSHADER_PARAM(RECEIVEFLASHLIGHT, SHADER_PARAM_TYPE_INTEGER, "0", "Forces this material to receive flashlights.");
+		VSHADER_PARAM(GAMMACOLORREAD, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of color texture read.");
 	};
 
-	static constexpr size_t PARAM_COUNT = sizeof(XLitGenericParams) / sizeof(VulkanShaderParam);
-	static_assert(sizeof(VulkanShaderParam[PARAM_COUNT]) == sizeof(XLitGenericParams));
-
-	class XLitGeneric final : public IVulkanShader, public XLitGenericParams
+	class XLitGeneric : public IVulkanShader, public XLitGenericParams
 	{
 	public:
-		XLitGeneric(const char* name) :
-			IVulkanShader(GetParams(), PARAM_COUNT),
-			m_Name(name)
+		XLitGeneric() : IVulkanShader(GetAsShaderParams(GetParams()), GetShaderParamCount<XLitGenericParams>())
 		{
-			assert(m_Name);
-			GetShaderDLL()->InsertShader(this);
+			InitParamIndices(GetParams());
 		}
 
-		const char* GetName() const override;
+		XLitGenericParams& GetParams() { return *this; }
+		const XLitGenericParams& GetParams() const { return *this; }
+
 		int GetFlags() const override;
 
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
@@ -168,24 +62,81 @@ namespace
 			IShaderDynamicAPI* shaderAPI, VertexCompressionType_t vtxCompression,
 			CBasePerMaterialContextData** context) override;
 
-	private:
-		void InitParamsVertexLitGeneric(IMaterialVar** params);
-		void InitParamsCloakBlendedPass(IMaterialVar** params);
-		void InitParamsWeaponSheenPass(IMaterialVar** params);
-		void InitParamsEmissiveScrollBlendedPass(IMaterialVar** params);
-		void InitParamsFleshInteriorBlendedPass(IMaterialVar** params);
+		virtual bool IsVertexLitGeneric() const { return false; }
 
-		const char* m_Name;
+	private:
+		bool WantsSkinShader(IMaterialVar** params) const;
+
+		void InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const;
+		void InitParamsSkin(IMaterialVar** params) const;
+		void InitParamsCloakBlendedPass(IMaterialVar** params) const;
+		void InitParamsWeaponSheenPass(IMaterialVar** params) const;
+		void InitParamsEmissiveScrollBlendedPass(IMaterialVar** params) const;
+		void InitParamsFleshInteriorBlendedPass(IMaterialVar** params) const;
+
+		void InitShaderVertexLitGeneric(IMaterialVar** params);
+		void InitShaderSkin(IMaterialVar** params);
+		void InitShaderCloakBlendedPass(IMaterialVar** params);
+		void InitShaderWeaponSheenPass(IMaterialVar** params);
+		void InitShaderEmissiveScrollBlendedPass(IMaterialVar** params);
+		void InitShaderFleshInteriorBlendedPass(IMaterialVar** params);
+
+		void DrawVertexLitGeneric(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadow* shadow,
+			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
+		void DrawWeaponSheenPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadow* shadow,
+			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
+		void DrawCloakBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadow* shadow,
+			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
+		void DrawEmissiveScrollBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadow* shadow,
+			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
+		void DrawFleshInteriorBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadow* shadow,
+			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
+
+		bool CloakBlendedPassIsFullyOpaque(IMaterialVar** params) const;
+		bool ShouldDrawMaterialSheen(IMaterialVar** params) const;
 	};
+
+	class UnlitGeneric final : public XLitGeneric
+	{
+	public:
+		const char* GetName() const override;
+	};
+
+	class VertexLitGeneric final : public XLitGeneric
+	{
+	public:
+		const char* GetName() const override;
+
+		bool IsVertexLitGeneric() const override { return true; }
+	};
+
+	struct ShaderRegisterer final
+	{
+		ShaderRegisterer()
+		{
+			GetShaderDLL()->InsertShader(&m_VertexLitGeneric);
+			GetShaderDLL()->InsertShader(&m_UnlitGeneric);
+		}
+
+		VertexLitGeneric m_VertexLitGeneric;
+		UnlitGeneric m_UnlitGeneric;
+
+	} static const s_Registerer;
 }
 
-static XLitGeneric s_VertexLitGeneric("VertexLitGeneric");
-static XLitGeneric s_UnlitGeneric("UnlitGeneric");
+static VertexLitGeneric s_VertexLitGeneric;
+static UnlitGeneric s_UnlitGeneric;
 
-const char* XLitGeneric::GetName() const
+const char* UnlitGeneric::GetName() const
 {
 	LOG_FUNC();
-	return m_Name;
+	return "UnlitGeneric";
+}
+
+const char* VertexLitGeneric::GetName() const
+{
+	LOG_FUNC();
+	return "VertexLitGeneric";
 }
 
 int XLitGeneric::GetFlags() const
@@ -202,7 +153,7 @@ void XLitGeneric::OnInitShaderParams(IMaterialVar** params, const char* material
 		paramNames.push_back(p.GetName());
 	}
 
-	InitParamsVertexLitGeneric(params);
+	InitParamsVertexLitGeneric(params, materialName);
 
 	// Cloak Pass
 	if (!params[CLOAKPASSENABLED]->IsDefined())
@@ -248,6 +199,76 @@ void XLitGeneric::OnInitShaderParams(IMaterialVar** params, const char* material
 void XLitGeneric::OnInitShaderInstance(IMaterialVar** params, IShaderInit* shaderInit,
 	const char* materialName)
 {
+	InitShaderVertexLitGeneric(params);
+
+	// Cloak Pass
+	if (params[CLOAKPASSENABLED]->GetIntValue())
+		InitShaderCloakBlendedPass(params);
+
+	// TODO : Only do this if we're in range of the camera
+	// Weapon Sheen
+	if (params[SHEENPASSENABLED]->GetIntValue())
+		InitShaderWeaponSheenPass(params);
+
+	// Emissive Scroll Pass
+	if (params[EMISSIVEBLENDENABLED]->GetIntValue())
+		InitShaderEmissiveScrollBlendedPass(params);
+
+	// Flesh Interior Pass
+	if (params[FLESHINTERIORENABLED]->GetIntValue())
+		InitShaderFleshInteriorBlendedPass(params);
+}
+
+bool XLitGeneric::CloakBlendedPassIsFullyOpaque(IMaterialVar** params) const
+{
+	// TODO: Figure out if this is more complicated
+	return params[CLOAKFACTOR]->GetFloatValue() >= 0.9995f;
+}
+
+bool XLitGeneric::ShouldDrawMaterialSheen(IMaterialVar** params) const
+{
+	// TODO: Is this more complicated?
+	return !!params[SHEENPASSENABLED]->GetIntValue();
+}
+
+void XLitGeneric::DrawVertexLitGeneric(IMaterialVar** params, IShaderDynamicAPI* api,
+	IShaderShadow* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+{
+	if (shadow)
+	{
+		shadow->SetVertexShader("xlitgeneric_vulkan", 0);
+		shadow->SetPixelShader("xlitgeneric_vulkan", 0);
+	}
+
+	if (api)
+	{
+
+	}
+
+	Draw();
+}
+
+void XLitGeneric::DrawWeaponSheenPass(IMaterialVar** params, IShaderDynamicAPI* api,
+	IShaderShadow* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::DrawCloakBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api,
+	IShaderShadow* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::DrawEmissiveScrollBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api,
+	IShaderShadow* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::DrawFleshInteriorBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api,
+	IShaderShadow* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+{
 	NOT_IMPLEMENTED_FUNC();
 }
 
@@ -255,10 +276,104 @@ void XLitGeneric::OnDrawElements(IMaterialVar** params, IShaderShadow* shaderSha
 	IShaderDynamicAPI* shaderAPI, VertexCompressionType_t vtxCompression,
 	CBasePerMaterialContextData** context)
 {
-	NOT_IMPLEMENTED_FUNC();
+	// Skip the standard rendering if cloak pass is fully opaque
+	bool bDrawStandardPass = true;
+	if (params[CLOAKPASSENABLED]->GetIntValue() && (shaderShadow == NULL)) // && not snapshotting
+	{
+		if (CloakBlendedPassIsFullyOpaque(params))
+			bDrawStandardPass = false;
+	}
+
+	// Standard rendering pass
+	if (bDrawStandardPass)
+	{
+		DrawVertexLitGeneric(params, shaderAPI, shaderShadow, vtxCompression, context);
+	}
+	else
+	{
+		// Skip this pass!
+		Draw(false);
+	}
+
+	// Weapon sheen pass
+	// only if doing standard as well (don't do it if cloaked)
+	if (params[SHEENPASSENABLED]->GetIntValue())
+	{
+		if ((shaderShadow != NULL) || (bDrawStandardPass && ShouldDrawMaterialSheen(params)))
+		{
+			DrawWeaponSheenPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+		}
+		else
+		{
+			// Skip this pass!
+			Draw(false);
+		}
+	}
+
+	// Cloak Pass
+	if (params[CLOAKPASSENABLED]->GetIntValue())
+	{
+		// If ( snapshotting ) or ( we need to draw this frame )
+		if ((shaderShadow != NULL) || ((params[CLOAKFACTOR]->GetFloatValue() > 0.0f) && (params[CLOAKFACTOR]->GetFloatValue() < 1.0f)))
+		{
+			DrawCloakBlendedPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+		}
+		else // We're not snapshotting and we don't need to draw this frame
+		{
+			// Skip this pass!
+			Draw(false);
+		}
+	}
+
+	// Emissive Scroll Pass
+	if (params[EMISSIVEBLENDENABLED]->GetIntValue())
+	{
+		// If ( snapshotting ) or ( we need to draw this frame )
+		if ((shaderShadow != NULL) || (params[EMISSIVEBLENDSTRENGTH]->GetFloatValue() > 0.0f))
+		{
+			DrawEmissiveScrollBlendedPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+		}
+		else // We're not snapshotting and we don't need to draw this frame
+		{
+			// Skip this pass!
+			Draw(false);
+		}
+	}
+
+	// Flesh Interior Pass
+	if (params[FLESHINTERIORENABLED]->GetIntValue())
+	{
+		// If ( snapshotting ) or ( we need to draw this frame )
+		if ((shaderShadow != NULL) || (true))
+		{
+			DrawFleshInteriorBlendedPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+		}
+		else // We're not snapshotting and we don't need to draw this frame
+		{
+			// Skip this pass!
+			Draw(false);
+		}
+	}
 }
 
-void XLitGeneric::InitParamsVertexLitGeneric(IMaterialVar** params)
+bool XLitGeneric::WantsSkinShader(IMaterialVar** params) const
+{
+	if (!params[PHONG]->GetIntValue())
+		return false; // No skin without phong
+
+	if (params[LIGHTWARPTEXTURE]->IsTexture())
+		return true; // If phong && diffuse warp, do skin
+
+	if (params[BASEMAPALPHAPHONGMASK]->GetIntValue() != 1)
+	{
+		if (!params[BUMPMAP]->IsTexture())
+			return false; // Don't use if texture isn't specified
+	}
+
+	return true;
+}
+
+void XLitGeneric::InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const
 {
 	InitIntParam(PHONG, params, 0);
 
@@ -267,73 +382,56 @@ void XLitGeneric::InitParamsVertexLitGeneric(IMaterialVar** params)
 
 	InitIntParam(FLASHLIGHTNOLAMBERT, params, 0);
 
-	if (info.m_nDetailTint != -1 && !params[info.m_nDetailTint]->IsDefined())
-	{
-		params[info.m_nDetailTint]->SetVecValue(1.0f, 1.0f, 1.0f);
-	}
+	InitVecParam(DETAILTINT, params, 1, 1, 1);
 
-	if (info.m_nEnvmapTint != -1 && !params[info.m_nEnvmapTint]->IsDefined())
-	{
-		params[info.m_nEnvmapTint]->SetVecValue(1.0f, 1.0f, 1.0f);
-	}
+	InitVecParam(ENVMAPTINT, params, 1, 1, 1);
 
-	InitIntParam(info.m_nEnvmapFrame, params, 0);
-	InitIntParam(info.m_nBumpFrame, params, 0);
-	InitFloatParam(info.m_nDetailTextureBlendFactor, params, 1.0);
-	InitIntParam(info.m_nReceiveFlashlight, params, 0);
+	InitIntParam(ENVMAPFRAME, params, 0);
+	InitIntParam(BUMPFRAME, params, 0);
+	InitFloatParam(DETAILBLENDFACTOR, params, 1.0);
+	InitIntParam(RECEIVEFLASHLIGHT, params, 0);
 
-	InitFloatParam(info.m_nDetailScale, params, 4.0f);
+	InitFloatParam(DETAILSCALE, params, 4.0f);
 
-	if ((info.m_nBlendTintByBaseAlpha != -1) && (!params[info.m_nBlendTintByBaseAlpha]->IsDefined()))
-	{
-		params[info.m_nBlendTintByBaseAlpha]->SetIntValue(0);
-	}
+	InitIntParam(BLENDTINTBYBASEALPHA, params, 0);
+	InitFloatParam(BLENDTINTCOLOROVERBASE, params, 0);
 
-	InitFloatParam(info.m_nTintReplacesBaseColor, params, 0);
+	InitVecParam(SELFILLUMTINT, params, 1, 1, 1);
 
-	if ((info.m_nSelfIllumTint != -1) && (!params[info.m_nSelfIllumTint]->IsDefined()))
-	{
-		params[info.m_nSelfIllumTint]->SetVecValue(1.0f, 1.0f, 1.0f);
-	}
-
-
-	if (WantsSkinShader(params, info))
+	if (WantsSkinShader(params))
 	{
 		if (!g_pHardwareConfig->SupportsPixelShaders_2_b() || !g_pConfig->UsePhong())
 		{
-			params[info.m_nPhong]->SetIntValue(0);
+			params[PHONG]->SetIntValue(0);
 		}
 		else
 		{
-			InitParamsSkin_DX9(pShader, params, pMaterialName, info);
+			InitParamsSkin(params);
 			return;
 		}
 	}
 
 	// FLASHLIGHTFIXME: Do ShaderAPI::BindFlashlightTexture
-	if (info.m_nFlashlightTexture != -1)
+	if (g_pHardwareConfig->SupportsBorderColor())
 	{
-		if (g_pHardwareConfig->SupportsBorderColor())
-		{
-			params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight_border");
-		}
-		else
-		{
-			params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
-		}
+		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight_border");
+	}
+	else
+	{
+		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
 	}
 
 	// Write over $basetexture with $info.m_nBumpmap if we are going to be using diffuse normal mapping.
-	if (info.m_nAlbedo != -1 && g_pConfig->UseBumpmapping() && info.m_nBumpmap != -1 && params[info.m_nBumpmap]->IsDefined() && params[info.m_nAlbedo]->IsDefined() &&
-		params[info.m_nBaseTexture]->IsDefined())
+	if (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined() && params[ALBEDO]->IsDefined() &&
+		params[BASETEXTURE]->IsDefined())
 	{
-		params[info.m_nBaseTexture]->SetStringValue(params[info.m_nAlbedo]->GetStringValue());
+		params[BASETEXTURE]->SetStringValue(params[ALBEDO]->GetStringValue());
 	}
 
 	// This shader can be used with hw skinning
 	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 
-	if (bVertexLitGeneric)
+	if (IsVertexLitGeneric())
 	{
 		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
 	}
@@ -342,19 +440,19 @@ void XLitGeneric::InitParamsVertexLitGeneric(IMaterialVar** params)
 		CLEAR_FLAGS(MATERIAL_VAR_SELFILLUM);
 	}
 
-	InitIntParam(info.m_nEnvmapMaskFrame, params, 0);
-	InitFloatParam(info.m_nEnvmapContrast, params, 0.0);
-	InitFloatParam(info.m_nEnvmapSaturation, params, 1.0f);
-	InitFloatParam(info.m_nSeamlessScale, params, 0.0);
+	InitIntParam(ENVMAPMASKFRAME, params, 0);
+	InitFloatParam(ENVMAPCONTRAST, params, 0.0);
+	InitFloatParam(ENVMAPSATURATION, params, 1.0f);
+	InitFloatParam(SEAMLESS_SCALE, params, 0.0);
 
 	// handle line art parms
-	InitFloatParam(info.m_nEdgeSoftnessStart, params, 0.5);
-	InitFloatParam(info.m_nEdgeSoftnessEnd, params, 0.5);
-	InitFloatParam(info.m_nGlowAlpha, params, 1.0);
-	InitFloatParam(info.m_nOutlineAlpha, params, 1.0);
+	InitFloatParam(EDGESOFTNESSSTART, params, 0.5);
+	InitFloatParam(EDGESOFTNESSEND, params, 0.5);
+	InitFloatParam(GLOWALPHA, params, 1.0);
+	InitFloatParam(OUTLINEALPHA, params, 1.0);
 
 	// No texture means no self-illum or env mask in base alpha
-	if (info.m_nBaseTexture != -1 && !params[info.m_nBaseTexture]->IsDefined())
+	if (!params[BASETEXTURE]->IsDefined())
 	{
 		CLEAR_FLAGS(MATERIAL_VAR_SELFILLUM);
 		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
@@ -366,14 +464,14 @@ void XLitGeneric::InitParamsVertexLitGeneric(IMaterialVar** params)
 		SET_FLAGS(MATERIAL_VAR_NO_DEBUG_OVERRIDE);
 	}
 
-	if (((info.m_nBumpmap != -1) && g_pConfig->UseBumpmapping() && params[info.m_nBumpmap]->IsDefined())
+	if ((g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined())
 		// we don't need a tangent space if we have envmap without bumpmap
 		//		|| ( info.m_nEnvmap != -1 && params[info.m_nEnvmap]->IsDefined() )
 		)
 	{
 		SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
 	}
-	else if ((info.m_nDiffuseWarpTexture != -1) && params[info.m_nDiffuseWarpTexture]->IsDefined()) // diffuse warp goes down bump path...
+	else if (params[LIGHTWARPTEXTURE]->IsDefined()) // diffuse warp goes down bump path...
 	{
 		SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
 	}
@@ -385,58 +483,225 @@ void XLitGeneric::InitParamsVertexLitGeneric(IMaterialVar** params)
 	bool hasNormalMapAlphaEnvmapMask = IS_FLAG_SET(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
 	if (hasNormalMapAlphaEnvmapMask)
 	{
-		params[info.m_nEnvmapMask]->SetUndefined();
+		params[ENVMAPMASK]->SetUndefined();
 		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
 	}
 
-	if (IS_FLAG_SET(MATERIAL_VAR_BASEALPHAENVMAPMASK) && info.m_nBumpmap != -1 &&
-		params[info.m_nBumpmap]->IsDefined() && !hasNormalMapAlphaEnvmapMask)
+	if (IS_FLAG_SET(MATERIAL_VAR_BASEALPHAENVMAPMASK) && params[BUMPMAP]->IsDefined() && !hasNormalMapAlphaEnvmapMask)
 	{
-		Warning("material %s has a normal map and $basealphaenvmapmask.  Must use $normalmapalphaenvmapmask to get specular.\n\n", pMaterialName);
-		params[info.m_nEnvmap]->SetUndefined();
+		Warning("material %s has a normal map and $basealphaenvmapmask.  Must use $normalmapalphaenvmapmask to get specular.\n\n", materialName);
+		params[ENVMAP]->SetUndefined();
 	}
 
-	if (info.m_nEnvmapMask != -1 && params[info.m_nEnvmapMask]->IsDefined() && info.m_nBumpmap != -1 && params[info.m_nBumpmap]->IsDefined())
+	if (params[ENVMAPMASK]->IsDefined() && params[BUMPMAP]->IsDefined())
 	{
-		params[info.m_nEnvmapMask]->SetUndefined();
+		params[ENVMAPMASK]->SetUndefined();
 		if (!hasNormalMapAlphaEnvmapMask)
 		{
-			Warning("material %s has a normal map and an envmapmask.  Must use $normalmapalphaenvmapmask.\n\n", pMaterialName);
-			params[info.m_nEnvmap]->SetUndefined();
+			Warning("material %s has a normal map and an envmapmask.  Must use $normalmapalphaenvmapmask.\n\n", materialName);
+			params[ENVMAP]->SetUndefined();
 		}
 	}
 
 	// If mat_specular 0, then get rid of envmap
-	if (!g_pConfig->UseSpecular() && info.m_nEnvmap != -1 && params[info.m_nEnvmap]->IsDefined() && params[info.m_nBaseTexture]->IsDefined())
+	if (!g_pConfig->UseSpecular() && params[ENVMAP]->IsDefined() && params[BASETEXTURE]->IsDefined())
+		params[ENVMAP]->SetUndefined();
+
+	InitFloatParam(HDRCOLORSCALE, params, 1.0f);
+
+	InitIntParam(LINEARWRITE, params, 0);
+	InitIntParam(GAMMACOLORREAD, params, 0);
+
+	InitIntParam(DEPTHBLEND, params, 0);
+	InitFloatParam(DEPTHBLENDSCALE, params, 50.0f);
+}
+
+void XLitGeneric::InitParamsSkin(IMaterialVar** params) const
+{
+	if (g_pHardwareConfig->SupportsBorderColor())
 	{
-		params[info.m_nEnvmap]->SetUndefined();
+		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight_border");
+	}
+	else
+	{
+		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
 	}
 
-	InitFloatParam(info.m_nHDRColorScale, params, 1.0f);
+	// Write over $basetexture with $info.m_nBumpmap if we are going to be using diffuse normal mapping.
+	if (g_pConfig->UseBumpmapping() &&
+		params[BUMPMAP]->IsDefined() &&
+		params[ALBEDO]->IsDefined() &&
+		params[BASETEXTURE]->IsDefined())
+	{
+		params[BASETEXTURE]->SetStringValue(params[ALBEDO]->GetStringValue());
+	}
 
-	InitIntParam(info.m_nLinearWrite, params, 0);
-	InitIntParam(info.m_nGammaColorRead, params, 0);
+	// This shader can be used with hw skinning
+	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
+	SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
 
-	InitIntParam(info.m_nDepthBlend, params, 0);
-	InitFloatParam(info.m_nDepthBlendScale, params, 50.0f);
+	// No texture means no env mask in base alpha
+	if (!params[BASETEXTURE]->IsDefined())
+		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
+
+	// If in decal mode, no debug override...
+	if (IS_FLAG_SET(MATERIAL_VAR_DECAL))
+		SET_FLAGS(MATERIAL_VAR_NO_DEBUG_OVERRIDE);
+
+	// Lots of reasons to want tangent space, since we bind a flat normal map in many cases where we don't have a bump map
+	bool bBump = g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined();
+	bool bEnvMap = params[ENVMAP]->IsDefined();
+	bool bDiffuseWarp = params[LIGHTWARPTEXTURE]->IsDefined();
+	bool bPhong = params[PHONG]->IsDefined();
+	if (bBump || bEnvMap || bDiffuseWarp || bPhong)
+	{
+		SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
+	}
+	else
+	{
+		CLEAR_FLAGS(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
+	}
+
+	InitIntParam(SELFILLUMFRESNEL, params, 0);
+
+	InitVecParam(SELFILLUMFRESNELMINMAXEXP, params, 0, 1, 1);
+
+	InitIntParam(BASEMAPALPHAPHONGMASK, params, 0);
+
+	InitFloatParam(ENVMAPFRESNEL, params, 0);
 }
 
-void XLitGeneric::InitParamsCloakBlendedPass(IMaterialVar** params)
+void XLitGeneric::InitParamsCloakBlendedPass(IMaterialVar** params) const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::InitParamsWeaponSheenPass(IMaterialVar** params)
+void XLitGeneric::InitParamsWeaponSheenPass(IMaterialVar** params) const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::InitParamsEmissiveScrollBlendedPass(IMaterialVar** params)
+void XLitGeneric::InitParamsEmissiveScrollBlendedPass(IMaterialVar** params) const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::InitParamsFleshInteriorBlendedPass(IMaterialVar** params)
+void XLitGeneric::InitParamsFleshInteriorBlendedPass(IMaterialVar** params) const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::InitShaderSkin(IMaterialVar** params)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::InitShaderVertexLitGeneric(IMaterialVar** params)
+{
+	// both detailed and bumped = needs skin shader (for now)
+	bool bNeedsSkinBecauseOfDetail = false;
+
+	//bool bHasBump = ( info.m_nBumpmap != -1 ) && params[info.m_nBumpmap]->IsTexture();
+	//if ( bHasBump )
+	//{
+	//	if (  ( info.m_nDetail != -1 ) && params[info.m_nDetail]->IsDefined() )
+	//		bNeedsSkinBecauseOfDetail = true;
+	//}
+
+	if (bNeedsSkinBecauseOfDetail || (params[PHONG]->GetIntValue() && g_pHardwareConfig->SupportsPixelShaders_2_b()))
+		return InitShaderSkin(params);
+
+	LoadTexture(FLASHLIGHTTEXTURE, TEXTUREFLAGS_SRGB);
+
+	bool bIsBaseTextureTranslucent = false;
+	if (params[BASETEXTURE]->IsDefined())
+	{
+		LoadTexture(BASETEXTURE, (params[GAMMACOLORREAD]->GetIntValue() == 1) ? 0 : TEXTUREFLAGS_SRGB);
+
+		if (params[BASETEXTURE]->GetTextureValue()->IsTranslucent())
+			bIsBaseTextureTranslucent = true;
+	}
+
+	bool bHasSelfIllumMask = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) && params[SELFILLUMMASK]->IsDefined();
+
+	// No alpha channel in any of the textures? No self illum or envmapmask
+	if (!bIsBaseTextureTranslucent)
+	{
+		bool bHasSelfIllumFresnel = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) && (params[SELFILLUMFRESNEL]->GetIntValue() != 0);
+
+		// Can still be self illum with no base alpha if using one of these alternate modes
+		if (!bHasSelfIllumFresnel && !bHasSelfIllumMask)
+			CLEAR_FLAGS(MATERIAL_VAR_SELFILLUM);
+
+		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
+	}
+
+	if (params[DETAIL]->IsDefined())
+	{
+		int nDetailBlendMode = (DETAILBLENDMODE == -1) ? 0 : params[DETAILBLENDMODE]->GetIntValue();
+
+		if (nDetailBlendMode == 0) //Mod2X
+			LoadTexture(DETAIL);
+		else
+			LoadTexture(DETAIL, TEXTUREFLAGS_SRGB);
+	}
+
+	if (g_pConfig->UseBumpmapping())
+	{
+		if (params[BUMPMAP]->IsDefined())
+		{
+			LoadBumpMap(BUMPMAP);
+			SET_FLAGS2(MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL);
+		}
+		else if (params[LIGHTWARPTEXTURE]->IsDefined())
+		{
+			SET_FLAGS2(MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL);
+		}
+	}
+
+	// Don't alpha test if the alpha channel is used for other purposes
+	if (IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) || IS_FLAG_SET(MATERIAL_VAR_BASEALPHAENVMAPMASK))
+	{
+		CLEAR_FLAGS(MATERIAL_VAR_ALPHATEST);
+	}
+
+	if (params[ENVMAP]->IsDefined())
+	{
+		if (!IS_FLAG_SET(MATERIAL_VAR_ENVMAPSPHERE))
+			LoadCubeMap(ENVMAP, g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0);
+		else
+			LoadTexture(ENVMAP, g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0);
+
+		if (!g_pHardwareConfig->SupportsCubeMaps())
+			SET_FLAGS(MATERIAL_VAR_ENVMAPSPHERE);
+	}
+
+	if (params[ENVMAPMASK]->IsDefined())
+		LoadTexture(ENVMAPMASK);
+
+	if (params[LIGHTWARPTEXTURE]->IsDefined())
+		LoadTexture(LIGHTWARPTEXTURE);
+
+	if (bHasSelfIllumMask)
+		LoadTexture(SELFILLUMMASK);
+}
+
+void XLitGeneric::InitShaderCloakBlendedPass(IMaterialVar** params)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::InitShaderWeaponSheenPass(IMaterialVar** params)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::InitShaderEmissiveScrollBlendedPass(IMaterialVar** params)
+{
+	NOT_IMPLEMENTED_FUNC();
+}
+
+void XLitGeneric::InitShaderFleshInteriorBlendedPass(IMaterialVar** params)
+{
+	NOT_IMPLEMENTED_FUNC();
 }

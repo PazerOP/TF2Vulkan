@@ -10,7 +10,7 @@ namespace TF2Vulkan{ namespace Shaders
 	{
 	public:
 		VulkanShaderParam(const char* name, ShaderParamType_t type, const char* defaultVal,
-			const char* help, int index, int flags = 0);
+			const char* help, int flags = 0);
 
 		const char* GetName() const;
 		const char* GetHelp() const;
@@ -22,11 +22,13 @@ namespace TF2Vulkan{ namespace Shaders
 		int GetIndex() const;
 		operator int() const;
 
+		void InitIndex(int index);
+
 	private:
 		ShaderParamInfo_t m_Info;
-		int m_Index;
+		int m_Index = -1;
 	};
 } }
 
 #define VSHADER_PARAM(param, paramType, paramDefault, paramHelp) \
-	::TF2Vulkan::Shaders::VulkanShaderParam param = { "$" #param, paramType, paramDefault, paramHelp, s_ParamCount++ };
+	::TF2Vulkan::Shaders::VulkanShaderParam param = { "$" #param, paramType, paramDefault, paramHelp };

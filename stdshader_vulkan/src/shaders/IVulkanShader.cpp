@@ -69,6 +69,47 @@ int IVulkanShader::GetNumParams() const
 	return Util::SafeConvert<int>(m_ParamCount);
 }
 
+bool IVulkanShader::CheckParamIndex(int paramIndex) const
+{
+	if (paramIndex < 0 || paramIndex >= GetNumParams())
+	{
+		assert(!"Param index out of range");
+		return false;
+	}
+
+	return true;
+}
+
+void IVulkanShader::InitIntParam(int param, IMaterialVar** params, int defaultVal) const
+{
+	if (CheckParamIndex(param) && !params[param]->IsDefined())
+		params[param]->SetIntValue(defaultVal);
+}
+
+void IVulkanShader::InitFloatParam(int param, IMaterialVar** params, float defaultVal) const
+{
+	if (CheckParamIndex(param) && !params[param]->IsDefined())
+		params[param]->SetFloatValue(defaultVal);
+}
+
+void IVulkanShader::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const
+{
+	if (CheckParamIndex(param) && !params[param]->IsDefined())
+		params[param]->SetVecValue(defaultValX, defaultValY);
+}
+
+void IVulkanShader::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const
+{
+	if (CheckParamIndex(param) && !params[param]->IsDefined())
+		params[param]->SetVecValue(defaultValX, defaultValY, defaultValZ);
+}
+
+void IVulkanShader::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const
+{
+	if (CheckParamIndex(param) && !params[param]->IsDefined())
+		params[param]->SetVecValue(defaultValX, defaultValY, defaultValZ, defaultValW);
+}
+
 const VulkanShaderParam* IVulkanShader::TryGetParam(int paramIndex) const
 {
 	if (paramIndex < 0)

@@ -4,8 +4,7 @@ using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
 
 VulkanShaderParam::VulkanShaderParam(const char* name, ShaderParamType_t type,
-	const char* defaultVal, const char* help, int index, int flags) :
-	m_Index(index)
+	const char* defaultVal, const char* help, int flags)
 {
 	m_Info.m_pName = name;
 	m_Info.m_Type = type;
@@ -46,10 +45,17 @@ const ShaderParamInfo_t& VulkanShaderParam::GetParamInfo() const
 
 int VulkanShaderParam::GetIndex() const
 {
+	assert(m_Index >= 0); // You must call InitShaderParamIndices on this block
 	return m_Index;
 }
 
 VulkanShaderParam::operator int() const
 {
 	return GetIndex();
+}
+
+void VulkanShaderParam::InitIndex(int index)
+{
+	assert(m_Index == -1);
+	m_Index = index;
 }

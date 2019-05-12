@@ -24,10 +24,14 @@ namespace TF2Vulkan{ namespace Shaders
 	protected:
 		void InitIntParam(int param, IMaterialVar** params, int defaultVal) const;
 		void InitFloatParam(int param, IMaterialVar** params, float defaultVal) const;
+		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
+		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
 
 	private:
 		const VulkanShaderParam* TryGetParam(int paramIndex) const;
+
+		[[nodiscard]] bool CheckParamIndex(int paramIndex) const;
 
 		std::optional<const VulkanShaderParam> m_Overrides[NUM_SHADER_MATERIAL_VARS];
 		const VulkanShaderParam* m_Params = nullptr;
