@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "std_compare.h"
+
 namespace Util{ namespace string
 {
 	using std::to_string;
@@ -31,3 +33,16 @@ namespace Util{ namespace string
 		return std::move(formatted[0]);
 	}
 } }
+
+#ifndef __INTELLISENSE__
+template<typename TChar, typename TAlloc>
+inline std::strong_ordering operator<=>(const std::basic_string<TChar, TAlloc>& lhs, const std::basic_string<TChar, TAlloc>& rhs)
+{
+	if (lhs < rhs)
+		return std::strong_ordering::less;
+	else if (rhs < lhs)
+		return std::strong_ordering::greater;
+	else
+		return std::strong_ordering::equal;
+}
+#endif

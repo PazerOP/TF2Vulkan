@@ -1,9 +1,9 @@
-#include "VulkanShaderParam.h"
+#include "ShaderParamNext.h"
 
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
 
-VulkanShaderParam::VulkanShaderParam(const char* name, ShaderParamType_t type,
+ShaderParamNext::ShaderParamNext(const char* name, ShaderParamType_t type,
 	const char* defaultVal, const char* help, int flags)
 {
 	m_Info.m_pName = name;
@@ -13,48 +13,48 @@ VulkanShaderParam::VulkanShaderParam(const char* name, ShaderParamType_t type,
 	m_Info.m_nFlags = flags;
 }
 
-const char* VulkanShaderParam::GetName() const
+const char* ShaderParamNext::GetName() const
 {
 	return m_Info.m_pName;
 }
 
-const char* VulkanShaderParam::GetHelp() const
+const char* ShaderParamNext::GetHelp() const
 {
 	return m_Info.m_pHelp;
 }
 
-const char* VulkanShaderParam::GetDefault() const
+const char* ShaderParamNext::GetDefault() const
 {
 	return m_Info.m_pDefaultValue;
 }
 
-int VulkanShaderParam::GetFlags() const
+int ShaderParamNext::GetFlags() const
 {
 	return m_Info.m_nFlags;
 }
 
-ShaderParamType_t VulkanShaderParam::GetType() const
+ShaderParamType_t ShaderParamNext::GetType() const
 {
 	return m_Info.m_Type;
 }
 
-const ShaderParamInfo_t& VulkanShaderParam::GetParamInfo() const
+const ShaderParamInfo_t& ShaderParamNext::GetParamInfo() const
 {
 	return m_Info;
 }
 
-int VulkanShaderParam::GetIndex() const
+int ShaderParamNext::GetIndex() const
 {
 	assert(m_Index >= 0); // You must call InitShaderParamIndices on this block
 	return m_Index;
 }
 
-VulkanShaderParam::operator int() const
+ShaderParamNext::operator int() const
 {
 	return GetIndex();
 }
 
-void VulkanShaderParam::InitIndex(int index)
+void ShaderParamNext::InitIndex(int index)
 {
 	assert(m_Index == -1);
 	m_Index = index;

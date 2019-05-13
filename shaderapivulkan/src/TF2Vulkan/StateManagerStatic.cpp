@@ -1,8 +1,10 @@
 #include "interface/internal/IStateManagerStatic.h"
+#include "interface/internal/IShaderInstanceInternal.h"
 #include "IStateManagerDynamic.h"
 #include "IStateManagerVulkan.h"
 #include "shaders/VulkanShaderManager.h"
 
+#include <TF2Vulkan/Util/Buffer.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/interface.h>
 
@@ -52,8 +54,8 @@ namespace
 		void VertexShaderVertexFormat(uint flags, int texCoordCount,
 			int* texCoorDimensions, int userDataSize) override final;
 
-		void SetVertexShader(const char* filename, int staticIndex) override final;
-		void SetPixelShader(const char* filename, int staticIndex) override final;
+		void SetVertexShader(const IVSInstance* instance) override final;
+		void SetPixelShader(const IPSInstance* instance) override final;
 
 		void EnableLighting(bool enable) override final;
 
@@ -111,9 +113,13 @@ namespace
 		void SetState(LogicalShadowStateID id) override;
 		using IStateManagerStatic::GetState;
 		const LogicalShadowState& GetState(LogicalShadowStateID id) const override;
+		const LogicalShadowState& GetCurrentState() const override { return m_State; }
 
 		const TF2Vulkan::IVulkanShader& GetPixelShader() const override;
 		const TF2Vulkan::IVulkanShader& GetVertexShader() const override;
+
+		const IPSInstance* FindOrCreatePSInstance(const char* name, const PSInstanceSettings& settings) override;
+		const IVSInstance* FindOrCreateVSInstance(const char* name, const VSInstanceSettings& settings) override;
 
 	protected:
 		bool HasStateChanged() const;
@@ -121,6 +127,34 @@ namespace
 	private:
 		bool m_Dirty = true;
 		LogicalShadowState m_State;
+
+		struct ShaderInstanceBase : virtual IShaderInstanceInternal
+		{
+			ShaderInstanceBase(const CUtlSymbolDbg& name, const ShaderInstanceSettingsBase& settings);
+			const char* GetName() const override final { return GetVulkanShader().GetName().String(); }
+			const ShaderInstanceSettingsBase& GetBaseSettings() const override final { return *m_InstanceSettings; }
+			const IVulkanShader& GetVulkanShader() const override final { return *m_VulkanShader; }
+			void CreateSpecializationInfo(vk::SpecializationInfo& info,
+				std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const override final;
+
+			const IVulkanShader* m_VulkanShader = nullptr;
+			const ShaderInstanceSettingsBase* m_InstanceSettings = nullptr;
+		};
+		struct PixelShaderInstance final : virtual IPSInstanceInternal, ShaderInstanceBase
+		{
+			PixelShaderInstance(const CUtlSymbolDbg& name, const PSInstanceSettings& settings);
+		};
+		struct VertexShaderInstance final : virtual IVSInstanceInternal, ShaderInstanceBase
+		{
+			VertexShaderInstance(const CUtlSymbolDbg& name, const VSInstanceSettings& settings);
+		};
+
+		struct ShaderInstanceGroup
+		{
+			std::unordered_map<PSInstanceSettings, PixelShaderInstance> m_PSInstances;
+			std::unordered_map<VSInstanceSettings, VertexShaderInstance> m_VSInstances;
+		};
+		std::unordered_map<CUtlSymbolDbg, ShaderInstanceGroup> m_ShaderInstanceGroups;
 
 		std::unordered_map<LogicalShadowState, LogicalShadowStateID> m_StatesToIDs;
 		std::vector<const LogicalShadowState*> m_IDsToStates;
@@ -292,20 +326,18 @@ void ShadowStateManager::VertexShaderVertexFormat(uint flags,
 	SetDirtyVar(oldFmt, fmt, m_Dirty);
 }
 
-void ShadowStateManager::SetVertexShader(const char* filename, int staticIndex)
+void ShadowStateManager::SetVertexShader(const IVSInstance* instance)
 {
 	LOG_FUNC();
 
-	SetDirtyVar(m_State.m_VSName, filename, m_Dirty);
-	SetDirtyVar(m_State.m_VSStaticIndex, staticIndex, m_Dirty);
+	SetDirtyVar(m_State.m_VSShader, &dynamic_cast<const IVSInstanceInternal&>(*instance), m_Dirty);
 }
 
-void ShadowStateManager::SetPixelShader(const char* filename, int staticIndex)
+void ShadowStateManager::SetPixelShader(const IPSInstance* instance)
 {
 	LOG_FUNC();
 
-	SetDirtyVar(m_State.m_PSName, filename, m_Dirty);
-	SetDirtyVar(m_State.m_PSStaticIndex, staticIndex, m_Dirty);
+	SetDirtyVar(m_State.m_PSShader, &dynamic_cast<const IPSInstanceInternal&>(*instance), m_Dirty);
 }
 
 void ShadowStateManager::EnableLighting(bool enable)
@@ -487,8 +519,8 @@ bool ShadowStateManager::UsesVertexAndPixelShaders(LogicalShadowStateID id) cons
 {
 	const auto& state = GetState(id);
 
-	assert(!state.m_VSName == !state.m_PSName);
-	return !!state.m_VSName;
+	assert(!state.m_VSShader == !state.m_PSShader);
+	return !!state.m_VSShader || !!state.m_PSShader;
 }
 
 bool ShadowStateManager::IsDepthWriteEnabled(LogicalShadowStateID id) const
@@ -531,9 +563,95 @@ bool ShadowStateManager::IsAnyRenderTargetBound() const
 
 const TF2Vulkan::IVulkanShader& ShadowStateManager::GetPixelShader() const
 {
-	return g_ShaderManager.FindOrCreateShader(m_State.m_PSName);
+	return g_ShaderManager.FindOrCreateShader(m_State.m_PSShader->GetName());
 }
 const TF2Vulkan::IVulkanShader& ShadowStateManager::GetVertexShader() const
 {
-	return g_ShaderManager.FindOrCreateShader(m_State.m_VSName);
+	return g_ShaderManager.FindOrCreateShader(m_State.m_VSShader->GetName());
+}
+
+const IPSInstance* ShadowStateManager::FindOrCreatePSInstance(const char* name, const PSInstanceSettings& settings)
+{
+	auto& group = m_ShaderInstanceGroups[name].m_PSInstances;
+
+	if (auto found = group.find(settings); found != group.end())
+		return &found->second;
+
+	return &group.emplace(settings, PixelShaderInstance(name, settings)).first->second;
+}
+
+const IVSInstance* ShadowStateManager::FindOrCreateVSInstance(const char* name, const VSInstanceSettings& settings)
+{
+	auto& group = m_ShaderInstanceGroups[name].m_VSInstances;
+
+	if (auto found = group.find(settings); found != group.end())
+		return &found->second;
+
+	return &group.emplace(settings, VertexShaderInstance(name, settings)).first->second;
+}
+
+ShadowStateManager::ShaderInstanceBase::ShaderInstanceBase(const CUtlSymbolDbg& name,
+	const ShaderInstanceSettingsBase& settings) :
+	m_VulkanShader(&g_ShaderManager.FindOrCreateShader(name)),
+	m_InstanceSettings(&settings)
+{
+}
+
+ShadowStateManager::PixelShaderInstance::PixelShaderInstance(const CUtlSymbolDbg& name,
+	const PSInstanceSettings& settings) :
+	ShaderInstanceBase(name, settings)
+{
+}
+
+ShadowStateManager::VertexShaderInstance::VertexShaderInstance(const CUtlSymbolDbg& name,
+	const VSInstanceSettings& settings) :
+	ShaderInstanceBase(name, settings)
+{
+}
+
+void ShadowStateManager::ShaderInstanceBase::CreateSpecializationInfo(
+	vk::SpecializationInfo& info, std::vector<vk::SpecializationMapEntry>& entries,
+	std::vector<std::byte>& data) const
+{
+	using namespace ShaderReflection;
+	const auto& reflData = GetVulkanShader().GetReflectionData();
+
+	for (const auto& value : m_InstanceSettings->m_SpecConstants)
+	{
+		auto foundConst = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
+			[&](const SpecializationConstant & c) { return c.m_Name == value.m_Name; });
+
+		if (foundConst == reflData.m_SpecConstants.end())
+		{
+			assert(!"Unknown shader specialization constant");
+			continue;
+		}
+
+		auto& entry = entries.emplace_back();
+		entry.constantID = foundConst->m_ConstantID;
+		entry.size = sizeof(uint32_t);
+		Util::SafeConvert(data.size(), entry.offset);
+
+		switch (foundConst->m_Type)
+		{
+		case VariableType::Float:
+			Util::Buffer::Put(data, std::get<float>(value.m_Value));
+			break;
+		case VariableType::Int:
+			Util::Buffer::Put(data, std::get<int>(value.m_Value));
+			break;
+		case VariableType::Boolean:
+			Util::Buffer::Put(data, std::get<bool>(value.m_Value));
+			break;
+
+		default:
+			assert(!"Unknown/unexpected shader specialization constant variable type");
+			continue;
+		}
+	}
+
+	info.pMapEntries = entries.data();
+	info.mapEntryCount = entries.size();
+	Util::SafeConvert(data.size(), info.dataSize);
+	info.pData = data.data();
 }

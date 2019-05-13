@@ -92,7 +92,7 @@
     <None Include="src\HLSL\common_vs_fxc.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="src\HLSL\vertexlit_and_unlit_generic.vert.hlsl">
+    <CustomBuild Include="src\HLSL\xlitgeneric.vert.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <FileType>Document</FileType>
@@ -101,17 +101,14 @@
   <ItemGroup>
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\AlignedTypes.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderBlobs.h" />
-    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderCompatData.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderData.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderDataShared.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ShaderBlobs.cpp" />
-    <ClCompile Include="src\ShaderCompatData\XLitGeneric.cpp" />
-    <ClCompile Include="src\ShaderCompatData\XLitGenericBump.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="src\HLSL\vertexlit_and_unlit_generic.frag.hlsl">
+    <CustomBuild Include="src\HLSL\xlitgeneric.frag.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <FileType>Document</FileType>
@@ -128,6 +125,18 @@
     <CustomBuild Include="src\HLSL\bik.frag.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\HLSL\bufferclearobeystencil.frag.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="src\HLSL\bufferclearobeystencil.vert.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

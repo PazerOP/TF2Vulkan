@@ -1,4 +1,4 @@
-#include "IVulkanShader.h"
+#include "BaseShaderNext.h"
 
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/SafeConvert.h>
@@ -8,13 +8,13 @@
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
 
-IVulkanShader::IVulkanShader(const VulkanShaderParam* params, size_t paramCount) :
+BaseShaderNext::BaseShaderNext(const ShaderParamNext* params, size_t paramCount) :
 	m_Params(params), m_ParamCount(paramCount)
 {
 	assert(m_Params);
 }
 
-const char* IVulkanShader::GetParamName(int paramIndex) const
+const char* BaseShaderNext::GetParamName(int paramIndex) const
 {
 	LOG_FUNC();
 
@@ -24,7 +24,7 @@ const char* IVulkanShader::GetParamName(int paramIndex) const
 	return BaseClass::GetParamName(paramIndex);
 }
 
-const char* IVulkanShader::GetParamHelp(int paramIndex) const
+const char* BaseShaderNext::GetParamHelp(int paramIndex) const
 {
 	LOG_FUNC();
 
@@ -34,7 +34,7 @@ const char* IVulkanShader::GetParamHelp(int paramIndex) const
 	return BaseClass::GetParamHelp(paramIndex);
 }
 
-ShaderParamType_t IVulkanShader::GetParamType(int paramIndex) const
+ShaderParamType_t BaseShaderNext::GetParamType(int paramIndex) const
 {
 	LOG_FUNC();
 
@@ -44,7 +44,7 @@ ShaderParamType_t IVulkanShader::GetParamType(int paramIndex) const
 	return BaseClass::GetParamType(paramIndex);
 }
 
-const char* IVulkanShader::GetParamDefault(int paramIndex) const
+const char* BaseShaderNext::GetParamDefault(int paramIndex) const
 {
 	LOG_FUNC();
 
@@ -54,7 +54,7 @@ const char* IVulkanShader::GetParamDefault(int paramIndex) const
 	return BaseClass::GetParamDefault(paramIndex);
 }
 
-int IVulkanShader::GetParamFlags(int paramIndex) const
+int BaseShaderNext::GetParamFlags(int paramIndex) const
 {
 	LOG_FUNC();
 
@@ -64,12 +64,12 @@ int IVulkanShader::GetParamFlags(int paramIndex) const
 	return BaseClass::GetParamFlags(paramIndex);
 }
 
-int IVulkanShader::GetNumParams() const
+int BaseShaderNext::GetNumParams() const
 {
-	return Util::SafeConvert<int>(m_ParamCount);
+	return Util::SafeConvert<int>(m_ParamCount) + BaseClass::GetNumParams();
 }
 
-bool IVulkanShader::CheckParamIndex(int paramIndex) const
+bool BaseShaderNext::CheckParamIndex(int paramIndex) const
 {
 	if (paramIndex < 0 || paramIndex >= GetNumParams())
 	{
@@ -80,37 +80,52 @@ bool IVulkanShader::CheckParamIndex(int paramIndex) const
 	return true;
 }
 
-void IVulkanShader::InitIntParam(int param, IMaterialVar** params, int defaultVal) const
+void BaseShaderNext::InitIntParam(int param, IMaterialVar** params, int defaultVal) const
 {
 	if (CheckParamIndex(param) && !params[param]->IsDefined())
 		params[param]->SetIntValue(defaultVal);
 }
 
-void IVulkanShader::InitFloatParam(int param, IMaterialVar** params, float defaultVal) const
+void BaseShaderNext::InitFloatParam(int param, IMaterialVar** params, float defaultVal) const
 {
 	if (CheckParamIndex(param) && !params[param]->IsDefined())
 		params[param]->SetFloatValue(defaultVal);
 }
 
-void IVulkanShader::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const
+void BaseShaderNext::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const
 {
 	if (CheckParamIndex(param) && !params[param]->IsDefined())
 		params[param]->SetVecValue(defaultValX, defaultValY);
 }
 
-void IVulkanShader::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const
+void BaseShaderNext::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const
 {
 	if (CheckParamIndex(param) && !params[param]->IsDefined())
 		params[param]->SetVecValue(defaultValX, defaultValY, defaultValZ);
 }
 
-void IVulkanShader::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const
+void BaseShaderNext::InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const
 {
 	if (CheckParamIndex(param) && !params[param]->IsDefined())
 		params[param]->SetVecValue(defaultValX, defaultValY, defaultValZ, defaultValW);
 }
 
-const VulkanShaderParam* IVulkanShader::TryGetParam(int paramIndex) const
+void BaseShaderNext::OnDrawElements(IMaterialVar** params, IShaderShadow* pShaderShadow,
+	IShaderDynamicAPI* pShaderAPI, VertexCompressionType_t vertexCompression,
+	CBasePerMaterialContextData** pContextDataPtr)
+{
+	auto shadowNext = dynamic_cast<IShaderShadowNext*>(pShaderShadow);
+	if (pShaderShadow && !shadowNext)
+	{
+		assert(!"Invalid shader shadow hierarchy");
+		return;
+	}
+
+	return OnDrawElements(params, dynamic_cast<IShaderShadowNext*>(pShaderShadow), pShaderAPI,
+		vertexCompression, pContextDataPtr);
+}
+
+const ShaderParamNext* BaseShaderNext::TryGetParam(int paramIndex) const
 {
 	if (paramIndex < 0)
 		throw std::runtime_error(__FUNCTION__ "(): Invalid parameter index");

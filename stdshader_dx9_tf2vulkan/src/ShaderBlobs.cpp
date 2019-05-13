@@ -10,12 +10,14 @@ namespace
 {
 #include "Generated/bik.vert.h"
 #include "Generated/bik.frag.h"
-#include "Generated/vertexlit_and_unlit_generic.vert.h"
-#include "Generated/vertexlit_and_unlit_generic.frag.h"
+#include "Generated/bufferclearobeystencil.vert.h"
+#include "Generated/bufferclearobeystencil.frag.h"
+#include "Generated/xlitgeneric.vert.h"
+#include "Generated/xlitgeneric.frag.h"
 }
 
 #define SHADER_CASE(type, varName) \
-case ShaderBlob:: type: \
+case ShaderBlob:: ## type: \
 { \
 	data = (varName); \
 	size = std::size((varName)); \
@@ -32,7 +34,9 @@ bool TF2Vulkan::GetShaderBlob(ShaderBlob type, const void*& data, size_t& size)
 
 		SHADER_CASE(Bik_VS, bik_vert_spirv);
 		SHADER_CASE(Bik_PS, bik_frag_spirv);
-		SHADER_CASE(VertexLitAndUnlitGeneric_VS, vertexlit_and_unlit_generic_vert_spirv);
-		SHADER_CASE(VertexLitAndUnlitGeneric_PS, vertexlit_and_unlit_generic_frag_spirv);
+		SHADER_CASE(BufferClearObeyStencil_VS, bufferclearobeystencil_vert_spirv);
+		SHADER_CASE(BufferClearObeyStencil_PS, bufferclearobeystencil_frag_spirv);
+		SHADER_CASE(XLitGeneric_VS, xlitgeneric_vert_spirv);
+		SHADER_CASE(XLitGeneric_PS, xlitgeneric_frag_spirv);
 	}
 }

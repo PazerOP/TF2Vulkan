@@ -11,8 +11,6 @@
 
 // Bypasses some questionable dll verification code
 
-static constexpr auto MAGIC_OFFSET = 43;
-static std::byte* s_VerifyData;
 static HINSTANCE s_DLLInstance;
 
 BOOL __stdcall DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)

@@ -5,6 +5,7 @@
 #include "MaterialSystemHardwareConfig.h"
 #include "SamplerSettings.h"
 #include "interface/internal/IShaderDeviceInternal.h"
+#include "interface/internal/IShaderInstanceInternal.h"
 #include "shaders/VulkanShaderManager.h"
 #include "VulkanFactories.h"
 
@@ -66,22 +67,18 @@ namespace
 		constexpr PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineLayoutKey);
 
-		CUtlSymbolDbg m_VSName;
-		int m_VSStaticIndex;
+		const IVSInstanceInternal* m_VSShader;
 		VertexFormat m_VSVertexFormat;
 
-		CUtlSymbolDbg m_PSName;
-		int m_PSStaticIndex;
+		const IPSInstanceInternal* m_PSShader;
 	};
 }
 
 STD_HASH_DEFINITION(PipelineLayoutKey,
-	v.m_VSName,
-	v.m_VSStaticIndex,
+	v.m_VSShader,
 	v.m_VSVertexFormat,
 
-	v.m_PSName,
-	v.m_PSStaticIndex
+	v.m_PSShader
 );
 
 namespace
@@ -366,16 +363,17 @@ static void AttachVector(const T*& destData, TSize& destSize, const std::vector<
 	Util::SafeConvert(src.size(), destSize);
 }
 
+template<typename T>
 static ShaderStageCreateInfo CreateStageInfo(
-	const CUtlSymbolDbg& name, int shaderCombo, vk::ShaderStageFlagBits type)
+	const T& shader, vk::ShaderStageFlagBits type)
 {
 	ShaderStageCreateInfo retVal;
 
 	auto& ci = retVal.m_CreateInfo;
 
-	retVal.m_Shader = &g_ShaderManager.FindOrCreateShader(name);
+	retVal.m_Shader = &shader.GetVulkanShader();
 
-	retVal.m_Shader->CreateSpecializationInfo(shaderCombo, retVal.m_SpecializationInfo,
+	shader.CreateSpecializationInfo(retVal.m_SpecializationInfo,
 		retVal.m_SpecializationMapEntries, retVal.m_SpecializationData);
 
 	ci.stage = type;
@@ -386,10 +384,9 @@ static ShaderStageCreateInfo CreateStageInfo(
 	return retVal;
 }
 
-static void CreateBindings(DescriptorSetLayout& layout, const CUtlSymbolDbg& shaderName)
+static void CreateBindings(DescriptorSetLayout& layout, const IShaderInstanceInternal& shader)
 {
-	const auto& reflectionData =
-		g_ShaderManager.FindOrCreateShader(shaderName).GetReflectionData();
+	const auto& reflectionData = shader.GetVulkanShader().GetReflectionData();
 
 	auto& bindings = layout.m_Bindings;
 	auto& bufTypes = layout.m_BufferTypes;
@@ -453,8 +450,8 @@ static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& ke
 	DescriptorSetLayout retVal;
 
 	// Bindings
-	CreateBindings(retVal, key.m_VSName);
-	CreateBindings(retVal, key.m_PSName);
+	CreateBindings(retVal, *key.m_VSShader);
+	CreateBindings(retVal, *key.m_PSShader);
 
 	// Descriptor set layout
 	{
@@ -665,15 +662,15 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	// Shader stage create info(s)
 	{
 		auto& cis = retVal.m_ShaderStageCIs;
-		cis.emplace_back(CreateStageInfo(key.m_VSName.String(), key.m_VSStaticIndex, vk::ShaderStageFlagBits::eVertex));
-		cis.emplace_back(CreateStageInfo(key.m_PSName.String(), key.m_PSStaticIndex, vk::ShaderStageFlagBits::eFragment));
+		cis.emplace_back(CreateStageInfo(*key.m_VSShader, vk::ShaderStageFlagBits::eVertex));
+		cis.emplace_back(CreateStageInfo(*key.m_PSShader, vk::ShaderStageFlagBits::eFragment));
 	}
 
 	// Vertex input state create info
 	{
 		auto& attrs = retVal.m_VertexInputAttributeDescriptions;
 
-		const auto& vertexShaderRefl = g_ShaderManager.FindOrCreateShader(key.m_VSName).GetReflectionData();
+		const auto& vertexShaderRefl = key.m_VSShader->GetVulkanShader().GetReflectionData();
 
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
@@ -1362,12 +1359,10 @@ PipelineKey::PipelineKey(
 constexpr PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
 	const LogicalDynamicState& dynamicState) :
 
-	m_VSName(staticState.m_VSName),
-	m_VSStaticIndex(staticState.m_VSStaticIndex),
+	m_VSShader(staticState.m_VSShader),
 	m_VSVertexFormat(staticState.m_VSVertexFormat),
 
-	m_PSName(staticState.m_PSName),
-	m_PSStaticIndex(staticState.m_PSStaticIndex)
+	m_PSShader(staticState.m_PSShader)
 {
 }
 

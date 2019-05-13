@@ -6,8 +6,10 @@ namespace TF2Vulkan
 	{
 		Bik_VS,
 		Bik_PS,
-		VertexLitAndUnlitGeneric_VS,
-		VertexLitAndUnlitGeneric_PS,
+		BufferClearObeyStencil_VS,
+		BufferClearObeyStencil_PS,
+		XLitGeneric_VS,
+		XLitGeneric_PS,
 	};
 
 	bool GetShaderBlob(ShaderBlob type, const void*& data, size_t& size);

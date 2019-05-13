@@ -658,6 +658,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 
 		assert(!m_Data.m_DepthTexture); // TODO
 		m_Data.m_DepthTexture = &g_TextureManager.CreateTexture("__rt_tf2vulkan_depth", ci);
+		assert(m_Data.m_DepthTexture);
 	}
 
 	m_Data.m_SwapChain = std::move(newSwapChain);

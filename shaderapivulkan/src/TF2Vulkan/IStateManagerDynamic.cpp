@@ -179,7 +179,7 @@ void IShaderAPI_StateManagerDynamic::ClearColor4ub(uint8_t r, uint8_t g, uint8_t
 void IShaderAPI_StateManagerDynamic::PreDraw()
 {
 	auto& vsData = m_State.m_ShaderData.m_VSData;
-	const auto viewProj = m_State.m_Matrices.at(MATERIAL_PROJECTION) * m_State.m_Matrices.at(MATERIAL_VIEW);	
+	const auto viewProj = m_State.m_Matrices.at(MATERIAL_PROJECTION) * m_State.m_Matrices.at(MATERIAL_VIEW);
 	vsData.m_Matrices.m_ViewProj.SetFrom(viewProj.Transpose());
 
 	const auto& modelMatrix = m_State.m_Matrices.at(MATERIAL_MODEL);
@@ -294,33 +294,44 @@ void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITex
 
 void IShaderAPI_StateManagerDynamic::SetVertexShaderConstant(int var, const float* vec, int numConst, bool force)
 {
+	NOT_IMPLEMENTED_FUNC();
+#if false
 	LOG_FUNC();
 	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
 		m_State.m_ShaderData.m_VSData, Util::SafeConvert<uint32_t>(var),
 		reinterpret_cast<const ShaderConstants::float4*>(vec),
 		Util::SafeConvert<uint32_t>(numConst));
+#endif
 }
 
 void IShaderAPI_StateManagerDynamic::SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force)
 {
+	NOT_IMPLEMENTED_FUNC();
+#if false
 	LOG_FUNC();
 	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
 		m_State.m_ShaderData.m_VSData, Util::SafeConvert<uint32_t>(var),
 		reinterpret_cast<const ShaderConstants::bool4*>(vec),
 		Util::SafeConvert<uint32_t>(numBools));
+#endif
 }
 
 void IShaderAPI_StateManagerDynamic::SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force)
 {
+	NOT_IMPLEMENTED_FUNC();
+#if false
 	LOG_FUNC();
 	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
 		m_State.m_ShaderData.m_VSData, Util::SafeConvert<uint32_t>(var),
 		reinterpret_cast<const ShaderConstants::int4*>(vec),
 		Util::SafeConvert<uint32_t>(numIntVecs));
+#endif
 }
 
 void IShaderAPI_StateManagerDynamic::SetPixelShaderConstant(int var, const float* vec, int numVecs, bool force)
 {
+	NOT_IMPLEMENTED_FUNC();
+#if false
 	LOG_FUNC();
 	auto& ps = g_StateManagerStatic.GetPixelShader();
 	[[maybe_unused]] auto dbgName = ps.GetName();
@@ -328,24 +339,31 @@ void IShaderAPI_StateManagerDynamic::SetPixelShaderConstant(int var, const float
 		m_State.m_ShaderData.m_PSData, Util::SafeConvert<uint32_t>(var),
 		reinterpret_cast<const ShaderConstants::float4*>(vec),
 		Util::SafeConvert<uint32_t>(numVecs));
+#endif
 }
 
 void IShaderAPI_StateManagerDynamic::SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force)
 {
+	NOT_IMPLEMENTED_FUNC();
+#if false
 	LOG_FUNC();
 	g_StateManagerStatic.GetPixelShader().GetCompatData().SetConstants(
 		m_State.m_ShaderData.m_PSData, Util::SafeConvert<uint32_t>(var),
 		reinterpret_cast<const ShaderConstants::bool4*>(vec),
 		Util::SafeConvert<uint32_t>(numBools));
+#endif
 }
 
 void IShaderAPI_StateManagerDynamic::SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force)
 {
+	NOT_IMPLEMENTED_FUNC();
+#if false
 	LOG_FUNC();
 	g_StateManagerStatic.GetPixelShader().GetCompatData().SetConstants(
 		m_State.m_ShaderData.m_PSData, Util::SafeConvert<uint32_t>(var),
 		reinterpret_cast<const ShaderConstants::int4*>(vec),
 		Util::SafeConvert<uint32_t>(numIntVecs));
+#endif
 }
 
 void IShaderAPI_StateManagerDynamic::SetFloatRenderingParameter(RenderParamFloat_t param, float value)

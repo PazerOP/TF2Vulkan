@@ -21,6 +21,9 @@
 
 namespace TF2Vulkan
 {
+	class IPSInstanceInternal;
+	class IVSInstanceInternal;
+
 	enum class LogicalShadowStateID : size_t
 	{
 		Invalid = size_t(-1)
@@ -91,14 +94,12 @@ namespace TF2Vulkan
 		};
 
 		// Vertex shader settings
-		CUtlSymbolDbg m_VSName;
-		int m_VSStaticIndex = 0;
+		const IVSInstanceInternal* m_VSShader = nullptr;
 		VertexFormat m_VSVertexFormat;
 		MorphFormat_t m_VSMorphFormat = {};
 
 		// Pixel shader settings
-		CUtlSymbolDbg m_PSName;
-		int m_PSStaticIndex = 0;
+		const IPSInstanceInternal* m_PSShader = nullptr;
 		std::array<Sampler, 16> m_PSSamplers;
 
 		// Depth settings
@@ -146,13 +147,11 @@ STD_HASH_DEFINITION(TF2Vulkan::LogicalShadowState::Sampler,
 );
 
 STD_HASH_DEFINITION(TF2Vulkan::LogicalShadowState,
-	v.m_VSName,
-	v.m_VSStaticIndex,
+	v.m_VSShader,
 	v.m_VSVertexFormat,
 	v.m_VSMorphFormat,
 
-	v.m_PSName,
-	v.m_PSStaticIndex,
+	v.m_PSShader,
 	v.m_PSSamplers,
 
 	v.m_DepthCompareFunc,

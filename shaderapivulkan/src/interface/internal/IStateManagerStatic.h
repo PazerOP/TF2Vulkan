@@ -1,16 +1,16 @@
 #pragma once
 
 #include "TF2Vulkan/LogicalState.h"
+#include <TF2Vulkan/IShaderShadowNext.h>
 
 #include <shaderapi/ishaderapi.h>
-#include <shaderapi/ishadershadow.h>
 
 namespace TF2Vulkan
 {
 	class IVulkanCommandBuffer;
 	class IVulkanShader;
 
-	class IStateManagerStatic : public IShaderShadow
+	class IStateManagerStatic : public IShaderShadowNext
 	{
 	public:
 		virtual void ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf) = 0;
@@ -27,6 +27,7 @@ namespace TF2Vulkan
 
 		virtual void SetState(LogicalShadowStateID id) = 0;
 		virtual const LogicalShadowState& GetState(LogicalShadowStateID id) const = 0;
+		virtual const LogicalShadowState& GetCurrentState() const = 0;
 
 		// Helpers
 		void SetState(StateSnapshot_t id)

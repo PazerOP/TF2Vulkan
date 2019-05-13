@@ -6,10 +6,10 @@
 
 namespace TF2Vulkan{ namespace Shaders
 {
-	class VulkanShaderParam final
+	class ShaderParamNext final
 	{
 	public:
-		VulkanShaderParam(const char* name, ShaderParamType_t type, const char* defaultVal,
+		ShaderParamNext(const char* name, ShaderParamType_t type, const char* defaultVal,
 			const char* help, int flags = 0);
 
 		const char* GetName() const;
@@ -30,5 +30,5 @@ namespace TF2Vulkan{ namespace Shaders
 	};
 } }
 
-#define VSHADER_PARAM(param, paramType, paramDefault, paramHelp) \
-	::TF2Vulkan::Shaders::VulkanShaderParam param = { "$" #param, paramType, paramDefault, paramHelp };
+#define NSHADER_PARAM(param, paramType, paramDefault, paramHelp) \
+	::TF2Vulkan::Shaders::ShaderParamNext param = { "$" #param, paramType, paramDefault, paramHelp };

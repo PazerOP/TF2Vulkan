@@ -13,20 +13,18 @@
 #include <unordered_map>
 
 using namespace TF2Vulkan;
-using namespace TF2Vulkan::ShaderCompatData;
 using namespace TF2Vulkan::ShaderReflection;
 
 namespace
 {
 	struct ShaderInfo
 	{
-		constexpr ShaderInfo(ShaderBlob blob, const IShaderCompatData& compatData) :
-			m_Blob(blob), m_CompatData(&compatData)
+		constexpr ShaderInfo(ShaderBlob blob) :
+			m_Blob(blob)
 		{
 		}
 
 		ShaderBlob m_Blob;
-		const IShaderCompatData* m_CompatData = nullptr;
 	};
 
 	class VulkanShaderManager final : public IVulkanShaderManager
@@ -38,12 +36,9 @@ namespace
 		struct CompiledShader final : TF2Vulkan::IVulkanShader
 		{
 			CompiledShader(const CUtlSymbolDbg& name);
-			const ShaderCompatData::IShaderCompatData& GetCompatData() const override { return *m_Info->m_CompatData; }
 			vk::ShaderModule GetModule() const override { return m_Shader.get(); }
 			const CUtlSymbolDbg& GetName() const override { return m_Name; }
 			const ReflectionData& GetReflectionData() const override { return m_ReflectionData; }
-			void CreateSpecializationInfo(uint32_t combo, vk::SpecializationInfo& info,
-				std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const override;
 
 			CUtlSymbolDbg m_Name;
 			vk::UniqueShaderModule m_Shader;
@@ -54,38 +49,6 @@ namespace
 		std::recursive_mutex m_Mutex;
 		std::unordered_map<CUtlSymbolDbg, CompiledShader> m_Shaders;
 	};
-
-	struct EmptyShaderCompatData final : IShaderCompatData
-	{
-		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::int4& vec4) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-		void SetConstant(ShaderConstants::VSData& data, uint32_t var, const ShaderConstants::bool4& vec4) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::float4& vec4) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::int4& vec4) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-		void SetConstant(ShaderConstants::PSData& data, uint32_t var, const ShaderConstants::bool4& vec4) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-		const SpecConstMapping* GetSpecConstMappings(size_t& count) const override
-		{
-			NOT_IMPLEMENTED_FUNC();
-		}
-	} static const s_EmptyShaderCompatData;
 }
 
 static VulkanShaderManager s_ShaderManager;
@@ -93,12 +56,12 @@ IVulkanShaderManager& TF2Vulkan::g_ShaderManager = s_ShaderManager;
 
 static const std::unordered_map<std::string_view, ShaderInfo> s_ShaderBlobMapping =
 {
-	{ "bik_vs20", { ShaderBlob::Bik_VS, s_EmptyShaderCompatData } },
-	{ "bik_ps20b", { ShaderBlob::Bik_PS, s_EmptyShaderCompatData } },
-	{ "vertexlit_and_unlit_generic_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, g_XLitGeneric } },
-	{ "vertexlit_and_unlit_generic_ps30", { ShaderBlob::VertexLitAndUnlitGeneric_PS, g_XLitGeneric } },
-	{ "vertexlit_and_unlit_generic_bump_vs30", { ShaderBlob::VertexLitAndUnlitGeneric_VS, g_XLitGenericBump } },
-	{ "vertexlit_and_unlit_generic_bump_ps30", { ShaderBlob::VertexLitAndUnlitGeneric_PS, g_XLitGenericBump } },
+	{ "bik_vs20", { ShaderBlob::Bik_VS } },
+	{ "bik_ps20b", { ShaderBlob::Bik_PS } },
+	{ "bufferclearobeystencil_vs", { ShaderBlob::BufferClearObeyStencil_PS } },
+	{ "bufferclearobeystencil_ps", { ShaderBlob::BufferClearObeyStencil_VS } },
+	{ "xlitgeneric_vs", { ShaderBlob::XLitGeneric_VS } },
+	{ "xlitgeneric_ps", { ShaderBlob::XLitGeneric_PS } },
 };
 
 auto VulkanShaderManager::FindOrCreateShader(const CUtlSymbolDbg& id) -> const TF2Vulkan::IVulkanShader&
@@ -272,37 +235,4 @@ VulkanShaderManager::CompiledShader::CompiledShader(const CUtlSymbolDbg& name) :
 
 	m_Shader = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
 	g_ShaderDevice.SetDebugName(m_Shader, m_Name.String());
-}
-
-void VulkanShaderManager::CompiledShader::CreateSpecializationInfo(uint32_t combo,
-	vk::SpecializationInfo& info, std::vector<vk::SpecializationMapEntry>& entries,
-	std::vector<std::byte>& data) const
-{
-	const auto& reflData = GetReflectionData();
-
-	// TODO: Don't set spec constants to their default values
-	size_t specConstMappingsCount;
-	const auto* specConstMappings = m_Info->m_CompatData->GetSpecConstMappings(specConstMappingsCount);
-	for (size_t i = 0; i < specConstMappingsCount; i++)
-	{
-		const auto& mapping = specConstMappings[i];
-
-		auto value = (combo >> mapping.m_ComboOffset) & mapping.m_ComboMask;
-
-		auto foundConst = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
-			[&](const SpecializationConstant & c) { return c.m_Name == mapping.m_SpecConstName; });
-		if (foundConst == reflData.m_SpecConstants.end())
-			continue;
-
-		auto& entry = entries.emplace_back();
-		entry.constantID = foundConst->m_ConstantID;
-		entry.size = sizeof(uint32_t);
-		Util::SafeConvert(data.size(), entry.offset);
-		Util::Buffer::Put(data, value);
-	}
-
-	info.pMapEntries = entries.data();
-	info.mapEntryCount = entries.size();
-	Util::SafeConvert(data.size(), info.dataSize);
-	info.pData = data.data();
 }

@@ -79,14 +79,15 @@
   <ItemGroup>
     <ClCompile Include="src\ShaderDLL.cpp" />
     <ClCompile Include="src\ShaderDLLVerification.cpp" />
-    <ClCompile Include="src\shaders\IVulkanShader.cpp" />
-    <ClCompile Include="src\shaders\VulkanShaderParam.cpp" />
+    <ClCompile Include="src\shaders\BaseShaderNext.cpp" />
+    <ClCompile Include="src\shaders\BufferClearObeyStencil.cpp" />
+    <ClCompile Include="src\shaders\ShaderParamNext.cpp" />
     <ClCompile Include="src\shaders\XLitGeneric.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\shaders\IVulkanShader.h" />
+    <ClInclude Include="src\shaders\BaseShaderNext.h" />
     <ClInclude Include="src\shaders\ParamGroups.h" />
-    <ClInclude Include="src\shaders\VulkanShaderParam.h" />
+    <ClInclude Include="src\shaders\ShaderParamNext.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
