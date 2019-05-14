@@ -8,6 +8,8 @@ namespace TF2Vulkan
 		Bik_PS,
 		BufferClearObeyStencil_VS,
 		BufferClearObeyStencil_PS,
+		Fillrate_VS,
+		Fillrate_PS,
 		XLitGeneric_VS,
 		XLitGeneric_PS,
 	};

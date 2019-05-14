@@ -577,7 +577,7 @@ static void ValidateType(const void* base, int elementIndex, int elementSize)
 		return;
 
 	const T& typed = *reinterpret_cast<const T*>(reinterpret_cast<const std::byte*>(base) + elementSize * elementIndex);
-	using namespace ShaderConstants;
+	using namespace Shaders;
 	if constexpr (std::is_same_v<T, float1> || std::is_same_v<T, float2> || std::is_same_v<T, float3> || std::is_same_v<T, float4>)
 	{
 		if constexpr (T::ELEM_COUNT >= 1)
@@ -597,7 +597,7 @@ void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)
 
 	for (int i = 0; i < vertexCount; i++)
 	{
-		ValidateType<ShaderConstants::float3>(desc.m_pPosition, i, desc.m_VertexSize_Position);
+		ValidateType<Shaders::float3>(desc.m_pPosition, i, desc.m_VertexSize_Position);
 	}
 }
 

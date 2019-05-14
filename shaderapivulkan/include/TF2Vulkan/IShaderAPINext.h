@@ -1,11 +1,14 @@
 #pragma once
 
+#include "ISpecConstLayout.h"
 #include <shaderapi/ishaderapi.h>
 
 namespace TF2Vulkan
 {
-	class IShaderAPINext : public IShaderAPI
+	class IUniformBufferManager;
+	class IShaderAPINext
 	{
 	public:
+		virtual IUniformBufferManager* FindOrCreateUBM(size_t size) = 0;
 	};
 }

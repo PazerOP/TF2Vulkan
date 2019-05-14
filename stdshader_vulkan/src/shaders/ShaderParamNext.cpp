@@ -13,6 +13,17 @@ ShaderParamNext::ShaderParamNext(const char* name, ShaderParamType_t type,
 	m_Info.m_nFlags = flags;
 }
 
+ShaderParamNext::ShaderParamNext(ShaderMaterialVars_t overrideVar, ShaderParamType_t type,
+	const char* defaultVal, const char* help, int flags) :
+	m_Index(overrideVar)
+{
+	m_Info.m_pName = "override";
+	m_Info.m_Type = type;
+	m_Info.m_pDefaultValue = defaultVal;
+	m_Info.m_pHelp = help;
+	m_Info.m_nFlags = flags;
+}
+
 const char* ShaderParamNext::GetName() const
 {
 	return m_Info.m_pName;
@@ -54,8 +65,14 @@ ShaderParamNext::operator int() const
 	return GetIndex();
 }
 
-void ShaderParamNext::InitIndex(int index)
+bool ShaderParamNext::InitIndex(int index)
 {
-	assert(m_Index == -1);
-	m_Index = index;
+	if (m_Index == -1)
+	{
+		m_Index = index;
+		return true;
+	}
+
+	assert(m_Index >= 0 && m_Index < NUM_SHADER_MATERIAL_VARS);
+	return false;
 }

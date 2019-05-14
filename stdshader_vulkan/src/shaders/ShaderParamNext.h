@@ -11,6 +11,8 @@ namespace TF2Vulkan{ namespace Shaders
 	public:
 		ShaderParamNext(const char* name, ShaderParamType_t type, const char* defaultVal,
 			const char* help, int flags = 0);
+		ShaderParamNext(ShaderMaterialVars_t overrideVar, ShaderParamType_t type, const char* defaultVal,
+			const char* help, int flags = 0);
 
 		const char* GetName() const;
 		const char* GetHelp() const;
@@ -22,7 +24,7 @@ namespace TF2Vulkan{ namespace Shaders
 		int GetIndex() const;
 		operator int() const;
 
-		void InitIndex(int index);
+		[[nodiscard]] bool InitIndex(int index);
 
 	private:
 		ShaderParamInfo_t m_Info;
@@ -31,4 +33,7 @@ namespace TF2Vulkan{ namespace Shaders
 } }
 
 #define NSHADER_PARAM(param, paramType, paramDefault, paramHelp) \
-	::TF2Vulkan::Shaders::ShaderParamNext param = { "$" #param, paramType, paramDefault, paramHelp };
+	::TF2Vulkan::Shaders::ShaderParamNext param = { "$" #param, paramType, paramDefault, paramHelp }
+
+#define NSHADER_PARAM_OVERRIDE(param, paramType, paramDefault, paramHelp, flags) \
+	::TF2Vulkan::Shaders::ShaderParamNext param = { static_cast<ShaderMaterialVars_t>(::param), paramType, paramDefault, paramHelp, flags }

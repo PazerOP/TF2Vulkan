@@ -16,6 +16,26 @@ namespace std
 	};
 }
 
+namespace Util{ namespace array
+{
+	namespace detail
+	{
+		template<typename T, size_t S1, size_t S2, size_t... I1, size_t... I2>
+		static constexpr std::array<T, S1 + S2> concat_impl(
+			const std::array<T, S1>& a1, const std::array<T, S2>& a2,
+			std::index_sequence<I1...>, std::index_sequence<I2...>)
+		{
+			return std::array<T, S1 + S2>{ a1[I1]..., a2[I2]... };
+		}
+	}
+
+	template<typename T, size_t S1, size_t S2>
+	static constexpr std::array<T, S1 + S2> concat(const std::array<T, S1>& a1, const std::array<T, S2>& a2)
+	{
+		return detail::concat_impl(a1, a2, std::make_index_sequence<S1>{}, std::make_index_sequence<S2>{});
+	}
+} }
+
 #ifdef __INTELLISENSE__
 
 #else

@@ -3,9 +3,11 @@
 #include "ShaderParamNext.h"
 #include "ParamGroups.h"
 
+#include <TF2Vulkan/IShaderDynamicNext.h>
 #include <TF2Vulkan/IShaderShadowNext.h>
 
 #include <shaderlib/BaseShader.h>
+#include <shaderlib/cshader.h>
 #include <shaderlib/ShaderDLL.h>
 
 #include <optional>
@@ -32,8 +34,18 @@ namespace TF2Vulkan{ namespace Shaders
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
 
-		virtual void OnDrawElements(IMaterialVar** params, IShaderShadowNext* shadow, IShaderDynamicAPI* dynamic,
-			VertexCompressionType_t compression, CBasePerMaterialContextData** context) = 0;
+		struct OnDrawElementsParams
+		{
+			IMaterialVar** matvars;
+			IShaderShadowNext* shadow;
+			IShaderDynamicNext* dynamic;
+			VertexCompressionType_t compression;
+			CBasePerMaterialContextData** context;
+
+			const IMaterialVar* operator[](const ShaderParamNext& var) const;
+		};
+
+		virtual void OnDrawElements(const OnDrawElementsParams& params) = 0;
 
 	private:
 		void OnDrawElements(IMaterialVar** params, IShaderShadow* pShaderShadow,
@@ -44,9 +56,9 @@ namespace TF2Vulkan{ namespace Shaders
 
 		[[nodiscard]] bool CheckParamIndex(int paramIndex) const;
 
-		std::optional<const ShaderParamNext> m_Overrides[NUM_SHADER_MATERIAL_VARS];
 		const ShaderParamNext* m_Params = nullptr;
 		size_t m_ParamCount = 0;
+		const ShaderParamNext* m_Overrides[NUM_SHADER_MATERIAL_VARS] = {};
 	};
 
 	template<typename T>
@@ -61,7 +73,9 @@ namespace TF2Vulkan{ namespace Shaders
 		bool IsRegistered() { return m_Instance.GetNumParams(); }
 	};
 
-	template<typename T, typename TParams, ShaderFlags_t FLAGS = ShaderFlags_t(0)>
+	struct EmptyParams {};
+
+	template<typename T, typename TParams = EmptyParams, ShaderFlags_t FLAGS = ShaderFlags_t(0)>
 	class ShaderNext : public TParams, public BaseShaderNext
 	{
 	protected:
@@ -78,4 +92,16 @@ namespace TF2Vulkan{ namespace Shaders
 
 		int GetFlags() const override final { return FLAGS; }
 	};
+
+#define DEFINE_NSHADER_FALLBACK(shaderName, fallbackShaderName) \
+	class Fallback_ ## shaderName final : public ::TF2Vulkan::Shaders::ShaderNext<Fallback_ ## shaderName> \
+	{ \
+	public: \
+		const char* GetName() const override { return #shaderName; } \
+		const char* GetFallbackShader(IMaterialVar**) const override { return #fallbackShaderName; } \
+	protected: \
+		void OnInitShaderInstance(IMaterialVar**, IShaderInit*, const char*) override { /*throw __FUNCSIG__;*/ } \
+		void OnDrawElements(const OnDrawElementsParams& params) override { /*throw __FUNCSIG__*/ } \
+	}; \
+	static const Fallback_ ## shaderName ## ::InstanceRegister s_FallbackShader_ ## shaderName;
 } }

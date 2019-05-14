@@ -6,19 +6,17 @@ namespace TF2Vulkan
 {
 	class IVulkanShader;
 
-	class IShaderInstanceInternal : public virtual IShaderInstance
+	class IShaderGroupInternal : public IShaderGroup
 	{
 	public:
 		virtual const IVulkanShader& GetVulkanShader() const = 0;
-		virtual void CreateSpecializationInfo(vk::SpecializationInfo& info,
-			std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const = 0;
+		//virtual const vk::SpecializationMapEntry& GetSpecMapEntries() const = 0;
 	};
-	class IPSInstanceInternal : public IPSInstance, public virtual IShaderInstanceInternal
-	{
 
-	};
-	class IVSInstanceInternal : public IVSInstance, public virtual IShaderInstanceInternal
+	class IShaderInstanceInternal : public IShaderInstance
 	{
-
+	public:
+		virtual const IShaderGroupInternal& GetGroup() const override = 0;
+		virtual void GetSpecializationInfo(vk::SpecializationInfo& info) const = 0;
 	};
 }

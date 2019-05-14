@@ -8,26 +8,25 @@ namespace TF2Vulkan
 	class IShaderShadowNext : public IShaderShadow, public IShaderInstanceManager
 	{
 	public:
-		virtual void SetPixelShader(const IPSInstance* instance) = 0;
-		virtual void SetVertexShader(const IVSInstance* instance) = 0;
+		virtual void SetShaderGroup(ShaderType type, IShaderGroup* group) = 0;
+		void SetShaderGroup(ShaderType type, IShaderGroup& group) { return SetShaderGroup(type, &group); }
+		void SetShaderGroup(IShaderGroup& group) { return SetShaderGroup(group.GetShaderType(), group); }
 
-		void SetPixelShader(const char* name, const PSInstanceSettings& settings = {})
-		{
-			return SetPixelShader(FindOrCreatePSInstance(name, settings));
-		}
-		void SetVertexShader(const char* name, const VSInstanceSettings& settings = {})
-		{
-			return SetVertexShader(FindOrCreateVSInstance(name, settings));
-		}
+		// Various aliases
+		void SetShaderGroup(ShaderType type, const char* name) { return SetShaderGroup(type, FindOrCreateShaderGroup(type, name)); }
+		void SetPixelShader(const char* name) { return SetShaderGroup(ShaderType::Pixel, name); }
+		void SetVertexShader(const char* name) { return SetShaderGroup(ShaderType::Vertex, name); }
 
 	private:
 		void SetPixelShader(const char* name, int staticIndex) override final
 		{
-			assert(!"SetPixelShader with a static index is deprecated in IShaderShadowNext.");
+			assert(staticIndex == 0 && "SetPixelShader with a static index is deprecated in IShaderShadowNext.");
+			return SetPixelShader(name);
 		}
 		void SetVertexShader(const char* name, int staticIndex) override final
 		{
-			assert(!"SetVertexShader with a static index is deprecated in IShaderShadowNext.");
+			assert(staticIndex == 0 && "SetVertexShader with a static index is deprecated in IShaderShadowNext.");
+			return SetVertexShader(name);
 		}
 	};
 }

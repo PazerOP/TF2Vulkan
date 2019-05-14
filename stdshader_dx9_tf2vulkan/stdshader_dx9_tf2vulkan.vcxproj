@@ -99,10 +99,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\stdshader_dx9_tf2vulkan\AlignedTypes.h" />
     <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderBlobs.h" />
-    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderData.h" />
-    <ClInclude Include="include\stdshader_dx9_tf2vulkan\ShaderDataShared.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ShaderBlobs.cpp" />
@@ -137,6 +134,20 @@
     <CustomBuild Include="src\HLSL\bufferclearobeystencil.vert.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\HLSL\fillrate.vert.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="src\HLSL\fillrate.frag.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

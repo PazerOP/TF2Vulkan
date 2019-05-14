@@ -13,7 +13,7 @@
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
 #include <TF2Vulkan/Util/std_array.h>
 
-#include <stdshader_dx9_tf2vulkan/ShaderData.h>
+#include <stdshader_vulkan/ShaderData.h>
 
 #undef min
 #undef max
@@ -67,10 +67,11 @@ namespace
 		constexpr PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineLayoutKey);
 
-		const IVSInstanceInternal* m_VSShader;
+		// TODO: Pipeline layout only needs to know shader groups, not specific instances
+		const IShaderInstanceInternal* m_VSShader;
 		VertexFormat m_VSVertexFormat;
 
-		const IPSInstanceInternal* m_PSShader;
+		const IShaderInstanceInternal* m_PSShader;
 	};
 }
 
@@ -274,8 +275,6 @@ namespace
 	{
 		const IVulkanShader* m_Shader = nullptr;
 
-		std::vector<std::byte> m_SpecializationData;
-		std::vector<vk::SpecializationMapEntry> m_SpecializationMapEntries;
 		vk::SpecializationInfo m_SpecializationInfo;
 		vk::PipelineShaderStageCreateInfo m_CreateInfo;
 
@@ -363,18 +362,16 @@ static void AttachVector(const T*& destData, TSize& destSize, const std::vector<
 	Util::SafeConvert(src.size(), destSize);
 }
 
-template<typename T>
 static ShaderStageCreateInfo CreateStageInfo(
-	const T& shader, vk::ShaderStageFlagBits type)
+	const IShaderInstanceInternal& shader, vk::ShaderStageFlagBits type)
 {
 	ShaderStageCreateInfo retVal;
 
 	auto& ci = retVal.m_CreateInfo;
 
-	retVal.m_Shader = &shader.GetVulkanShader();
+	retVal.m_Shader = &shader.GetGroup().GetVulkanShader();
 
-	shader.CreateSpecializationInfo(retVal.m_SpecializationInfo,
-		retVal.m_SpecializationMapEntries, retVal.m_SpecializationData);
+	shader.GetSpecializationInfo(retVal.m_SpecializationInfo);
 
 	ci.stage = type;
 	ci.module = retVal.m_Shader->GetModule();
@@ -384,7 +381,7 @@ static ShaderStageCreateInfo CreateStageInfo(
 	return retVal;
 }
 
-static void CreateBindings(DescriptorSetLayout& layout, const IShaderInstanceInternal& shader)
+static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupInternal& shader)
 {
 	const auto& reflectionData = shader.GetVulkanShader().GetReflectionData();
 
@@ -450,8 +447,8 @@ static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& ke
 	DescriptorSetLayout retVal;
 
 	// Bindings
-	CreateBindings(retVal, *key.m_VSShader);
-	CreateBindings(retVal, *key.m_PSShader);
+	CreateBindings(retVal, key.m_VSShader->GetGroup());
+	CreateBindings(retVal, key.m_PSShader->GetGroup());
 
 	// Descriptor set layout
 	{
@@ -670,7 +667,7 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	{
 		auto& attrs = retVal.m_VertexInputAttributeDescriptions;
 
-		const auto& vertexShaderRefl = key.m_VSShader->GetVulkanShader().GetReflectionData();
+		const auto& vertexShaderRefl = key.m_VSShader->GetGroup().GetVulkanShader().GetReflectionData();
 
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
@@ -1069,14 +1066,14 @@ void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCo
 static const size_t CBUF_OFFSETS[] =
 {
 	0,
-	offsetof(ShaderConstants::ShaderData, m_VSData) + offsetof(ShaderConstants::VSData, m_Common),
-	offsetof(ShaderConstants::ShaderData, m_VSData) + offsetof(ShaderConstants::VSData, m_Matrices),
-	offsetof(ShaderConstants::ShaderData, m_VSData) + offsetof(ShaderConstants::VSData, m_Custom),
-	offsetof(ShaderConstants::ShaderData, m_VSData) + offsetof(ShaderConstants::VSData, m_ModelMatrices),
+	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_Common),
+	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_Matrices),
+	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_Custom),
+	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_ModelMatrices),
 
-	offsetof(ShaderConstants::ShaderData, m_PSData) + offsetof(ShaderConstants::PSData, m_Common),
-	offsetof(ShaderConstants::ShaderData, m_PSData) + offsetof(ShaderConstants::PSData, m_Custom),
-	offsetof(ShaderConstants::ShaderData, m_PSData) + sizeof(ShaderConstants::PSData),
+	offsetof(Shaders::ShaderData, m_PSData) + offsetof(Shaders::PSData, m_Common),
+	offsetof(Shaders::ShaderData, m_PSData) + offsetof(Shaders::PSData, m_Custom),
+	offsetof(Shaders::ShaderData, m_PSData) + sizeof(Shaders::PSData),
 };
 
 void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
@@ -1359,10 +1356,10 @@ PipelineKey::PipelineKey(
 constexpr PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
 	const LogicalDynamicState& dynamicState) :
 
-	m_VSShader(staticState.m_VSShader),
+	m_VSShader(dynamicState.m_VSShader),
 	m_VSVertexFormat(staticState.m_VSVertexFormat),
 
-	m_PSShader(staticState.m_PSShader)
+	m_PSShader(dynamicState.m_PSShader)
 {
 }
 
@@ -1400,10 +1397,6 @@ FramebufferKey::FramebufferKey(const RenderPass& rp) :
 void ShaderStageCreateInfo::FixupPointers()
 {
 	auto& specInfo = m_SpecializationInfo;
-
-	specInfo.pData = m_SpecializationData.data();
-	specInfo.pMapEntries = m_SpecializationMapEntries.data();
-
 	m_CreateInfo.pSpecializationInfo = &specInfo;
 }
 

@@ -91,14 +91,12 @@ void IShaderAPI_StateManagerDynamic::GetWorldSpaceCameraPosition(float* pos) con
 
 void IShaderAPI_StateManagerDynamic::SetVertexShaderIndex(int index)
 {
-	LOG_FUNC();
-	Util::SetDirtyVar(m_State.m_VertexShaderIndex, index, m_Dirty);
+	NOT_IMPLEMENTED_FUNC();
 }
 
 void IShaderAPI_StateManagerDynamic::SetPixelShaderIndex(int index)
 {
-	LOG_FUNC();
-	Util::SetDirtyVar(m_State.m_PixelShaderIndex, index, m_Dirty);
+	NOT_IMPLEMENTED_FUNC();
 }
 
 void IShaderAPI_StateManagerDynamic::SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale)

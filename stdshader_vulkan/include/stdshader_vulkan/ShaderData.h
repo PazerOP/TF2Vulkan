@@ -5,7 +5,7 @@
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/std_compare.h>
 
-namespace TF2Vulkan{ namespace ShaderConstants
+namespace TF2Vulkan{ namespace Shaders
 {
 	struct alignas(0x100) VSMatrices final
 	{

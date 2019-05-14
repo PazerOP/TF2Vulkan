@@ -397,6 +397,30 @@ float4 DecompressBoneWeights(const float4 weights)
 	return result;
 }
 
+void SkinPosition(bool bSkinning, const float4 modelPos,
+	const float4 boneWeights, float4 fBoneIndices,
+	out float3 worldPos)
+{
+	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices);
+
+	if (!bSkinning)
+	{
+		worldPos = mul4x3(modelPos, cModel[0]);
+	}
+	else // skinning - always three bones
+	{
+		float4x3 mat1 = cModel[boneIndices[0]];
+		float4x3 mat2 = cModel[boneIndices[1]];
+		float4x3 mat3 = cModel[boneIndices[2]];
+
+		float3 weights = DecompressBoneWeights(boneWeights).xyz;
+		weights[2] = 1 - (weights[0] + weights[1]);
+
+		float4x3 blendMatrix = mat1 * weights[0] + mat2 * weights[1] + mat3 * weights[2];
+		worldPos = mul4x3(modelPos, blendMatrix);
+	}
+}
+
 void SkinPositionAndNormal(bool bSkinning, const float4 modelPos, const float3 modelNormal,
 	const float4 boneWeights, float4 fBoneIndices,
 	out float3 worldPos, out float3 worldNormal)

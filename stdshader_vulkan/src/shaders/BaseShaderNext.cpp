@@ -1,4 +1,5 @@
 #include "BaseShaderNext.h"
+#include "ShaderParamNext.h"
 
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/SafeConvert.h>
@@ -12,6 +13,14 @@ BaseShaderNext::BaseShaderNext(const ShaderParamNext* params, size_t paramCount)
 	m_Params(params), m_ParamCount(paramCount)
 {
 	assert(m_Params);
+
+	for (size_t i = 0; i < m_ParamCount; i++)
+	{
+		auto& param = m_Params[i];
+		assert(param.GetIndex() >= 0);
+		if (param.GetIndex() < NUM_SHADER_MATERIAL_VARS)
+			m_Overrides[param.GetIndex()] = &param;
+	}
 }
 
 const char* BaseShaderNext::GetParamName(int paramIndex) const
@@ -19,7 +28,11 @@ const char* BaseShaderNext::GetParamName(int paramIndex) const
 	LOG_FUNC();
 
 	if (auto param = TryGetParam(paramIndex))
-		return param->GetName();
+	{
+		auto name = param->GetName();
+		assert(name);
+		return name;
+	}
 
 	return BaseClass::GetParamName(paramIndex);
 }
@@ -114,15 +127,16 @@ void BaseShaderNext::OnDrawElements(IMaterialVar** params, IShaderShadow* pShade
 	IShaderDynamicAPI* pShaderAPI, VertexCompressionType_t vertexCompression,
 	CBasePerMaterialContextData** pContextDataPtr)
 {
-	auto shadowNext = dynamic_cast<IShaderShadowNext*>(pShaderShadow);
-	if (pShaderShadow && !shadowNext)
-	{
-		assert(!"Invalid shader shadow hierarchy");
-		return;
-	}
+	LOG_FUNC();
 
-	return OnDrawElements(params, dynamic_cast<IShaderShadowNext*>(pShaderShadow), pShaderAPI,
-		vertexCompression, pContextDataPtr);
+	OnDrawElementsParams fnParams;
+	fnParams.matvars = params;
+	fnParams.shadow = assert_cast<IShaderShadowNext*>(pShaderShadow);
+	fnParams.dynamic = assert_cast<IShaderDynamicNext*>(pShaderAPI);
+	fnParams.compression = vertexCompression;
+	fnParams.context = pContextDataPtr;
+
+	return OnDrawElements(fnParams);
 }
 
 const ShaderParamNext* BaseShaderNext::TryGetParam(int paramIndex) const
@@ -133,11 +147,18 @@ const ShaderParamNext* BaseShaderNext::TryGetParam(int paramIndex) const
 	const auto baseParamCount = BaseClass::GetNumParams();
 	if (paramIndex < baseParamCount)
 	{
-		if (size_t(paramIndex) < std::size(m_Overrides) && m_Overrides[paramIndex].has_value())
+		if (size_t(paramIndex) < std::size(m_Overrides) && m_Overrides[paramIndex])
 			return &*m_Overrides[paramIndex];
+		else
+			return nullptr;
 	}
 
 	paramIndex -= baseParamCount;
-	assert(paramIndex < GetNumParams());
+	assert(paramIndex >= 0 && paramIndex < GetNumParams());
 	return &m_Params[paramIndex];
+}
+
+const IMaterialVar* BaseShaderNext::OnDrawElementsParams::operator[](const ShaderParamNext& var) const
+{
+	return matvars[var.GetIndex()];
 }

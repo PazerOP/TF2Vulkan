@@ -23,9 +23,7 @@ namespace
 		// Inherited via ShaderNext
 		void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* params,
 			const char* pMaterialName) override;
-		void OnDrawElements(IMaterialVar** params, IShaderShadowNext* shadow,
-			IShaderDynamicAPI* dynamic, VertexCompressionType_t compression,
-			CBasePerMaterialContextData** context) override;
+		void OnDrawElements(const OnDrawElementsParams& params) override;
 	};
 }
 
@@ -34,13 +32,18 @@ static const BufferClearObeyStencil::InstanceRegister s_Shader;
 void BufferClearObeyStencil::OnInitShaderInstance(IMaterialVar** params,
 	IShaderInit* pShaderInit, const char* pMaterialName)
 {
+	LOG_FUNC();
+
 	InitIntParam(CLEARALPHA, params, -1);
 }
 
-void BufferClearObeyStencil::OnDrawElements(IMaterialVar** params, IShaderShadowNext* shadow,
-	IShaderDynamicAPI* dynamic, VertexCompressionType_t compression,
-	CBasePerMaterialContextData** context)
+void BufferClearObeyStencil::OnDrawElements(const OnDrawElementsParams& params)
 {
+	LOG_FUNC();
+
+	auto& shadow = params.shadow;
+	auto& dynamic = params.dynamic;
+
 	const bool bEnableColorWrites = params[CLEARCOLOR]->GetBoolValue();
 	const bool bEnableAlphaWrites = (params[CLEARALPHA]->GetIntValue() >= 0) ? params[CLEARALPHA]->GetBoolValue() : bEnableColorWrites;
 
@@ -54,10 +57,11 @@ void BufferClearObeyStencil::OnDrawElements(IMaterialVar** params, IShaderShadow
 		shadow->VertexShaderVertexFormat(VERTEX_POSITION | VERTEX_COLOR, 1);
 
 		shadow->SetVertexShader("bufferclearobeystencil_vs");
-		shadow->SetPixelShader("bufferclearobeystencil_ps",
+		NOT_IMPLEMENTED_FUNC();
+		/*shadow->SetPixelShader("bufferclearobeystencil_ps",
 			{
 				{ "USESCOLOR", bEnableColorWrites || bEnableAlphaWrites },
-			});
+			});*/
 	}
 
 	if (dynamic)

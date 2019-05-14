@@ -2,9 +2,9 @@
 #define INCLUDE_GUARD_SHADER_SHARED_H
 
 #ifdef __cplusplus
-#include "AlignedTypes.h"
+#include <TF2Vulkan/AlignedTypes.h>
 #include <TF2Vulkan/Util/std_compare.h>
-namespace TF2Vulkan{ namespace ShaderConstants
+namespace TF2Vulkan{ namespace Shaders
 {
 #endif // __cplusplus
 
@@ -50,8 +50,8 @@ namespace TF2Vulkan{ namespace ShaderConstants
 #ifdef __cplusplus
 } }
 
-inline bool operator==(const TF2Vulkan::ShaderConstants::AmbientLightCube& lhs,
-	const TF2Vulkan::ShaderConstants::AmbientLightCube& rhs)
+inline bool operator==(const TF2Vulkan::Shaders::AmbientLightCube& lhs,
+	const TF2Vulkan::Shaders::AmbientLightCube& rhs)
 {
 	return
 		lhs.x[0] == rhs.x[0] &&
@@ -63,8 +63,8 @@ inline bool operator==(const TF2Vulkan::ShaderConstants::AmbientLightCube& lhs,
 }
 
 #ifndef __INTELLISENSE__
-inline std::weak_equality operator<=>(const TF2Vulkan::ShaderConstants::AmbientLightCube& lhs,
-	const TF2Vulkan::ShaderConstants::AmbientLightCube& rhs)
+inline std::weak_equality operator<=>(const TF2Vulkan::Shaders::AmbientLightCube& lhs,
+	const TF2Vulkan::Shaders::AmbientLightCube& rhs)
 {
 	return lhs == rhs ? std::weak_equality::equivalent : std::weak_equality::nonequivalent;
 }

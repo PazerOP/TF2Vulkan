@@ -58,8 +58,10 @@ static const std::unordered_map<std::string_view, ShaderInfo> s_ShaderBlobMappin
 {
 	{ "bik_vs20", { ShaderBlob::Bik_VS } },
 	{ "bik_ps20b", { ShaderBlob::Bik_PS } },
-	{ "bufferclearobeystencil_vs", { ShaderBlob::BufferClearObeyStencil_PS } },
-	{ "bufferclearobeystencil_ps", { ShaderBlob::BufferClearObeyStencil_VS } },
+	{ "bufferclearobeystencil_vs", { ShaderBlob::BufferClearObeyStencil_VS } },
+	{ "bufferclearobeystencil_ps", { ShaderBlob::BufferClearObeyStencil_PS } },
+	{ "fillrate_vs", { ShaderBlob::Fillrate_VS } },
+	{ "fillrate_ps", { ShaderBlob::Fillrate_PS } },
 	{ "xlitgeneric_vs", { ShaderBlob::XLitGeneric_VS } },
 	{ "xlitgeneric_ps", { ShaderBlob::XLitGeneric_PS } },
 };

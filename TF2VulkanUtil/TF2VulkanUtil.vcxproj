@@ -100,6 +100,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\ScopeFunc.h" />
     <ClInclude Include="include\TF2Vulkan\Util\shaderapi_ishaderdynamic.h" />
     <ClInclude Include="include\TF2Vulkan\Util\StackBuffer.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\std_memory.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_stack.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_algorithm.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_array.h" />

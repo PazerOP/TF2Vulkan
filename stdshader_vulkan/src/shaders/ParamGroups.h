@@ -170,9 +170,16 @@ namespace TF2Vulkan{ namespace Shaders
 	template<typename T>
 	static constexpr size_t GetShaderParamCount()
 	{
-		constexpr size_t PARAM_COUNT = sizeof(T) / sizeof(ShaderParamNext);
-		static_assert(sizeof(ShaderParamNext[PARAM_COUNT]) == sizeof(T));
-		return PARAM_COUNT;
+		if constexpr (std::is_empty_v<T>)
+		{
+			return 0;
+		}
+		else
+		{
+			constexpr size_t PARAM_COUNT = sizeof(T) / sizeof(ShaderParamNext);
+			static_assert(sizeof(ShaderParamNext[PARAM_COUNT]) == sizeof(T));
+			return PARAM_COUNT;
+		}
 	}
 
 	template<typename T>
@@ -194,8 +201,12 @@ namespace TF2Vulkan{ namespace Shaders
 	inline T& InitParamIndices(T& type)
 	{
 		auto params = GetAsShaderParams(type);
+		size_t actualParamIndex = NUM_SHADER_MATERIAL_VARS;
 		for (size_t i = 0; i < GetShaderParamCount<T>(); i++)
-			params[i].InitIndex(Util::SafeConvert<int>(i) + NUM_SHADER_MATERIAL_VARS);
+		{
+			if (params[i].InitIndex(Util::SafeConvert<int>(actualParamIndex)))
+				actualParamIndex++;
+		}
 
 		return type;
 	}

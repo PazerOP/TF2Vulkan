@@ -9,15 +9,99 @@
 #include <TF2Vulkan/Util/interface.h>
 
 #include <unordered_map>
+#include <unordered_set>
 
 using namespace TF2Vulkan;
 using namespace Util;
 
 namespace
 {
+	struct SpecConstLayout final : ISpecConstLayout
+	{
+		SpecConstLayout(const SpecConstLayoutEntry* entries, size_t entryCount);
+
+		bool operator==(const SpecConstLayout& other) const;
+
+		// Inherited via ISpecConstLayout
+		const SpecConstLayoutEntry* GetEntries(size_t& count) const override { count = m_EntryCount; return m_Entries; }
+		size_t GetEntryCount() const { return m_EntryCount; }
+		size_t GetBufferSize() const override { return m_BufferSize; }
+
+		auto begin() const { return m_Entries; }
+		auto end() const { return m_Entries + m_EntryCount; }
+
+	private:
+		const SpecConstLayoutEntry* m_Entries;
+		size_t m_EntryCount;
+		size_t m_BufferSize;
+	};
+}
+
+template<>
+struct ::std::hash<SpecConstLayout>
+{
+	size_t operator()(const SpecConstLayout& layout) const
+	{
+		return Util::hash_range(std::begin(layout), std::end(layout));
+	}
+};
+
+namespace
+{
+	struct ShaderGroup;
+	struct ShaderInstance final : IShaderInstanceInternal
+	{
+		ShaderInstance(const ShaderGroup& group, const void* specConstBuffer);
+
+		// Inherited via IShaderInstanceInternal
+		const ShaderGroup& GetGroupInternal() const;
+		const IShaderGroupInternal& GetGroup() const override;
+		const void* GetSpecConstBuffer() const override { return m_SpecConstBuffer.get(); }
+		void GetSpecializationInfo(vk::SpecializationInfo& info) const override;
+
+	private:
+		const ShaderGroup* m_Group = nullptr;
+		std::unique_ptr<const std::byte[]> m_SpecConstBuffer;
+	};
+
+	struct ShaderGroup final : IShaderGroupInternal
+	{
+		ShaderGroup(ShaderType type, const IVulkanShader& shader, const SpecConstLayout& layout);
+
+		// Inherited via IShaderGroupInternal
+		const char* GetName() const override { return GetVulkanShader().GetName().String(); }
+		const SpecConstLayout& GetSpecConstLayout() const override { return *m_SpecConstLayout; }
+		ShaderType GetShaderType() const override { return m_Type; }
+		IShaderInstance& FindOrCreateInstance(const void* specConstBuf, size_t specConstBufSize) override;
+		const IVulkanShader& GetVulkanShader() const override { return *m_VulkanShader; }
+		const vk::SpecializationMapEntry* GetMapEntries(uint32_t& count) const;
+
+	private:
+		ShaderType m_Type;
+		const IVulkanShader* m_VulkanShader = nullptr;
+		const SpecConstLayout* m_SpecConstLayout = nullptr;
+		std::vector<vk::SpecializationMapEntry> m_VkEntries;
+
+		struct Hasher
+		{
+			constexpr Hasher(size_t size) : m_Size(size) {}
+			size_t operator()(const std::byte* data) const;
+			size_t m_Size;
+		};
+		struct KeyEqual
+		{
+			constexpr KeyEqual(size_t size) : m_Size(size) {}
+			size_t operator()(const std::byte* lhs, const std::byte* rhs) const { return memcmp(lhs, rhs, m_Size) == 0; }
+			size_t m_Size;
+		};
+		std::unordered_map<const std::byte*, ShaderInstance, Hasher, KeyEqual> m_Instances;
+	};
+
 	class ShadowStateManager final : public IStateManagerStatic
 	{
 	public:
+		ShadowStateManager();
+
 		void ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf);
 		void ApplyCurrentState(IVulkanCommandBuffer& buf);
 		void SetDefaultState() override final;
@@ -54,8 +138,7 @@ namespace
 		void VertexShaderVertexFormat(uint flags, int texCoordCount,
 			int* texCoorDimensions, int userDataSize) override final;
 
-		void SetVertexShader(const IVSInstance* instance) override final;
-		void SetPixelShader(const IPSInstance* instance) override final;
+		void SetShaderGroup(ShaderType type, IShaderGroup* instance) override final;
 
 		void EnableLighting(bool enable) override final;
 
@@ -118,8 +201,8 @@ namespace
 		const TF2Vulkan::IVulkanShader& GetPixelShader() const override;
 		const TF2Vulkan::IVulkanShader& GetVertexShader() const override;
 
-		const IPSInstance* FindOrCreatePSInstance(const char* name, const PSInstanceSettings& settings) override;
-		const IVSInstance* FindOrCreateVSInstance(const char* name, const VSInstanceSettings& settings) override;
+		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const ISpecConstLayout* layout) override;
+		const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutEntry* entries, size_t count) override;
 
 	protected:
 		bool HasStateChanged() const;
@@ -128,33 +211,9 @@ namespace
 		bool m_Dirty = true;
 		LogicalShadowState m_State;
 
-		struct ShaderInstanceBase : virtual IShaderInstanceInternal
-		{
-			ShaderInstanceBase(const CUtlSymbolDbg& name, const ShaderInstanceSettingsBase& settings);
-			const char* GetName() const override final { return GetVulkanShader().GetName().String(); }
-			const ShaderInstanceSettingsBase& GetBaseSettings() const override final { return *m_InstanceSettings; }
-			const IVulkanShader& GetVulkanShader() const override final { return *m_VulkanShader; }
-			void CreateSpecializationInfo(vk::SpecializationInfo& info,
-				std::vector<vk::SpecializationMapEntry>& entries, std::vector<std::byte>& data) const override final;
-
-			const IVulkanShader* m_VulkanShader = nullptr;
-			const ShaderInstanceSettingsBase* m_InstanceSettings = nullptr;
-		};
-		struct PixelShaderInstance final : virtual IPSInstanceInternal, ShaderInstanceBase
-		{
-			PixelShaderInstance(const CUtlSymbolDbg& name, const PSInstanceSettings& settings);
-		};
-		struct VertexShaderInstance final : virtual IVSInstanceInternal, ShaderInstanceBase
-		{
-			VertexShaderInstance(const CUtlSymbolDbg& name, const VSInstanceSettings& settings);
-		};
-
-		struct ShaderInstanceGroup
-		{
-			std::unordered_map<PSInstanceSettings, PixelShaderInstance> m_PSInstances;
-			std::unordered_map<VSInstanceSettings, VertexShaderInstance> m_VSInstances;
-		};
-		std::unordered_map<CUtlSymbolDbg, ShaderInstanceGroup> m_ShaderInstanceGroups;
+		std::array<std::unordered_map<CUtlSymbolDbg, ShaderGroup>, 2> m_ShaderInstanceGroups;
+		const SpecConstLayout* m_EmptySCLayout;
+		std::unordered_set<SpecConstLayout> m_SpecConstLayouts;
 
 		std::unordered_map<LogicalShadowState, LogicalShadowStateID> m_StatesToIDs;
 		std::vector<const LogicalShadowState*> m_IDsToStates;
@@ -165,6 +224,11 @@ static ShadowStateManager s_SSM;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShadowStateManager, IShaderShadow, SHADERSHADOW_INTERFACE_VERSION, s_SSM);
 
 IStateManagerStatic& TF2Vulkan::g_StateManagerStatic = s_SSM;
+
+ShadowStateManager::ShadowStateManager()
+{
+	m_EmptySCLayout = &*m_SpecConstLayouts.emplace(SpecConstLayout(nullptr, 0)).first;
+}
 
 void ShadowStateManager::ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf)
 {
@@ -324,20 +388,6 @@ void ShadowStateManager::VertexShaderVertexFormat(uint flags,
 	auto& oldFmt = m_State.m_VSVertexFormat;
 	assert(oldFmt == VERTEX_FORMAT_UNKNOWN || oldFmt == fmt); // TODO: Are we supposed to merge flags/texcoord dimensions?
 	SetDirtyVar(oldFmt, fmt, m_Dirty);
-}
-
-void ShadowStateManager::SetVertexShader(const IVSInstance* instance)
-{
-	LOG_FUNC();
-
-	SetDirtyVar(m_State.m_VSShader, &dynamic_cast<const IVSInstanceInternal&>(*instance), m_Dirty);
-}
-
-void ShadowStateManager::SetPixelShader(const IPSInstance* instance)
-{
-	LOG_FUNC();
-
-	SetDirtyVar(m_State.m_PSShader, &dynamic_cast<const IPSInstanceInternal&>(*instance), m_Dirty);
 }
 
 void ShadowStateManager::EnableLighting(bool enable)
@@ -561,97 +611,155 @@ bool ShadowStateManager::IsAnyRenderTargetBound() const
 	return false;
 }
 
-const TF2Vulkan::IVulkanShader& ShadowStateManager::GetPixelShader() const
+const IVulkanShader& ShadowStateManager::GetPixelShader() const
 {
-	return g_ShaderManager.FindOrCreateShader(m_State.m_PSShader->GetName());
+	return m_State.m_PSShader->GetVulkanShader();
 }
-const TF2Vulkan::IVulkanShader& ShadowStateManager::GetVertexShader() const
+const IVulkanShader& ShadowStateManager::GetVertexShader() const
 {
-	return g_ShaderManager.FindOrCreateShader(m_State.m_VSShader->GetName());
-}
-
-const IPSInstance* ShadowStateManager::FindOrCreatePSInstance(const char* name, const PSInstanceSettings& settings)
-{
-	auto& group = m_ShaderInstanceGroups[name].m_PSInstances;
-
-	if (auto found = group.find(settings); found != group.end())
-		return &found->second;
-
-	return &group.emplace(settings, PixelShaderInstance(name, settings)).first->second;
+	return m_State.m_VSShader->GetVulkanShader();
 }
 
-const IVSInstance* ShadowStateManager::FindOrCreateVSInstance(const char* name, const VSInstanceSettings& settings)
+SpecConstLayout::SpecConstLayout(const SpecConstLayoutEntry* entries, size_t entryCount) :
+	m_Entries(entries),
+	m_EntryCount(entryCount)
 {
-	auto& group = m_ShaderInstanceGroups[name].m_VSInstances;
+	assert(!!m_Entries == !!m_EntryCount);
 
-	if (auto found = group.find(settings); found != group.end())
-		return &found->second;
-
-	return &group.emplace(settings, VertexShaderInstance(name, settings)).first->second;
-}
-
-ShadowStateManager::ShaderInstanceBase::ShaderInstanceBase(const CUtlSymbolDbg& name,
-	const ShaderInstanceSettingsBase& settings) :
-	m_VulkanShader(&g_ShaderManager.FindOrCreateShader(name)),
-	m_InstanceSettings(&settings)
-{
-}
-
-ShadowStateManager::PixelShaderInstance::PixelShaderInstance(const CUtlSymbolDbg& name,
-	const PSInstanceSettings& settings) :
-	ShaderInstanceBase(name, settings)
-{
-}
-
-ShadowStateManager::VertexShaderInstance::VertexShaderInstance(const CUtlSymbolDbg& name,
-	const VSInstanceSettings& settings) :
-	ShaderInstanceBase(name, settings)
-{
-}
-
-void ShadowStateManager::ShaderInstanceBase::CreateSpecializationInfo(
-	vk::SpecializationInfo& info, std::vector<vk::SpecializationMapEntry>& entries,
-	std::vector<std::byte>& data) const
-{
-	using namespace ShaderReflection;
-	const auto& reflData = GetVulkanShader().GetReflectionData();
-
-	for (const auto& value : m_InstanceSettings->m_SpecConstants)
+	// Make sure there's no padding and they're in order
+	size_t nextOffset = 0;
+	for (size_t i = 0; i < entryCount; i++)
 	{
-		auto foundConst = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
-			[&](const SpecializationConstant & c) { return c.m_Name == value.m_Name; });
-
-		if (foundConst == reflData.m_SpecConstants.end())
-		{
-			assert(!"Unknown shader specialization constant");
-			continue;
-		}
-
-		auto& entry = entries.emplace_back();
-		entry.constantID = foundConst->m_ConstantID;
-		entry.size = sizeof(uint32_t);
-		Util::SafeConvert(data.size(), entry.offset);
-
-		switch (foundConst->m_Type)
-		{
-		case VariableType::Float:
-			Util::Buffer::Put(data, std::get<float>(value.m_Value));
-			break;
-		case VariableType::Int:
-			Util::Buffer::Put(data, std::get<int>(value.m_Value));
-			break;
-		case VariableType::Boolean:
-			Util::Buffer::Put(data, std::get<bool>(value.m_Value));
-			break;
-
-		default:
-			assert(!"Unknown/unexpected shader specialization constant variable type");
-			continue;
-		}
+		assert(entries[i].m_Offset == nextOffset);
+		nextOffset += 4;
 	}
 
-	info.pMapEntries = entries.data();
-	info.mapEntryCount = entries.size();
-	Util::SafeConvert(data.size(), info.dataSize);
-	info.pData = data.data();
+	m_BufferSize = nextOffset;
+}
+
+ShaderInstance::ShaderInstance(const ShaderGroup& group, const void* specConstBuffer) :
+	m_Group(&group)
+{
+	const auto bufSize = group.GetSpecConstLayout().GetBufferSize();
+	auto buf = std::make_unique<std::byte[]>(bufSize);
+	memcpy(buf.get(), specConstBuffer, bufSize);
+}
+
+void ShaderInstance::GetSpecializationInfo(vk::SpecializationInfo& info) const
+{
+	info.dataSize = m_Group->GetSpecConstLayout().GetBufferSize();
+	info.pData = m_SpecConstBuffer.get();
+	info.pMapEntries = GetGroupInternal().GetMapEntries(info.mapEntryCount);
+}
+
+const ShaderGroup& ShaderInstance::GetGroupInternal() const
+{
+	return *m_Group;
+}
+
+const IShaderGroupInternal& ShaderInstance::GetGroup() const
+{
+	return GetGroupInternal();
+}
+
+const vk::SpecializationMapEntry* ShaderGroup::GetMapEntries(uint32_t& count) const
+{
+	Util::SafeConvert(m_VkEntries.size(), count);
+	return m_VkEntries.data();
+}
+
+size_t ShaderGroup::Hasher::operator()(const std::byte* data) const
+{
+	// Probably more efficient to (ab)use a string_view?
+	__debugbreak(); // TODO: VERIFY THIS WORKS
+	return Util::hash_value(std::string_view((const char*)data, m_Size));
+}
+
+ShaderGroup::ShaderGroup(ShaderType type, const IVulkanShader& shader, const SpecConstLayout& layout) :
+	m_Type(type),
+	m_VulkanShader(&shader),
+	m_SpecConstLayout(&layout),
+	m_Instances(0, Hasher(layout.GetBufferSize()), KeyEqual(layout.GetBufferSize()))
+{
+	// Actually look up the spec const layout string names here
+	const auto& reflData = shader.GetReflectionData();
+	for (const auto& scEntry : layout)
+	{
+		const auto found = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
+			[&](const auto & sc) { return sc.m_Name == scEntry.m_Name; });
+		if (found == reflData.m_SpecConstants.end())
+			continue;
+
+		auto& vkEntry = m_VkEntries.emplace_back();
+		vkEntry.constantID = found->m_ConstantID;
+		vkEntry.offset = scEntry.m_Offset;
+		vkEntry.size = 4;
+	}
+}
+
+IShaderInstance& ShaderGroup::FindOrCreateInstance(const void* specConstBuf,
+	size_t specConstBufSize)
+{
+	if (specConstBufSize != m_SpecConstLayout->GetBufferSize())
+		throw VulkanException("Mismatching specialization constant buffer size", EXCEPTION_DATA());
+
+	const std::byte* byteBuf = reinterpret_cast<const std::byte*>(specConstBuf);
+
+	if (auto found = m_Instances.find(byteBuf); found != m_Instances.end())
+		return found->second;
+
+	// Couldn't find a matching instance, create a new one now
+	return m_Instances.emplace(byteBuf, ShaderInstance(*this, specConstBuf)).first->second;
+}
+
+IShaderGroup& ShadowStateManager::FindOrCreateShaderGroup(ShaderType type,
+	const char* name, const ISpecConstLayout* layout)
+{
+	auto& groupMap = m_ShaderInstanceGroups.at(size_t(type));
+	if (auto found = groupMap.find(name); found != groupMap.end())
+	{
+		auto& foundGroup = found->second;
+		assert(&foundGroup.GetSpecConstLayout() == layout);
+		return found->second;
+	}
+
+	auto& scLayout = layout ? *assert_cast<const SpecConstLayout*>(layout) : *m_EmptySCLayout;
+
+	// Not found, create now
+	return groupMap.emplace(name, ShaderGroup(
+		type, g_ShaderManager.FindOrCreateShader(name), scLayout)).first->second;
+}
+
+const ISpecConstLayout& ShadowStateManager::FindOrCreateSpecConstLayout(
+	const SpecConstLayoutEntry* entries, size_t count)
+{
+	return *m_SpecConstLayouts.emplace(SpecConstLayout(entries, count)).first;
+}
+
+bool SpecConstLayout::operator==(const SpecConstLayout& other) const
+{
+	if (m_EntryCount != other.m_EntryCount)
+		return false;
+
+	auto result = std::equal(begin(), end(), other.begin());
+	assert(!result || (m_BufferSize == other.m_BufferSize));
+	return result;
+}
+
+void ShadowStateManager::SetShaderGroup(ShaderType type, IShaderGroup* instance)
+{
+	LOG_FUNC();
+
+	switch (type)
+	{
+	case ShaderType::Vertex:
+		Util::SetDirtyVar(m_State.m_VSShader, assert_cast<IShaderGroupInternal*>(instance), m_Dirty);
+		break;
+	case ShaderType::Pixel:
+		Util::SetDirtyVar(m_State.m_PSShader, assert_cast<IShaderGroupInternal*>(instance), m_Dirty);
+		break;
+
+	default:
+		assert(!"Unknown shader type");
+	}
 }

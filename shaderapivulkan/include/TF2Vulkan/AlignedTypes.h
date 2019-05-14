@@ -7,11 +7,11 @@
 
 #pragma pack(push, 1)
 
-namespace TF2Vulkan{ namespace ShaderConstants
+namespace TF2Vulkan{ namespace Shaders
 {
 	struct alignas(4) bool32 final
 	{
-		constexpr bool32() = default;
+		constexpr bool32(bool value = false) : m_Data(value ? 1 : 0) {}
 		bool32(const bool32&) = default;
 		bool32(bool32&&) = default;
 		bool32& operator=(const bool32&) = default;
@@ -32,6 +32,9 @@ namespace TF2Vulkan{ namespace ShaderConstants
 	struct alignas(sizeof(T)) vector<T, 1>
 	{
 		using ThisType = vector<T, 1>;
+		vector() = default;
+		vector(const ThisType&) = default;
+		constexpr vector(const T& val) : x(val) {}
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 		static constexpr size_t ELEM_COUNT = 1;
 

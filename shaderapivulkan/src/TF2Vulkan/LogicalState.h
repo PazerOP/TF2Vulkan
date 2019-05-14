@@ -1,9 +1,8 @@
 #pragma once
 
-#include "ShaderConstant.h"
 #include "VertexFormat.h"
 
-#include <stdshader_dx9_tf2vulkan/ShaderData.h>
+#include <stdshader_vulkan/ShaderData.h>
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
@@ -21,8 +20,8 @@
 
 namespace TF2Vulkan
 {
-	class IPSInstanceInternal;
-	class IVSInstanceInternal;
+	class IShaderGroupInternal;
+	class IShaderInstanceInternal;
 
 	enum class LogicalShadowStateID : size_t
 	{
@@ -48,8 +47,8 @@ namespace TF2Vulkan
 		bool m_FBLinear = false;
 		Vector m_TonemappingScale{ 1, 1, 1 };
 
-		int m_VertexShaderIndex = 0;
-		int m_PixelShaderIndex = 0;
+		const IShaderInstanceInternal* m_VSShader = nullptr;
+		const IShaderInstanceInternal* m_PSShader = nullptr;
 
 		// Stencil settings
 		bool m_StencilEnable = false;
@@ -63,7 +62,7 @@ namespace TF2Vulkan
 
 		MaterialCullMode_t m_CullMode = MATERIAL_CULLMODE_CCW;
 
-		ShaderConstants::ShaderData m_ShaderData;
+		Shaders::ShaderData m_ShaderData;
 
 		LightState_t m_LightState;
 		std::array<LightDesc_t, 4> m_Lights;
@@ -94,12 +93,12 @@ namespace TF2Vulkan
 		};
 
 		// Vertex shader settings
-		const IVSInstanceInternal* m_VSShader = nullptr;
+		const IShaderGroupInternal* m_VSShader = nullptr;
 		VertexFormat m_VSVertexFormat;
 		MorphFormat_t m_VSMorphFormat = {};
 
 		// Pixel shader settings
-		const IPSInstanceInternal* m_PSShader = nullptr;
+		const IShaderGroupInternal* m_PSShader = nullptr;
 		std::array<Sampler, 16> m_PSSamplers;
 
 		// Depth settings

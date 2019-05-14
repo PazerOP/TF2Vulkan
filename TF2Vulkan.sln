@@ -35,6 +35,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "stdshader_vulkan", "stdshad
 		{BCAA3EF6-6521-4314-A301-BF1D2FB740C5} = {BCAA3EF6-6521-4314-A301-BF1D2FB740C5}
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Third-party libraries", "Third-party libraries", "{53772805-4E34-45B5-BDD7-51F45A0F300F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inactive Projects", "Inactive Projects", "{2B33EDE1-32E5-4408-848E-D5BEBEC7523F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -82,6 +86,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{50EC43A3-9DD6-4C1E-840E-2E23E66BFA70} = {2B33EDE1-32E5-4408-848E-D5BEBEC7523F}
+		{31135B2A-945B-4440-96EC-724BB0738FC7} = {53772805-4E34-45B5-BDD7-51F45A0F300F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {A3298210-1658-4C51-9399-C694D1536B31}

@@ -1,6 +1,9 @@
 #include "BaseShaderNext.h"
 #include "ParamGroups.h"
 
+#include <TF2Vulkan/AlignedTypes.h>
+#include <TF2Vulkan/ISpecConstLayout.h>
+#include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
 
@@ -15,25 +18,72 @@ using namespace TF2Vulkan::Shaders;
 
 namespace
 {
+	struct TF2VGenericSpecConsts : BaseSpecConstBuffer<TF2VGenericSpecConsts>
+	{
+		bool32 VERTEXCOLOR = false;
+		bool32 CUBEMAP = false;
+		bool32 HALFLAMBERT = false;
+		bool32 FLASHLIGHT = false;
+		bool32 SEAMLESS_BASE = false;
+		bool32 SEAMLESS_DETAIL = false;
+		bool32 SEPARATE_DETAIL_UVS = false;
+		bool32 DECAL = false;
+		bool32 DONT_GAMMA_CONVERT_VERTEX_COLOR = false;
+
+		bool32 DYNAMIC_LIGHT = false;
+		bool32 STATIC_LIGHT_VERTEX = false;
+		bool32 STATIC_LIGHT_LIGHTMAP = false;
+		int1 DOWATERFOG = 0;
+		bool32 LIGHTING_PREVIEW = false;
+		bool32 MORPHING = false;
+		bool32 NORMALMAPPING = false;
+		bool32 DIFFUSELIGHTING = false;
+		bool32 SELFILLUM = false;
+	};
+
+	struct TF2VGenericSpecConstLayoutInfo : BaseSpecConstLayoutInfo<TF2VGenericSpecConstLayoutInfo, TF2VGenericSpecConsts>
+	{
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, VERTEXCOLOR);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, CUBEMAP);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, HALFLAMBERT);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, FLASHLIGHT);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SEAMLESS_BASE);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SEAMLESS_DETAIL);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SEPARATE_DETAIL_UVS);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DECAL);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DONT_GAMMA_CONVERT_VERTEX_COLOR);
+
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DYNAMIC_LIGHT);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, STATIC_LIGHT_VERTEX);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, STATIC_LIGHT_LIGHTMAP);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DOWATERFOG);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, LIGHTING_PREVIEW);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, MORPHING);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, NORMALMAPPING);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DIFFUSELIGHTING);
+		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SELFILLUM);
+
+	} static constexpr s_SpecConstBufLayout;
+
 	struct Params : BumpmapParams, WrinkleParams, EnvMapParams, PhongParams, RimlightParams, SelfillumParams, DetailParams, EmissiveScrollParams, WeaponSheenParams, SeamlessScaleParams, CloakParams, FleshParams, DistanceAlphaParams
 	{
-		NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)")
-		NSHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "")
-		NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0")
-		NSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine")
+		NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
+		NSHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "");
+		NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0");
+		NSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine");
 
 		// Debugging term for visualizing ambient data on its own
-		NSHADER_PARAM(AMBIENTONLY, SHADER_PARAM_TYPE_INTEGER, "0", "Control drawing of non-ambient light ()")
+		NSHADER_PARAM(AMBIENTONLY, SHADER_PARAM_TYPE_INTEGER, "0", "Control drawing of non-ambient light ()");
 
-		NSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term")
-		NSHADER_PARAM(ENVMAPFRESNEL, SHADER_PARAM_TYPE_FLOAT, "0", "Degree to which Fresnel should be applied to env map")
+		NSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term");
+		NSHADER_PARAM(ENVMAPFRESNEL, SHADER_PARAM_TYPE_FLOAT, "0", "Degree to which Fresnel should be applied to env map");
 
-		NSHADER_PARAM(SEPARATEDETAILUVS, SHADER_PARAM_TYPE_BOOL, "0", "Use texcoord1 for detail texture")
-		NSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.")
-		NSHADER_PARAM(DEPTHBLEND, SHADER_PARAM_TYPE_INTEGER, "0", "fade at intersection boundaries. Only supported without bumpmaps")
-		NSHADER_PARAM(DEPTHBLENDSCALE, SHADER_PARAM_TYPE_FLOAT, "50.0", "Amplify or reduce DEPTHBLEND fading. Lower values make harder edges.")
+		NSHADER_PARAM(SEPARATEDETAILUVS, SHADER_PARAM_TYPE_BOOL, "0", "Use texcoord1 for detail texture");
+		NSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.");
+		NSHADER_PARAM(DEPTHBLEND, SHADER_PARAM_TYPE_INTEGER, "0", "fade at intersection boundaries. Only supported without bumpmaps");
+		NSHADER_PARAM(DEPTHBLENDSCALE, SHADER_PARAM_TYPE_FLOAT, "50.0", "Amplify or reduce DEPTHBLEND fading. Lower values make harder edges.");
 
-		NSHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation")
+		NSHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation");
 		NSHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
 
 		NSHADER_PARAM(VERTEXALPHATEST, SHADER_PARAM_TYPE_INTEGER, "0", "");
@@ -48,9 +98,7 @@ namespace
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 		void OnInitShaderInstance(IMaterialVar** params, IShaderInit* shaderInit,
 			const char* materialName) override;
-		void OnDrawElements(IMaterialVar** params, IShaderShadowNext* shaderShadow,
-			IShaderDynamicAPI* shaderAPI, VertexCompressionType_t vtxCompression,
-			CBasePerMaterialContextData** context) override;
+		void OnDrawElements(const OnDrawElementsParams& params) override;
 
 		virtual bool IsVertexLitGeneric() const { return false; }
 
@@ -71,16 +119,11 @@ namespace
 		void InitShaderEmissiveScrollBlendedPass(IMaterialVar** params);
 		void InitShaderFleshInteriorBlendedPass(IMaterialVar** params);
 
-		void DrawVertexLitGeneric(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadowNext* shadow,
-			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
-		void DrawWeaponSheenPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadowNext* shadow,
-			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
-		void DrawCloakBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadowNext* shadow,
-			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
-		void DrawEmissiveScrollBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadowNext* shadow,
-			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
-		void DrawFleshInteriorBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api, IShaderShadowNext* shadow,
-			VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context);
+		void DrawVertexLitGeneric(const OnDrawElementsParams& params);
+		void DrawWeaponSheenPass(const OnDrawElementsParams& params);
+		void DrawCloakBlendedPass(const OnDrawElementsParams& params);
+		void DrawEmissiveScrollBlendedPass(const OnDrawElementsParams& params);
+		void DrawFleshInteriorBlendedPass(const OnDrawElementsParams& params);
 
 		bool CloakBlendedPassIsFullyOpaque(IMaterialVar** params) const;
 		bool ShouldDrawMaterialSheen(IMaterialVar** params) const;
@@ -89,34 +132,41 @@ namespace
 	class UnlitGeneric final : public XLitGeneric
 	{
 	public:
-		const char* GetName() const override;
+		const char* GetName() const override { return "UnlitGeneric"; }
 	};
 
 	class VertexLitGeneric final : public XLitGeneric
 	{
 	public:
-		const char* GetName() const override;
+		const char* GetName() const override { return "VertexLitGeneric"; }
 
 		bool IsVertexLitGeneric() const override { return true; }
 	};
 
+	class Wireframe final : public XLitGeneric
+	{
+	public:
+		const char* GetName() const override { return "Wireframe"; }
+		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
+	};
+
 	static const DefaultInstanceRegister<UnlitGeneric> s_UnlitGeneric;
 	static const DefaultInstanceRegister<VertexLitGeneric> s_VertexLitGeneric;
+	static const DefaultInstanceRegister<Wireframe> s_Wireframe;
 }
 
-static VertexLitGeneric s_VertexLitGeneric;
-static UnlitGeneric s_UnlitGeneric;
+DEFINE_NSHADER_FALLBACK(UnlitGeneric_DX8, UnlitGeneric);
+DEFINE_NSHADER_FALLBACK(Wireframe_DX8, Wireframe);
+DEFINE_NSHADER_FALLBACK(Wireframe_DX9, Wireframe);
+//DEFINE_NSHADER_FALLBACK(VertexLitGeneric_DX8, VertexLitGeneric);
 
-const char* UnlitGeneric::GetName() const
+void Wireframe::OnInitShaderParams(IMaterialVar** params, const char* materialName)
 {
-	LOG_FUNC();
-	return "UnlitGeneric";
-}
+	SET_FLAGS(MATERIAL_VAR_NO_DEBUG_OVERRIDE);
+	SET_FLAGS(MATERIAL_VAR_NOFOG);
+	SET_FLAGS(MATERIAL_VAR_WIREFRAME);
 
-const char* VertexLitGeneric::GetName() const
-{
-	LOG_FUNC();
-	return "VertexLitGeneric";
+	XLitGeneric::OnInitShaderParams(params, materialName);
 }
 
 void XLitGeneric::OnInitShaderParams(IMaterialVar** params, const char* materialName)
@@ -208,16 +258,20 @@ bool XLitGeneric::ShouldDrawMaterialSheen(IMaterialVar** params) const
 	return !!params[SHEENPASSENABLED]->GetIntValue();
 }
 
-void XLitGeneric::DrawVertexLitGeneric(IMaterialVar** params, IShaderDynamicAPI* api,
-	IShaderShadowNext* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+void XLitGeneric::DrawVertexLitGeneric(const OnDrawElementsParams& params)
 {
+	Warning(TF2VULKAN_PREFIX "%s\n", s_SpecConstBufLayout[0].m_Name);
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+
+	auto& shadow = params.shadow;
+	auto& dynamic = params.dynamic;
 	if (shadow)
 	{
 		shadow->SetPixelShader("xlitgeneric_ps");
 		shadow->SetVertexShader("xlitgeneric_vs");
 	}
 
-	if (api)
+	if (dynamic)
 	{
 
 	}
@@ -225,46 +279,40 @@ void XLitGeneric::DrawVertexLitGeneric(IMaterialVar** params, IShaderDynamicAPI*
 	Draw();
 }
 
-void XLitGeneric::DrawWeaponSheenPass(IMaterialVar** params, IShaderDynamicAPI* api,
-	IShaderShadowNext* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+void XLitGeneric::DrawWeaponSheenPass(const OnDrawElementsParams& params)
 {
 	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::DrawCloakBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api,
-	IShaderShadowNext* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+void XLitGeneric::DrawCloakBlendedPass(const OnDrawElementsParams& params)
 {
 	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::DrawEmissiveScrollBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api,
-	IShaderShadowNext* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+void XLitGeneric::DrawEmissiveScrollBlendedPass(const OnDrawElementsParams& params)
 {
 	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::DrawFleshInteriorBlendedPass(IMaterialVar** params, IShaderDynamicAPI* api,
-	IShaderShadowNext* shadow, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
+void XLitGeneric::DrawFleshInteriorBlendedPass(const OnDrawElementsParams& params)
 {
 	NOT_IMPLEMENTED_FUNC();
 }
 
-void XLitGeneric::OnDrawElements(IMaterialVar** params, IShaderShadowNext* shaderShadow,
-	IShaderDynamicAPI* shaderAPI, VertexCompressionType_t vtxCompression,
-	CBasePerMaterialContextData** context)
+void XLitGeneric::OnDrawElements(const OnDrawElementsParams& params)
 {
 	// Skip the standard rendering if cloak pass is fully opaque
 	bool bDrawStandardPass = true;
-	if (params[CLOAKPASSENABLED]->GetIntValue() && (shaderShadow == NULL)) // && not snapshotting
+	if (params[CLOAKPASSENABLED]->GetIntValue() && (params.shadow == NULL)) // && not snapshotting
 	{
-		if (CloakBlendedPassIsFullyOpaque(params))
+		if (CloakBlendedPassIsFullyOpaque(params.matvars))
 			bDrawStandardPass = false;
 	}
 
 	// Standard rendering pass
 	if (bDrawStandardPass)
 	{
-		DrawVertexLitGeneric(params, shaderAPI, shaderShadow, vtxCompression, context);
+		DrawVertexLitGeneric(params);
 	}
 	else
 	{
@@ -276,9 +324,9 @@ void XLitGeneric::OnDrawElements(IMaterialVar** params, IShaderShadowNext* shade
 	// only if doing standard as well (don't do it if cloaked)
 	if (params[SHEENPASSENABLED]->GetIntValue())
 	{
-		if ((shaderShadow != NULL) || (bDrawStandardPass && ShouldDrawMaterialSheen(params)))
+		if ((params.shadow != NULL) || (bDrawStandardPass && ShouldDrawMaterialSheen(params.matvars)))
 		{
-			DrawWeaponSheenPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+			DrawWeaponSheenPass(params);
 		}
 		else
 		{
@@ -291,9 +339,9 @@ void XLitGeneric::OnDrawElements(IMaterialVar** params, IShaderShadowNext* shade
 	if (params[CLOAKPASSENABLED]->GetIntValue())
 	{
 		// If ( snapshotting ) or ( we need to draw this frame )
-		if ((shaderShadow != NULL) || ((params[CLOAKFACTOR]->GetFloatValue() > 0.0f) && (params[CLOAKFACTOR]->GetFloatValue() < 1.0f)))
+		if ((params.shadow != NULL) || ((params[CLOAKFACTOR]->GetFloatValue() > 0.0f) && (params[CLOAKFACTOR]->GetFloatValue() < 1.0f)))
 		{
-			DrawCloakBlendedPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+			DrawCloakBlendedPass(params);
 		}
 		else // We're not snapshotting and we don't need to draw this frame
 		{
@@ -306,9 +354,9 @@ void XLitGeneric::OnDrawElements(IMaterialVar** params, IShaderShadowNext* shade
 	if (params[EMISSIVEBLENDENABLED]->GetIntValue())
 	{
 		// If ( snapshotting ) or ( we need to draw this frame )
-		if ((shaderShadow != NULL) || (params[EMISSIVEBLENDSTRENGTH]->GetFloatValue() > 0.0f))
+		if ((params.shadow != NULL) || (params[EMISSIVEBLENDSTRENGTH]->GetFloatValue() > 0.0f))
 		{
-			DrawEmissiveScrollBlendedPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+			DrawEmissiveScrollBlendedPass(params);
 		}
 		else // We're not snapshotting and we don't need to draw this frame
 		{
@@ -321,9 +369,9 @@ void XLitGeneric::OnDrawElements(IMaterialVar** params, IShaderShadowNext* shade
 	if (params[FLESHINTERIORENABLED]->GetIntValue())
 	{
 		// If ( snapshotting ) or ( we need to draw this frame )
-		if ((shaderShadow != NULL) || (true))
+		if ((params.shadow != NULL) || (true))
 		{
-			DrawFleshInteriorBlendedPass(params, shaderAPI, shaderShadow, vtxCompression, context);
+			DrawFleshInteriorBlendedPass(params);
 		}
 		else // We're not snapshotting and we don't need to draw this frame
 		{

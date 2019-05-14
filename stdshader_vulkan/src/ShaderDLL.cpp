@@ -1,5 +1,4 @@
 
-#if false
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/Macros.h>
 
@@ -70,4 +69,3 @@ bool VulkanShaderDLL::Connect(CreateInterfaceFn factory, uint8_t something)
 
 	return true;
 }
-#endif
