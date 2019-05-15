@@ -88,6 +88,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
     <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Enums.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\ForwardingHelpers.h" />
     <ClInclude Include="include\TF2Vulkan\Util\FourCC.h" />
     <ClInclude Include="include\TF2Vulkan\Util\InPlaceVector.h" />
     <ClInclude Include="include\TF2Vulkan\Util\lightdesc.h" />
@@ -116,6 +117,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />
     <ClInclude Include="include\TF2Vulkan\Util\UniqueObject.h" />
     <ClInclude Include="include\TF2Vulkan\Util\utlsymbol.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\ValuePusher.h" />
     <ClInclude Include="include\TF2Vulkan\Util\vector.h" />
     <ClInclude Include="include\TF2Vulkan\Util\vmatrix.h" />
   </ItemGroup>

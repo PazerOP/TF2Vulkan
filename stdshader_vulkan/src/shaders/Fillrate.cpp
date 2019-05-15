@@ -22,6 +22,9 @@ namespace
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 		void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* pShaderInit, const char* pMaterialName) override {}
 		void OnDrawElements(const OnDrawElementsParams& params) override;
+
+	private:
+
 	};
 
 	static const Fillrate::InstanceRegister s_Fillrate;
@@ -52,8 +55,9 @@ void Fillrate::OnDrawElements(const OnDrawElementsParams& params)
 		int userDataSize = 0;
 		shadow->VertexShaderVertexFormat(flags, nTexCoordCount, NULL, userDataSize);
 
-		shadow->SetVertexShader("fillrate_vs");
-		shadow->SetPixelShader("fillrate_ps");
+		NOT_IMPLEMENTED_FUNC();
+		//shadow->SetVertexShader("fillrate_vs");
+		//shadow->SetPixelShader("fillrate_ps");
 	}
 
 	if (dynamic)
@@ -92,8 +96,9 @@ void Fillrate::OnDrawElements(const OnDrawElementsParams& params)
 		shadow->BlendFunc(SHADER_BLEND_ONE, SHADER_BLEND_ONE);
 		shadow->PolyMode(SHADER_POLYMODEFACE_FRONT_AND_BACK, SHADER_POLYMODE_LINE);
 
-		shadow->SetVertexShader("fillrate_vs");
-		shadow->SetPixelShader("fillrate_ps");
+		NOT_IMPLEMENTED_FUNC();
+		//shadow->SetVertexShader("fillrate_vs");
+		//shadow->SetPixelShader("fillrate_ps");
 	}
 
 	if (dynamic)

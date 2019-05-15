@@ -35,35 +35,6 @@ namespace
 	class ShaderAPI final : public IShaderAPI_StateManagerDynamic
 	{
 	public:
-		int GetViewports(ShaderViewport_t* viewports, int max) const override { NOT_IMPLEMENTED_FUNC(); }
-
-		double CurrentTime() const override { NOT_IMPLEMENTED_FUNC(); }
-
-		void GetLightmapDimensions(int* w, int* h) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void MultMatrix(float* m) override { NOT_IMPLEMENTED_FUNC(); }
-		void MultMatrixLocal(float* m) override { NOT_IMPLEMENTED_FUNC(); }
-		void LoadCameraToWorld() override { NOT_IMPLEMENTED_FUNC(); }
-		void Ortho(double left, double right, double bottom, double top, double zNear, double zFar) override { NOT_IMPLEMENTED_FUNC(); }
-		void PerspectiveX(double fovX, double aspect, double zNear, double zFar) override { NOT_IMPLEMENTED_FUNC(); }
-		void PerspectiveOffCenterX(double fovX, double aspect, double zNear, double zFar,
-			double bottom, double top, double left, double right) override { NOT_IMPLEMENTED_FUNC(); }
-		void PickMatrix(int x, int y, int width, int height) override { NOT_IMPLEMENTED_FUNC(); }
-		void Rotate(float angle, float x, float y, float z) override { NOT_IMPLEMENTED_FUNC(); }
-		void Translate(float x, float y, float z) override { NOT_IMPLEMENTED_FUNC(); }
-		void Scale(float x, float y, float z) override { NOT_IMPLEMENTED_FUNC(); }
-		void ScaleXY(float x, float y) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void Color3f(float r, float g, float b) override { NOT_IMPLEMENTED_FUNC(); }
-		void Color3fv(const float* rgb) override { NOT_IMPLEMENTED_FUNC(); }
-		void Color4f(float r, float g, float b, float a) override { NOT_IMPLEMENTED_FUNC(); }
-		void Color4fv(const float* rgba) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void Color3ub(uint8_t r, uint8_t g, uint8_t b) override { NOT_IMPLEMENTED_FUNC(); }
-		void Color3ubv(const uint8_t* rgb) override { NOT_IMPLEMENTED_FUNC(); }
-		void Color4ub(uint8_t r, uint8_t g, uint8_t b, uint8_t a) override { NOT_IMPLEMENTED_FUNC(); }
-		void Color4ubv(const uint8_t* rgba) override { NOT_IMPLEMENTED_FUNC(); }
-
 		int GetCurrentLightCombo() const override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetTextureTransformDimension(TextureStage_t stage, int dimension, bool projected) override { NOT_IMPLEMENTED_FUNC(); }

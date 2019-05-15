@@ -18,53 +18,6 @@ using namespace TF2Vulkan::Shaders;
 
 namespace
 {
-	struct TF2VGenericSpecConsts : BaseSpecConstBuffer<TF2VGenericSpecConsts>
-	{
-		bool32 VERTEXCOLOR = false;
-		bool32 CUBEMAP = false;
-		bool32 HALFLAMBERT = false;
-		bool32 FLASHLIGHT = false;
-		bool32 SEAMLESS_BASE = false;
-		bool32 SEAMLESS_DETAIL = false;
-		bool32 SEPARATE_DETAIL_UVS = false;
-		bool32 DECAL = false;
-		bool32 DONT_GAMMA_CONVERT_VERTEX_COLOR = false;
-
-		bool32 DYNAMIC_LIGHT = false;
-		bool32 STATIC_LIGHT_VERTEX = false;
-		bool32 STATIC_LIGHT_LIGHTMAP = false;
-		int1 DOWATERFOG = 0;
-		bool32 LIGHTING_PREVIEW = false;
-		bool32 MORPHING = false;
-		bool32 NORMALMAPPING = false;
-		bool32 DIFFUSELIGHTING = false;
-		bool32 SELFILLUM = false;
-	};
-
-	struct TF2VGenericSpecConstLayoutInfo : BaseSpecConstLayoutInfo<TF2VGenericSpecConstLayoutInfo, TF2VGenericSpecConsts>
-	{
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, VERTEXCOLOR);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, CUBEMAP);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, HALFLAMBERT);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, FLASHLIGHT);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SEAMLESS_BASE);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SEAMLESS_DETAIL);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SEPARATE_DETAIL_UVS);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DECAL);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DONT_GAMMA_CONVERT_VERTEX_COLOR);
-
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DYNAMIC_LIGHT);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, STATIC_LIGHT_VERTEX);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, STATIC_LIGHT_LIGHTMAP);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DOWATERFOG);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, LIGHTING_PREVIEW);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, MORPHING);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, NORMALMAPPING);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, DIFFUSELIGHTING);
-		SPEC_CONST_BUF_ENTRY(TF2VGenericSpecConsts, SELFILLUM);
-
-	} static constexpr s_SpecConstBufLayout;
-
 	struct Params : BumpmapParams, WrinkleParams, EnvMapParams, PhongParams, RimlightParams, SelfillumParams, DetailParams, EmissiveScrollParams, WeaponSheenParams, SeamlessScaleParams, CloakParams, FleshParams, DistanceAlphaParams
 	{
 		NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
@@ -260,15 +213,15 @@ bool XLitGeneric::ShouldDrawMaterialSheen(IMaterialVar** params) const
 
 void XLitGeneric::DrawVertexLitGeneric(const OnDrawElementsParams& params)
 {
-	Warning(TF2VULKAN_PREFIX "%s\n", s_SpecConstBufLayout[0].m_Name);
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
 
 	auto& shadow = params.shadow;
 	auto& dynamic = params.dynamic;
 	if (shadow)
 	{
-		shadow->SetPixelShader("xlitgeneric_ps");
-		shadow->SetVertexShader("xlitgeneric_vs");
+		NOT_IMPLEMENTED_FUNC();
+		//shadow->SetPixelShader("xlitgeneric_ps");
+		//shadow->SetVertexShader("xlitgeneric_vs");
 	}
 
 	if (dynamic)

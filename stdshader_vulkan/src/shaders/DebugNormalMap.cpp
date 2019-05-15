@@ -24,6 +24,10 @@ namespace
 		void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* pShaderInit,
 			const char* pMaterialName) override {}
 		void OnDrawElements(const OnDrawElementsParams& params) override;
+
+	private:
+		IShaderGroup* m_XLitGenericVS = nullptr;
+		IShaderGroup* m_XLitGenericPS = nullptr;
 	};
 
 	static const DebugNormalMap::InstanceRegister s_DebugNormalMap;
@@ -50,8 +54,9 @@ void DebugNormalMap::OnDrawElements(const OnDrawElementsParams& params)
 		// Set stream format (note that this shader supports compression)
 		shadow->VertexShaderVertexFormat(VERTEX_POSITION | VERTEX_FORMAT_COMPRESSED, 1);
 
-		shadow->SetPixelShader("xlitgeneric_ps");
 		NOT_IMPLEMENTED_FUNC();
+		//shadow->SetPixelShader(m_XLitGenericPS);
+		//shadow->SetPixelShader(m_XLitGenericPS);
 		/*shadow->SetVertexShader("xlitgeneric_vs",
 			{
 				{ "VERTEXCOLOR", false },

@@ -10,7 +10,6 @@ namespace TF2Vulkan
 	{
 	public:
 		virtual const IVulkanShader& GetVulkanShader() const = 0;
-		//virtual const vk::SpecializationMapEntry& GetSpecMapEntries() const = 0;
 	};
 
 	class IShaderInstanceInternal : public IShaderInstance

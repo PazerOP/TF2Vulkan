@@ -63,4 +63,14 @@ inline CreateInterfaceFn Sys_GetFactory(CSysModule* pModule)
 	return TF2Vulkan::Sys_GetFactoryCustom(pModule);
 }
 
+template<typename T>
+inline void ConnectInterface(CreateInterfaceFn factory, const char* interfaceName, T*& interfacePtr)
+{
+	if (!(interfacePtr = (T*)factory(interfaceName, nullptr)))
+	{
+		assert(false);
+		Error("[TF2Vulkan] " __FUNCTION__ "(): Failed to connect to %s", interfaceName);
+	}
+}
+
 #endif

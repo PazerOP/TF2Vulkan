@@ -132,7 +132,7 @@ void BaseShaderNext::OnDrawElements(IMaterialVar** params, IShaderShadow* pShade
 	OnDrawElementsParams fnParams;
 	fnParams.matvars = params;
 	fnParams.shadow = assert_cast<IShaderShadowNext*>(pShaderShadow);
-	fnParams.dynamic = assert_cast<IShaderDynamicNext*>(pShaderAPI);
+	fnParams.dynamic = g_ShaderDynamic;
 	fnParams.compression = vertexCompression;
 	fnParams.context = pContextDataPtr;
 

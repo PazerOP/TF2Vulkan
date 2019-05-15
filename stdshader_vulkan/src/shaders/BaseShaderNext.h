@@ -12,6 +12,11 @@
 
 #include <optional>
 
+namespace TF2Vulkan
+{
+	class IShaderNextInstanceMgr;
+}
+
 namespace TF2Vulkan{ namespace Shaders
 {
 	class BaseShaderNext : public CBaseShader
@@ -28,6 +33,7 @@ namespace TF2Vulkan{ namespace Shaders
 		int GetNumParams() const override final;
 
 	protected:
+		virtual void InitShader(IShaderNextInstanceMgr& instanceMgr) {}
 		void InitIntParam(int param, IMaterialVar** params, int defaultVal) const;
 		void InitFloatParam(int param, IMaterialVar** params, float defaultVal) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const;

@@ -9,7 +9,13 @@ namespace Util{ namespace algorithm
 	template<typename TContainer, typename TValue>
 	inline bool contains(const TContainer& container, const TValue& value)
 	{
-		return std::find(container.begin(), container.end(), value) != container.end();
+		return std::find(std::begin(container), std::end(container), value) != std::end(container);
+	}
+
+	template<typename TContainer, typename TFunc>
+	inline bool contains_if(const TContainer& container, const TFunc& func)
+	{
+		return std::find_if(std::begin(container), std::end(container), func) != std::end(container);
 	}
 
 	template<typename TContainer, typename TValue>

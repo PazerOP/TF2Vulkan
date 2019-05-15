@@ -95,7 +95,7 @@
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\AlignedTypes.h" />
     <ClInclude Include="include\TF2Vulkan\Exceptions.h" />
-    <ClInclude Include="include\TF2Vulkan\IShaderAPINext.h" />
+    <ClInclude Include="include\TF2Vulkan\IShaderNextInstanceMgr.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderDynamicNext.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderInstance.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderShadowNext.h" />
@@ -106,6 +106,7 @@
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderInstanceInternal.h" />
+    <ClInclude Include="src\interface\internal\IStateManagerDynamic.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
     <ClInclude Include="src\TF2Vulkan\FormatConverter.h" />
     <ClInclude Include="src\TF2Vulkan\IShaderTextureManager.h" />
@@ -123,6 +124,7 @@
     <ClInclude Include="src\TF2Vulkan\ResourceBlob.h" />
     <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
     <ClInclude Include="src\TF2Vulkan\ShaderDeviceMgr.h" />
+    <ClInclude Include="src\TF2Vulkan\ShaderDynamicNext.h" />
     <ClInclude Include="src\TF2Vulkan\shaders\VulkanShaderManager.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerDynamic.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerVulkan.h" />
@@ -157,6 +159,8 @@
     <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderDevice.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderDeviceMgr.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderDynamicNext.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderNextInstanceMgr.cpp" />
     <ClCompile Include="src\TF2Vulkan\shaders\VulkanShaderManager.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerVulkan.cpp" />
     <ClCompile Include="src\TF2Vulkan\VBAllocTracker.cpp" />
