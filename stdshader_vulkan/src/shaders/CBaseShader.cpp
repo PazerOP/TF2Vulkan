@@ -154,6 +154,11 @@ void CBaseShader::DrawElements(IMaterialVar** params, int modulationFlags, IShad
 
 int CBaseShader::ComputeModulationFlags(IMaterialVar** params, IShaderDynamicAPI* dynamic)
 {
+	LOG_FUNC();
+
+	// TF2Vulkan doesn't rely on snapshots the same way as default Source.
+	return 0;
+
 	Util::ValuePusher paramsPusher(s_ppParams, params);
 	Util::ValuePusher dynamicPusher(s_pShaderAPI, dynamic);
 
@@ -430,4 +435,77 @@ void CBaseShader::LoadCubeMap(int textureVarIndex, int additionalFlags)
 
 	return LoadResource<LoadType::Cubemap>(s_ppParams, GetNumParams(),
 		s_pShaderInit, s_pTextureGroupName, textureVarIndex, additionalFlags);
+}
+
+bool CBaseShader::TextureIsTranslucent(int textureVar, bool isBaseTexture) const
+{
+	if (textureVar < 0)
+		return false;
+
+	IMaterialVar** params = s_ppParams;
+	if (params[textureVar]->GetType() == MATERIAL_VAR_TYPE_TEXTURE)
+	{
+		if (!isBaseTexture)
+		{
+			return params[textureVar]->GetTextureValue()->IsTranslucent();
+		}
+		else
+		{
+			// Override translucency settings if this flag is set.
+			if (IS_FLAG_SET(MATERIAL_VAR_OPAQUETEXTURE))
+				return false;
+
+			const bool bHasSelfIllum = ((CurrentMaterialVarFlags() & MATERIAL_VAR_SELFILLUM) != 0);
+			const bool bHasSelfIllumMask = false;// ((CurrentMaterialVarFlags2() & MATERIAL_VAR2_SELFILLUMMASK) != 0);
+			const bool bHasBaseAlphaEnvmapMask = ((CurrentMaterialVarFlags() & MATERIAL_VAR_BASEALPHAENVMAPMASK) != 0);
+			const bool bUsingBaseTextureAlphaForSelfIllum = bHasSelfIllum && !bHasSelfIllumMask;
+			// Check if we are using base texture alpha for something other than translucency.
+			if (!bUsingBaseTextureAlphaForSelfIllum && !bHasBaseAlphaEnvmapMask)
+			{
+				// We aren't using base alpha for anything other than trancluceny.
+
+				// check if the material is marked as translucent or alpha test.
+				if ((CurrentMaterialVarFlags() & MATERIAL_VAR_TRANSLUCENT) ||
+					(CurrentMaterialVarFlags() & MATERIAL_VAR_ALPHATEST))
+				{
+					// Make sure the texture has an alpha channel.
+					return params[textureVar]->GetTextureValue()->IsTranslucent();
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+void CBaseShader::SetBlendingShadowState(BlendType_t nMode)
+{
+	switch (nMode)
+	{
+	case BT_NONE:      return DisableAlphaBlending();
+	case BT_BLEND:     return EnableAlphaBlending(SHADER_BLEND_SRC_ALPHA, SHADER_BLEND_ONE_MINUS_SRC_ALPHA);
+	case BT_ADD:       return EnableAlphaBlending(SHADER_BLEND_ONE, SHADER_BLEND_ONE);
+	case BT_BLENDADD:  return EnableAlphaBlending(SHADER_BLEND_SRC_ALPHA, SHADER_BLEND_ONE);
+	}
+
+	assert(!"Invalid BlendType_t");
+}
+
+bool CBaseShader::IsAlphaModulating() const
+{
+	return (s_nModulationFlags & SHADER_USING_ALPHA_MODULATION) != 0;
+}
+
+void CBaseShader::EnableAlphaBlending(ShaderBlendFactor_t src, ShaderBlendFactor_t dst)
+{
+	Assert(IsSnapshotting());
+	s_pShaderShadow->EnableBlending(true);
+	s_pShaderShadow->BlendFunc(src, dst);
+	s_pShaderShadow->EnableDepthWrites(false);
+}
+
+void CBaseShader::DisableAlphaBlending()
+{
+	Assert(IsSnapshotting());
+	s_pShaderShadow->EnableBlending(false);
 }

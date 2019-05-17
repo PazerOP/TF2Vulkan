@@ -4,11 +4,11 @@
 struct PS_INPUT
 {
 	//float4 projPos              : SV_Position;
+	float4 color                : TEXCOORD2;
 	float fog                   : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;
 	float3 detailTexCoord       : TEXCOORD1;
-	float4 color                : TEXCOORD2;
 
 	float3 worldVertToEyeVector : TEXCOORD3;
 	float3 worldSpaceNormal     : TEXCOORD4;
@@ -21,12 +21,15 @@ struct PS_INPUT
 
 float4 main(const PS_INPUT i) : SV_Target
 {
-	float4 color = (float4)1;
+	float3 diffuseColor = (float3)1;
+	if (DIFFUSELIGHTING || VERTEXCOLOR)
+		diffuseColor = i.color.bgr; // FIXME REALLY SOON: Why is this bgr????
 
-	if (VERTEXCOLOR)
-		color *= i.color;
+	float4 baseTextureColor = (float4)1;
+	if (TEXACTIVE_BASETEXTURE)
+		baseTextureColor = BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
 
-	color *= BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
-
-	return color;
+	const float3 finalColor = diffuseColor.rgb * baseTextureColor.rgb;
+	const float finalAlpha = baseTextureColor.a;
+	return float4(finalColor, finalAlpha);
 }

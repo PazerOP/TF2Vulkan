@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "IStateManagerDynamic.h"
+#include "StateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
 #include "interface/internal/IShaderInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
@@ -85,6 +85,8 @@ void IShaderAPI_StateManagerDynamic::ClearColor3ub(uint8_t r, uint8_t g, uint8_t
 void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 {
 	LOG_FUNC();
+
+	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel("Bind %s: %s", material->GetShaderName(), material->GetName());
 
 	auto internal = assert_cast<IMaterialInternal*>(material);
 	auto isPrecached = internal->IsPrecached();

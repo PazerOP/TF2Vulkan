@@ -67,8 +67,6 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 	if (shadow)
 	{
-		shadow->EnableTexture(SHADER_SAMPLER0, true);
-
 		// Set stream format (note that this shader supports compression)
 		shadow->VertexShaderVertexFormat(VERTEX_POSITION | VERTEX_FORMAT_COMPRESSED, 1);
 

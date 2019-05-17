@@ -155,6 +155,16 @@ const ShaderParamNext* BaseShaderNext::TryGetParam(int paramIndex) const
 	return &m_Params[paramIndex];
 }
 
+IMaterialVar* BaseShaderNext::OnDrawElementsParams::operator[](const ShaderParamNext& var)
+{
+	return const_cast<IMaterialVar*>(Util::as_const(this)->operator[](var));
+}
+
+IMaterialVar* BaseShaderNext::OnDrawElementsParams::operator[](ShaderMaterialVars_t var)
+{
+	return const_cast<IMaterialVar*>(Util::as_const(this)->operator[](var));
+}
+
 const IMaterialVar* BaseShaderNext::OnDrawElementsParams::operator[](const ShaderParamNext& var) const
 {
 	return matvars[var.GetIndex()];

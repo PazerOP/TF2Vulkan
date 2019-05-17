@@ -28,16 +28,16 @@ namespace TF2Vulkan
 		void SetShaders(IShaderGroup& vertex, IShaderGroup* pixel) { SetShaders(&vertex, pixel); }
 		void SetShaders(IShaderGroup& vertex, IShaderGroup& pixel) { SetShaders(&vertex, &pixel); }
 
-		[[deprecated]] void EnableTexture(Sampler_t sampler, bool bEnable) override final {}
-
 	private:
-		void SetPixelShader(const char* name, int staticIndex) override final
+		[[deprecated]] void SetPixelShader(const char* name, int staticIndex) override final
 		{
 			NOT_IMPLEMENTED_FUNC();
 		}
-		void SetVertexShader(const char* name, int staticIndex) override final
+		[[deprecated]] void SetVertexShader(const char* name, int staticIndex) override final
 		{
 			NOT_IMPLEMENTED_FUNC();
 		}
+
+		[[deprecated]] void EnableTexture(Sampler_t sampler, bool bEnable) override final {}
 	};
 }

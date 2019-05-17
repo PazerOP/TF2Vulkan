@@ -128,7 +128,7 @@
     <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceMgrInternal.h" />
     <ClInclude Include="src\TF2Vulkan\shaders\VulkanShaderManager.h" />
-    <ClInclude Include="src\TF2Vulkan\IStateManagerDynamic.h" />
+    <ClInclude Include="src\TF2Vulkan\StateManagerDynamic.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerVulkan.h" />
     <ClInclude Include="include\TF2Vulkan\VertexFormat.h" />
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.h" />
@@ -169,7 +169,7 @@
     <ClCompile Include="src\TF2Vulkan\ResourceBlob.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanFactories.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerStatic.cpp" />
-    <ClCompile Include="src\TF2Vulkan\IStateManagerDynamic.cpp" />
+    <ClCompile Include="src\TF2Vulkan\StateManagerDynamic.cpp" />
     <ClCompile Include="src\TF2Vulkan\VertexFormat.cpp" />
     <ClCompile Include="src\TF2Vulkan\vk_mem_alloc.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanMesh.cpp" />

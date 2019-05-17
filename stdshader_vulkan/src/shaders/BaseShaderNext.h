@@ -50,6 +50,9 @@ namespace TF2Vulkan{ namespace Shaders
 			VertexCompressionType_t compression;
 			CBasePerMaterialContextData** context;
 
+			operator IMaterialVar** () const { return matvars; }
+			IMaterialVar* operator[](const ShaderParamNext& var);
+			IMaterialVar* operator[](ShaderMaterialVars_t var);
 			const IMaterialVar* operator[](const ShaderParamNext& var) const;
 			const IMaterialVar* operator[](ShaderMaterialVars_t var) const;
 		};

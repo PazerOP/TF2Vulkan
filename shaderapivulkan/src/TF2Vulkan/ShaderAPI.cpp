@@ -1,5 +1,5 @@
 #include "FormatInfo.h"
-#include "IStateManagerDynamic.h"
+#include "StateManagerDynamic.h"
 #include "SamplerSettings.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
@@ -232,7 +232,7 @@ namespace
 
 		bool SupportsCSAAMode(int numSamples, int qualityLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void InvalidateDelayedShaderConstants() override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
+		void InvalidateDelayedShaderConstants() override;
 
 		float GammaToLinear_HardwareSpecific(float gamma) const override;
 		float LinearToGamma_HardwareSpecific(float linear) const override;
@@ -981,4 +981,12 @@ void ShaderAPI::BindStandardTexture(Sampler_t sampler, StandardTextureId_t id)
 	// TODO: Move to IShaderAPI_StateManagerDynamic
 	LOG_FUNC();
 	BindTexture(sampler, GetStdTextureHandle(id));
+}
+
+void ShaderAPI::InvalidateDelayedShaderConstants()
+{
+	// We don't use this functionality (dynamic uniform buffers are used instead)
+
+	//LOG_FUNC();
+	// ^^^ Commented out because InvalidateDelayedShaderConstants() gets spammed
 }

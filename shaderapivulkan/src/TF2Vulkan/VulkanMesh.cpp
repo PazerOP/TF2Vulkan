@@ -1,4 +1,4 @@
-#include "IStateManagerDynamic.h"
+#include "StateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IStateManagerStatic.h"

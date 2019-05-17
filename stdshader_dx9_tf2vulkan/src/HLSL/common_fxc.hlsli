@@ -28,8 +28,7 @@
 [[vk::constant_id(18)]] const bool DIFFUSELIGHTING = false;
 [[vk::constant_id(19)]] const bool SELFILLUM = false;
 
-static const int SPEC_CONST_ID_BASE_VS = 1000;
-static const int SPEC_CONST_ID_BASE_PS = 2000;
+static const int SPEC_CONST_ID_BASE = 20;
 
 static const int BINDING_CBUF_VSMODELMATRICES = 10;
 

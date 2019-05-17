@@ -14,6 +14,10 @@ namespace TF2Vulkan
 	{
 		Invalid = uint_fast8_t(-1),
 	};
+	enum class TextureIndex : uint_fast16_t
+	{
+		Invalid = uint_fast16_t(-1),
+	};
 
 	enum class UniformBufferStandardType : uint_fast8_t
 	{

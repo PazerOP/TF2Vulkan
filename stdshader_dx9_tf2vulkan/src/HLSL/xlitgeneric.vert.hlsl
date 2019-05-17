@@ -36,11 +36,11 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
 	float4 projPos              : SV_Position;
+	float4 color                : TEXCOORD2;
 	float fog                   : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;
 	float3 detailTexCoord       : TEXCOORD1;
-	float4 color                : TEXCOORD2;
 
 	float3 worldVertToEyeVector : TEXCOORD3;
 	float3 vWorldNormal         : TEXCOORD4;
@@ -156,18 +156,15 @@ VS_OUTPUT main(const VS_INPUT v)
 	{
 		o.color = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	}
+	else if (VERTEXCOLOR)
+	{
+		// Assume that this is unlitgeneric if you are using vertex color.
+		o.color.rgb = (DONT_GAMMA_CONVERT_VERTEX_COLOR) ? v.vColor.rgb : GammaToLinear(v.vColor.rgb);
+		o.color.a = v.vColor.a;
+	}
 	else
 	{
-		if (VERTEXCOLOR)
-		{
-			// Assume that this is unlitgeneric if you are using vertex color.
-			o.color.rgb = (DONT_GAMMA_CONVERT_VERTEX_COLOR) ? v.vColor.rgb : GammaToLinear(v.vColor.rgb);
-			o.color.a = v.vColor.a;
-		}
-		else
-		{
-			o.color.xyz = DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT);
-		}
+		o.color.xyz = DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT);
 	}
 
 	if (SEAMLESS_BASE)
@@ -203,5 +200,6 @@ VS_OUTPUT main(const VS_INPUT v)
 		o.color.xyz = float3(dot, dot, dot);
 	}
 
+	o.color = v.vColor.rgba;
 	return o;
 }
