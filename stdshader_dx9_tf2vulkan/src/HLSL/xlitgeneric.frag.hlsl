@@ -21,8 +21,6 @@ struct PS_INPUT
 
 float4 main(const PS_INPUT i) : SV_Target
 {
-	//return float4(i.baseTexCoord.xy, 0.5f, 1);
-
 	float4 color = (float4)1;
 
 	if (VERTEXCOLOR)

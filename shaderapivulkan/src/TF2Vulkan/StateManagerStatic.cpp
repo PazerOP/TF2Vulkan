@@ -68,7 +68,6 @@ namespace
 		void EnableVertexBlend(bool enable) override final;
 
 		void OverbrightValue(TextureStage_t stage, float value) override final;
-		void EnableTexture(Sampler_t sampler, bool enable) override final;
 		void EnableTexGen(TextureStage_t stage, bool enable) override final;
 		void TexGen(TextureStage_t stage, ShaderTexGenParam_t param) override final;
 
@@ -331,18 +330,6 @@ void ShadowStateManager::EnableVertexBlend(bool enable)
 void ShadowStateManager::OverbrightValue(TextureStage_t stage, float value)
 {
 	NOT_IMPLEMENTED_FUNC();
-}
-
-void ShadowStateManager::EnableTexture(Sampler_t sampler, bool enable)
-{
-	LOG_FUNC();
-	ENSURE(sampler >= Sampler_t(0) && sampler < Sampler_t(std::size(m_State.m_PSSamplers)));
-	auto & s = m_State.m_PSSamplers[sampler];
-	if (s.m_Enabled != enable)
-	{
-		s.m_Enabled = enable;
-		m_Dirty = true;
-	}
 }
 
 void ShadowStateManager::EnableTexGen(TextureStage_t stage, bool enable)

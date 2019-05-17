@@ -99,6 +99,7 @@ namespace
 		bool m_RSBackFaceCulling;
 		ShaderPolyMode_t m_RSPolyMode;
 
+		bool m_OMAlphaBlending;
 		ShaderBlendFactor_t m_OMSrcFactor;
 		ShaderBlendFactor_t m_OMDstFactor;
 
@@ -769,9 +770,12 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 
 		auto& att = retVal.m_ColorBlendAttachmentStates.emplace_back();
 
-		att.blendEnable = true;
-		att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(key.m_OMSrcFactor);
-		att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(key.m_OMDstFactor);
+		att.blendEnable = key.m_OMAlphaBlending;
+		if (att.blendEnable)
+		{
+			att.srcAlphaBlendFactor = att.srcColorBlendFactor = ConvertBlendFactor(key.m_OMSrcFactor);
+			att.dstAlphaBlendFactor = att.dstColorBlendFactor = ConvertBlendFactor(key.m_OMDstFactor);
+		}
 
 		att.colorWriteMask =
 			vk::ColorComponentFlagBits::eR |
@@ -1252,6 +1256,7 @@ PipelineKey::PipelineKey(
 	m_RSBackFaceCulling(staticState.m_RSBackFaceCulling),
 	m_RSPolyMode(staticState.m_RSFrontFacePolyMode),
 
+	m_OMAlphaBlending(staticState.m_OMAlphaBlending),
 	m_OMSrcFactor(staticState.m_OMSrcFactor),
 	m_OMDstFactor(staticState.m_OMDstFactor),
 

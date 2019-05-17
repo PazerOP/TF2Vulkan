@@ -414,7 +414,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	if (const auto shadow = params.shadow)
 	{
 		shadow->EnableBlending(true);
-		shadow->BlendFunc(SHADER_BLEND_ONE, SHADER_BLEND_ONE);
+		shadow->BlendFunc(SHADER_BLEND_SRC_ALPHA, SHADER_BLEND_ONE_MINUS_SRC_ALPHA);
 		shadow->SetShaders(m_VSShader, m_PSShader);
 
 		if (CShader_IsFlagSet(params.matvars, MATERIAL_VAR_VERTEXCOLOR))

@@ -85,7 +85,6 @@ namespace TF2Vulkan
 			constexpr Sampler() = default;
 			DEFAULT_STRONG_EQUALITY_OPERATOR(Sampler);
 
-			bool m_Enabled = false;
 			bool m_SRGBRead = false;
 		};
 
@@ -138,7 +137,6 @@ STD_HASH_DEFINITION(ShaderViewport_t,
 );
 
 STD_HASH_DEFINITION(TF2Vulkan::LogicalShadowState::Sampler,
-	v.m_Enabled,
 	v.m_SRGBRead
 );
 
