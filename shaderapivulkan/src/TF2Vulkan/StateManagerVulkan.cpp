@@ -4,11 +4,14 @@
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"
 #include "SamplerSettings.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
-#include "interface/internal/IShaderInstanceInternal.h"
+#include "interface/internal/IShaderInternal.h"
+#include "interface/internal/IUniformBufferPoolInternal.h"
 #include "shaders/VulkanShaderManager.h"
 #include "VulkanFactories.h"
 
+#include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/MemoryPool.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
 #include <TF2Vulkan/Util/std_array.h>
@@ -192,25 +195,8 @@ namespace
 		bool operator!() const { return !m_DescriptorPool; }
 	};
 
-	enum class UniformBufferStandardType : uint_fast8_t
-	{
-		NonUniformBuffer,
-
-		VSCommon,
-		VSMatrices,
-		VSCustom,
-		VSModelMatrices,
-
-		PSCommon,
-		PSCustom,
-
-		Unknown,
-
-		COUNT,
-	};
 	struct DescriptorSetLayout final
 	{
-		std::vector<UniformBufferStandardType> m_BufferTypes;
 		std::vector<vk::DescriptorSetLayoutBinding> m_Bindings;
 
 		vk::DescriptorSetLayoutCreateInfo m_CreateInfo;
@@ -315,7 +301,7 @@ namespace
 		VulkanStateID m_ID;
 	};
 
-	class StateManagerVulkan final : public IStateManagerVulkan
+	class StateManagerVulkan final : public IStateManagerVulkan, Util::IAutoInit<IShaderDeviceInternal>
 	{
 	public:
 		void ApplyState(VulkanStateID stateID,
@@ -324,6 +310,8 @@ namespace
 
 		VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
 			const LogicalDynamicState& dynamicState) override;
+
+		void AutoInit() override;
 
 	private:
 		void ApplyRenderPass(const RenderPass& renderPass, IVulkanCommandBuffer& buf);
@@ -349,6 +337,8 @@ namespace
 		std::unordered_map<FramebufferKey, Framebuffer> m_StatesToFramebuffers;
 		std::unordered_map<DescriptorPoolKey, DescriptorPool> m_StatesToDescPools;
 		std::unordered_map<SamplerKey, Sampler> m_StatesToSamplers;
+
+		vma::AllocatedBuffer m_DummyUniformBuffer;
 	};
 }
 
@@ -386,7 +376,6 @@ static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupIntern
 	const auto& reflectionData = shader.GetVulkanShader().GetReflectionData();
 
 	auto& bindings = layout.m_Bindings;
-	auto& bufTypes = layout.m_BufferTypes;
 
 	// Samplers
 	for (const auto& samplerIn : reflectionData.m_Samplers)
@@ -396,8 +385,6 @@ static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupIntern
 		samplerOut.descriptorCount = 1;
 		samplerOut.descriptorType = vk::DescriptorType::eSampler;
 		samplerOut.stageFlags = reflectionData.m_ShaderStage;
-
-		bufTypes.emplace_back(UniformBufferStandardType::NonUniformBuffer);
 	}
 
 	// Textures
@@ -408,8 +395,6 @@ static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupIntern
 		textureOut.descriptorCount = 1;
 		textureOut.descriptorType = vk::DescriptorType::eSampledImage;
 		textureOut.stageFlags = reflectionData.m_ShaderStage;
-
-		bufTypes.emplace_back(UniformBufferStandardType::NonUniformBuffer);
 	}
 
 	// Constant buffers
@@ -418,27 +403,8 @@ static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupIntern
 		auto& cbufOut = bindings.emplace_back();
 		cbufOut.binding = cbufIn.m_Binding;
 		cbufOut.descriptorCount = 1;
-		cbufOut.descriptorType = vk::DescriptorType::eUniformBuffer;
+		cbufOut.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
 		cbufOut.stageFlags = reflectionData.m_ShaderStage;
-
-		auto& bufType = bufTypes.emplace_back();
-		if (cbufIn.m_Name == "VertexShaderCommonConstants"sv)
-			bufType = UniformBufferStandardType::VSCommon;
-		else if (cbufIn.m_Name == "VertexShaderMatrices"sv)
-			bufType = UniformBufferStandardType::VSMatrices;
-		else if (cbufIn.m_Name == "VertexShaderCustomConstants"sv)
-			bufType = UniformBufferStandardType::VSCustom;
-		else if (cbufIn.m_Name == "VertexShaderModelMatrices"sv)
-			bufType = UniformBufferStandardType::VSModelMatrices;
-		else if (cbufIn.m_Name == "PixelShaderCommonConstants"sv)
-			bufType = UniformBufferStandardType::PSCommon;
-		else if (cbufIn.m_Name == "PixelShaderCustomConstants"sv)
-			bufType = UniformBufferStandardType::PSCustom;
-		else
-		{
-			assert(!"Unknown cbuffer name");
-			bufType = UniformBufferStandardType::Unknown;
-		}
 	}
 }
 
@@ -1063,19 +1029,6 @@ void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCo
 	}
 }
 
-static const size_t CBUF_OFFSETS[] =
-{
-	0,
-	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_Common),
-	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_Matrices),
-	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_Custom),
-	offsetof(Shaders::ShaderData, m_VSData) + offsetof(Shaders::VSData, m_ModelMatrices),
-
-	offsetof(Shaders::ShaderData, m_PSData) + offsetof(Shaders::PSData, m_Common),
-	offsetof(Shaders::ShaderData, m_PSData) + offsetof(Shaders::PSData, m_Custom),
-	offsetof(Shaders::ShaderData, m_PSData) + sizeof(Shaders::PSData),
-};
-
 void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 	const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
 {
@@ -1084,19 +1037,10 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 	const auto& layouts = pipeline.m_Layout->m_SetLayouts;
 	assert(layouts.size() == 1);
 
-	auto dummyUniformBuf = Factories::BufferFactory{}
-		.SetSize(sizeof(dynamicState.m_ShaderData))
-		.SetAllowMapping(true)
-		.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
-		.SetDebugName(__FUNCTION__ "(): Temporary test uniform buffer")
-		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
-		.Create();
-
-	bool cbufUpdated[(size_t)UniformBufferStandardType::COUNT] = {};
-
 	std::vector<vk::UniqueDescriptorSet> descriptorSets;
 	std::vector<vk::WriteDescriptorSet> writes;
 	std::vector<vk::CopyDescriptorSet> copies;
+	std::vector<uint32_t> dynamicOffsets;
 	std::forward_list<vk::DescriptorImageInfo> imageInfos;
 	std::forward_list<vk::DescriptorBufferInfo> bufferInfos;
 	for (const auto& layout : layouts)
@@ -1110,12 +1054,9 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 
 		auto& newSet = descriptorSets.emplace_back(std::move(device.allocateDescriptorSetsUnique(allocInfo).at(0)));
 
-		assert(layout.m_Bindings.size() == layout.m_BufferTypes.size());
 		for (size_t i = 0; i < layout.m_Bindings.size(); i++)
 		{
 			const vk::DescriptorSetLayoutBinding &binding = layout.m_Bindings.at(i);
-			const UniformBufferStandardType bufType = layout.m_BufferTypes.at(i);
-			const uint_fast8_t bufTypeIndex = uint_fast8_t(bufType);
 
 			auto& write = writes.emplace_back();
 			write.descriptorType = binding.descriptorType;
@@ -1145,43 +1086,28 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 				write.pImageInfo = &imgInfo;
 				break;
 			}
-			case vk::DescriptorType::eUniformBuffer:
+			case vk::DescriptorType::eUniformBufferDynamic:
 			{
-				auto& bufInfo = bufferInfos.emplace_front();
+				const auto& bufferEntry = dynamicState.m_UniformBuffers.at(binding.binding);
+
+				const bool isBufferBound = !!bufferEntry;
+
+				vk::DescriptorBufferInfo& bufInfo = bufferInfos.emplace_front();
 				write.pBufferInfo = &bufInfo;
-				bufInfo.buffer = dummyUniformBuf.GetBuffer();
-				bufInfo.offset = CBUF_OFFSETS[bufTypeIndex];
-				bufInfo.range = CBUF_OFFSETS[bufTypeIndex + 1] - CBUF_OFFSETS[bufTypeIndex];
+				bufInfo.offset = 0;
 
-				if (!cbufUpdated[bufTypeIndex])
+				if (bufferEntry)
 				{
-					auto& alloc = dummyUniformBuf.GetAllocation();
-					switch (bufType)
-					{
-					default:
-						assert(!"Unknown buffer type");
-
-					case UniformBufferStandardType::VSCommon:
-						alloc.Write(dynamicState.m_ShaderData.m_VSData.m_Common, bufInfo.offset);
-						break;
-					case UniformBufferStandardType::VSMatrices:
-						alloc.Write(dynamicState.m_ShaderData.m_VSData.m_Matrices, bufInfo.offset);
-						break;
-					case UniformBufferStandardType::VSCustom:
-						alloc.Write(dynamicState.m_ShaderData.m_VSData.m_Custom, bufInfo.offset);
-						break;
-					case UniformBufferStandardType::VSModelMatrices:
-						alloc.Write(dynamicState.m_ShaderData.m_VSData.m_ModelMatrices, bufInfo.offset);
-						break;
-					case UniformBufferStandardType::PSCommon:
-						alloc.Write(dynamicState.m_ShaderData.m_PSData.m_Common, bufInfo.offset);
-						break;
-					case UniformBufferStandardType::PSCustom:
-						alloc.Write(dynamicState.m_ShaderData.m_PSData.m_Custom, bufInfo.offset);
-						break;
-					}
-
-					cbufUpdated[bufTypeIndex] = true;
+					const auto& pool = static_cast<const IUniformBufferPoolInternal&>(bufferEntry.GetPool());
+					bufInfo.buffer = pool.GetBackingBuffer();
+					bufInfo.range = pool.GetChildBufferSize();
+					dynamicOffsets.emplace_back(bufferEntry.GetOffset());
+				}
+				else
+				{
+					bufInfo.buffer = m_DummyUniformBuffer.GetBuffer();
+					bufInfo.range = VK_WHOLE_SIZE;
+					dynamicOffsets.emplace_back(0);
 				}
 
 				break;
@@ -1197,8 +1123,7 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 
 	TF2VULKAN_MAKE_NONUNIQUE_STACK_COPY(rawSets, descriptorSets);
 
-	buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.m_Layout->m_Layout.get(), 0, { descriptorSets.size(), rawSets }, {});
-	buf.AddResource(std::move(dummyUniformBuf));
+	buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.m_Layout->m_Layout.get(), 0, { descriptorSets.size(), rawSets }, dynamicOffsets);
 	buf.AddResource(std::move(descriptorSets));
 }
 
@@ -1414,4 +1339,13 @@ void Pipeline::FixupPointers()
 	ci.pColorBlendState = &m_ColorBlendStateCI;
 	ci.layout = m_Layout->m_Layout.get();
 	ci.renderPass = m_RenderPass->m_RenderPass.get();
+}
+
+void StateManagerVulkan::AutoInit()
+{
+	m_DummyUniformBuffer = Factories::BufferFactory{}
+		.SetDebugName("Dummy uniform buffer")
+		.SetSize(g_ShaderDeviceMgr.GetAdapterLimits().maxUniformBufferRange)
+		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+		.Create();
 }

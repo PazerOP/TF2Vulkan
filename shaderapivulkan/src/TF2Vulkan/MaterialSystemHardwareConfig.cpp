@@ -1,4 +1,4 @@
-#include "ShaderDeviceMgr.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "MaterialSystemHardwareConfig.h"
 
 #include <TF2Vulkan/Util/interface.h>
@@ -126,14 +126,8 @@ namespace
 
 		uint32_t MaxVertexAttributes() const override;
 
-		void Init() override;
-
 	private:
 		HDRType_t m_HDRType = HDRType_t::HDR_TYPE_FLOAT;
-
-		bool m_Init = false;
-		vk::PhysicalDeviceLimits m_Limits;
-		vk::PhysicalDeviceFeatures m_Features;
 
 		const vk::PhysicalDeviceLimits& GetLimits() const;
 		const vk::PhysicalDeviceFeatures& GetFeatures() const;
@@ -598,20 +592,17 @@ bool MaterialSystemHardwareConfig::CanStretchRectFromTextures() const
 const char* MaterialSystemHardwareConfig::GetHWSpecificShaderDLLName() const
 {
 	LOG_FUNC();
-	// TODO: Do we want/need to take advantage of this?
 	return "stdshader_vulkan";
 }
 
 const vk::PhysicalDeviceLimits& MaterialSystemHardwareConfig::GetLimits() const
 {
-	assert(m_Init);
-	return m_Limits;
+	return g_ShaderDeviceMgr.GetAdapterLimits();
 }
 
 const vk::PhysicalDeviceFeatures& MaterialSystemHardwareConfig::GetFeatures() const
 {
-	assert(m_Init);
-	return m_Features;
+	return g_ShaderDeviceMgr.GetAdapterFeatures();
 }
 
 int MaterialSystemHardwareConfig::NumBooleanVertexShaderConstants() const
@@ -649,15 +640,4 @@ int MaterialSystemHardwareConfig::NumIntegerPixelShaderConstants() const
 uint32_t MaterialSystemHardwareConfig::MaxVertexAttributes() const
 {
 	return GetLimits().maxVertexInputAttributes;
-}
-
-void MaterialSystemHardwareConfig::Init()
-{
-	assert(!m_Init);
-
-	auto adapter = g_ShaderDeviceMgr.GetAdapter();
-	m_Limits = adapter.getProperties().limits;
-	m_Features = adapter.getFeatures();
-
-	m_Init = true;
 }

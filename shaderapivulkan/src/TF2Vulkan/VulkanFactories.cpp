@@ -88,6 +88,7 @@ vma::AllocatedBuffer BufferFactory::Create() const
 		assert((m_AllocInfo.requiredFlags & MAP_REQUIRED_FLAGS_VK) == MAP_REQUIRED_FLAGS_VK);
 	}
 
+	assert(m_CreateInfo.size > 0);
 	auto created = g_ShaderDevice.GetVulkanAllocator().createBufferUnique(m_CreateInfo, m_AllocInfo);
 
 	if (!m_DebugName.empty())

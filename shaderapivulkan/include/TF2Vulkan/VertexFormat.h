@@ -1,13 +1,14 @@
 #pragma once
 
-#include "FormatInfo.h"
-
 #include <materialsystem/imaterial.h>
 
+#include <TF2Vulkan/DataFormat.h>
 #include <TF2Vulkan/Util/Enums.h>
 #include <TF2Vulkan/Util/std_utility.h>
 
 #include <compare>
+#include <cstdint>
+#include <string_view>
 
 namespace TF2Vulkan
 {
@@ -50,9 +51,13 @@ namespace TF2Vulkan
 		constexpr bool operator!=(const T& other) const { return !operator==(other); }
 
 		constexpr operator VertexFormat_t() const { return m_BaseFmt; }
+		constexpr uint_fast8_t GetTexCoordCount() const;
+		template<size_t max> uint_fast8_t GetTexCoordSizes(int(&sizes)[max]) const { return GetTexCoordSizes(sizes, max); }
+		uint_fast8_t GetTexCoordSizes(int* sizes, uint_fast8_t maxSizes) const;
 
 		size_t GetVertexSize() const;
 		uint_fast8_t GetTexCoordSize(uint_fast8_t index) const;
+		void SetTexCoordSize(uint_fast8_t index, uint_fast8_t size);
 		VertexCompressionType_t GetCompressionType() const;
 
 		void SetCompressionEnabled(bool enabled);
@@ -69,7 +74,10 @@ namespace TF2Vulkan
 			std::string_view m_Semantic;
 
 			uint_fast8_t GetTotalSize() const;
+
+#ifdef VULKAN_HPP
 			vk::Format GetVKFormat() const;
+#endif
 		};
 
 		struct Element
@@ -79,6 +87,11 @@ namespace TF2Vulkan
 		};
 
 		[[nodiscard]] uint_fast8_t GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize = nullptr) const;
+
+		// Helpers since we can't use enum-class ready operators due to m_Flags being a bitfield
+		void AddFlags(VertexFormatFlags flags);
+		void RemoveFlags(VertexFormatFlags flags);
+		void AddTexCoord(uint_fast8_t size = 2);
 
 		VertexFormat_t m_BaseFmt;
 		struct
@@ -97,12 +110,74 @@ namespace TF2Vulkan
 		};
 	};
 	static_assert(sizeof(VertexFormat) == sizeof(VertexFormat_t));
+
+	inline uint_fast8_t VertexFormat::GetTexCoordSizes(int* sizes, uint_fast8_t maxSizes) const
+	{
+		const auto realMax = maxSizes < 7 ? maxSizes : 7;
+		uint_fast8_t count = 0;
+
+		for (uint_fast8_t i = 0; i < realMax; i++)
+		{
+			uint_fast8_t thisSize;
+			sizes[i] = thisSize = GetTexCoordSize(i);
+			if (thisSize > 0)
+				count++;
+		}
+
+		return count;
+	}
+
+	inline uint_fast8_t VertexFormat::GetTexCoordSize(uint_fast8_t index) const
+	{
+		return TexCoordSize(index, m_BaseFmt);
+	}
+
+	inline void VertexFormat::SetTexCoordSize(uint_fast8_t index, uint_fast8_t size)
+	{
+		const auto shift = TEX_COORD_SIZE_BIT + index * 3;
+		m_BaseFmt &= ~(0x7ULL << shift);
+		m_BaseFmt |= uint64_t(size) << shift;
+	}
+
+	inline constexpr uint_fast8_t VertexFormat::GetTexCoordCount() const
+	{
+		return
+			(m_TexCoordSize0 > 0 ? 1 : 0) +
+			(m_TexCoordSize1 > 0 ? 1 : 0) +
+			(m_TexCoordSize2 > 0 ? 1 : 0) +
+			(m_TexCoordSize3 > 0 ? 1 : 0) +
+			(m_TexCoordSize4 > 0 ? 1 : 0) +
+			(m_TexCoordSize5 > 0 ? 1 : 0) +
+			(m_TexCoordSize6 > 0 ? 1 : 0) +
+			(m_TexCoordSize7 > 0 ? 1 : 0);
+	}
+
+	inline void VertexFormat::AddTexCoord(uint_fast8_t size)
+	{
+		for (uint_fast8_t i = 0; i < 8; i++)
+		{
+			if (GetTexCoordSize(i) == 0)
+			{
+				SetTexCoordSize(i, size);
+				return;
+			}
+		}
+	}
 }
 
 ENABLE_ENUM_FLAG_OPS(TF2Vulkan::VertexFormatFlags);
 
 namespace TF2Vulkan
 {
+	inline void VertexFormat::AddFlags(VertexFormatFlags flags)
+	{
+		m_Flags = m_Flags | flags;
+	}
+	inline void VertexFormat::RemoveFlags(VertexFormatFlags flags)
+	{
+		m_Flags = m_Flags & ~flags;
+	}
+
 	static constexpr VertexFormatFlags VFF_TangentSpace = VertexFormatFlags::TangentS | VertexFormatFlags::TangentT;
 }
 

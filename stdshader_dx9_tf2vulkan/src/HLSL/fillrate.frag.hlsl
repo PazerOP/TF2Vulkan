@@ -2,7 +2,7 @@
 
 #include "common_ps_fxc.hlsli"
 
-[[vk::binding(BINDING_CBUF_PS_CUSTOM)]] cbuffer PixelShaderCustomConstants
+cbuffer PixelShaderCustomConstants
 {
 	float4 g_ColorConstant;
 };

@@ -1,7 +1,7 @@
 #include "TF2Vulkan/VulkanUtil.h"
 #include "FormatInfo.h"
 #include "interface/internal/IShaderDeviceInternal.h"
-#include "ShaderDeviceMgr.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 
 #include <TF2Vulkan/Util/Enums.h>
 

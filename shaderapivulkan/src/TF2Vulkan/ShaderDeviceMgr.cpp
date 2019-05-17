@@ -1,5 +1,5 @@
 #include "MaterialSystemHardwareConfig.h"
-#include "ShaderDeviceMgr.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 
 #include <TF2Vulkan/Util/interface.h>
@@ -40,6 +40,8 @@ namespace
 
 		int GetAdapterIndex() const override;
 		vk::PhysicalDevice GetAdapter() override;
+		const vk::PhysicalDeviceProperties& GetAdapterProperties() const override { return m_AdapterProperties; }
+		const vk::PhysicalDeviceFeatures& GetAdapterFeatures() const override { return m_AdapterFeatures; }
 
 		const vk::Instance& GetInstance() const override;
 		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override;
@@ -60,6 +62,8 @@ namespace
 
 		vk::UniqueInstance m_Instance;
 		vk::PhysicalDevice m_Adapter;
+		vk::PhysicalDeviceProperties m_AdapterProperties;
+		vk::PhysicalDeviceFeatures m_AdapterFeatures;
 
 		vk::UniqueHandle<vk::DebugUtilsMessengerEXT, vk::DispatchLoaderDynamic> m_DebugMessenger;
 		vk::DispatchLoaderDynamic m_InstanceDynDisp;
@@ -403,7 +407,8 @@ InitReturnVal_t ShaderDeviceMgr::Init()
 	}
 
 	m_Adapter = physicalDevices[m_AdapterIndex];
-	g_MatSysConfig.Init();
+	m_AdapterProperties = m_Adapter.getProperties();
+	m_AdapterFeatures = m_Adapter.getFeatures();
 
 	QueueFamilies queueFamilies;
 	if (auto device = CreateDevice(m_Adapter, queueFamilies))

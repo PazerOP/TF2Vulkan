@@ -21,6 +21,7 @@ namespace
 	public:
 		const char* GetName() const override { return "DebugTangentSpace"; }
 
+		void OnInitShader(IShaderNextFactory& mgr) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 
 		// Inherited via ShaderNext

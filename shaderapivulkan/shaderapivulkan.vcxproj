@@ -94,20 +94,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\AlignedTypes.h" />
-    <ClInclude Include="include\TF2Vulkan\Exceptions.h" />
-    <ClInclude Include="include\TF2Vulkan\IShaderNextInstanceMgr.h" />
+    <ClInclude Include="include\TF2Vulkan\DataFormat.h" />
+    <ClInclude Include="include\TF2Vulkan\IShaderGroup.h" />
+    <ClInclude Include="include\TF2Vulkan\IShaderNextFactory.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderDynamicNext.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderInstance.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderShadowNext.h" />
     <ClInclude Include="include\TF2Vulkan\ISpecConstLayout.h" />
-    <ClInclude Include="include\TF2Vulkan\IUniformBufferManager.h" />
+    <ClInclude Include="include\TF2Vulkan\IUniformBufferPool.h" />
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceInternal.h" />
-    <ClInclude Include="src\interface\internal\IShaderInstanceInternal.h" />
+    <ClInclude Include="src\interface\internal\IShaderInternal.h" />
     <ClInclude Include="src\interface\internal\IStateManagerDynamic.h" />
+    <ClInclude Include="src\interface\internal\IUniformBufferPoolInternal.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\Exceptions.h" />
     <ClInclude Include="src\TF2Vulkan\FormatConverter.h" />
     <ClInclude Include="src\TF2Vulkan\IShaderTextureManager.h" />
     <ClInclude Include="src\TF2Vulkan\PixScope.h" />
@@ -123,12 +126,11 @@
     <ClInclude Include="src\interface\internal\IShaderAPIInternal.h" />
     <ClInclude Include="src\TF2Vulkan\ResourceBlob.h" />
     <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
-    <ClInclude Include="src\TF2Vulkan\ShaderDeviceMgr.h" />
-    <ClInclude Include="src\TF2Vulkan\ShaderDynamicNext.h" />
+    <ClInclude Include="src\interface\internal\IShaderDeviceMgrInternal.h" />
     <ClInclude Include="src\TF2Vulkan\shaders\VulkanShaderManager.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerDynamic.h" />
     <ClInclude Include="src\TF2Vulkan\IStateManagerVulkan.h" />
-    <ClInclude Include="src\TF2Vulkan\VertexFormat.h" />
+    <ClInclude Include="include\TF2Vulkan\VertexFormat.h" />
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.h" />
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.hpp" />
     <ClInclude Include="src\TF2Vulkan\VulkanBuffer.h" />
@@ -141,7 +143,6 @@
   <ItemGroup>
     <ClCompile Include="src\interface\internal\IShaderAPITexture.cpp" />
     <ClCompile Include="src\interface\internal\IVulkanCommandBuffer.cpp" />
-    <ClCompile Include="src\TF2Vulkan\Exceptions.cpp" />
     <ClCompile Include="include\TF2Vulkan\TextureData.cpp" />
     <ClCompile Include="src\ShaderAPIVulkanDLL.cpp" />
     <ClCompile Include="src\stdafx.cpp">
@@ -149,6 +150,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp" />
+    <ClCompile Include="src\TF2Vulkan\Exceptions.cpp" />
     <ClCompile Include="src\TF2Vulkan\FormatConverter.cpp" />
     <ClCompile Include="src\TF2Vulkan\FormatInfo.cpp" />
     <ClCompile Include="src\TF2Vulkan\GraphicsPipeline.cpp" />
@@ -159,8 +161,7 @@
     <ClCompile Include="src\TF2Vulkan\ShaderAPI.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderDevice.cpp" />
     <ClCompile Include="src\TF2Vulkan\ShaderDeviceMgr.cpp" />
-    <ClCompile Include="src\TF2Vulkan\ShaderDynamicNext.cpp" />
-    <ClCompile Include="src\TF2Vulkan\ShaderNextInstanceMgr.cpp" />
+    <ClCompile Include="src\TF2Vulkan\ShaderNextFactory.cpp" />
     <ClCompile Include="src\TF2Vulkan\shaders\VulkanShaderManager.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerVulkan.cpp" />
     <ClCompile Include="src\TF2Vulkan\VBAllocTracker.cpp" />

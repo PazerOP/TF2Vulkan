@@ -3,14 +3,6 @@
 
 #include "common_fxc.hlsli"
 
-cbuffer PixelShaderStandardConstants
-{
-	float4 g_LinearFogColor;
-	float4 cLightScale;
-	float4 cFlashlightColor;
-	float4 cFlashlightScreenScale;
-};
-
 #define OO_DESTALPHA_DEPTH_RANGE (g_LinearFogColor.w)
 
 #define LINEAR_LIGHT_SCALE (cLightScale.x)

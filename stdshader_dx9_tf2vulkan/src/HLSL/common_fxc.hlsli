@@ -31,14 +31,36 @@
 static const int SPEC_CONST_ID_BASE_VS = 1000;
 static const int SPEC_CONST_ID_BASE_PS = 2000;
 
-static const int BINDING_CBUF_VS_STANDARD = 10;
-static const int BINDING_CBUF_VS_CUSTOM = 11;
+static const int BINDING_CBUF_VSMODELMATRICES = 10;
 
-static const int BINDING_CBUF_PS_STANDARD = 20;
-static const int BINDING_CBUF_PS_CUSTOM = 21;
+static const float cOneThird = 1.0f / 3.0f;
 
-static const int BINDING_BASE_SAMPLER = 100;
-static const int BINDING_BASE_TEXTURE = 200;
+[[vk::binding(0)]] cbuffer ShaderCommonConstants
+{
+	// VS standard
+	float4x4 cModelViewProj;
+	float4x4 cViewProj;
+
+	float cOOGamma;
+	int g_nLightCountRegister;
+	bool4 g_bLightEnabled;
+
+	float3 cEyePos;
+	float cWaterZ;
+
+	float4 cFlexScale;
+
+	FogParams cFogParams;
+
+	LightInfo cLightInfo[4];
+	AmbientLightCube cAmbientCube;
+
+	// PS standard
+	float4 g_LinearFogColor;
+	float4 cLightScale;
+	float4 cFlashlightColor;
+	float4 cFlashlightScreenScale;
+};
 
 #define g_FogType DOWATERFOG
 

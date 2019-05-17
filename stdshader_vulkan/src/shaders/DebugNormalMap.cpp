@@ -1,25 +1,37 @@
 #include "BaseShaderNext.h"
 
+#include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/Util/Macros.h>
 
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
 
-namespace
+inline namespace DebugNormalMap
 {
-	struct DebugNormalMapParams
+	struct Params
 	{
 		NSHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/WorldDiffuseBumpMap_bump", "bump map");
 		NSHADER_PARAM(BUMPFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $bumpmap");
 		NSHADER_PARAM(BUMPTRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$bumpmap texcoord transform");
 	};
 
-	class DebugNormalMap final : public ShaderNext<DebugNormalMap, DebugNormalMapParams, SHADER_NOT_EDITABLE>
+	struct SpecConstBuf final : BaseSpecConstBuffer<SpecConstBuf>
+	{
+		bool1 VERTEXCOLOR;
+	};
+
+	struct SpecConstLayout final : BaseSpecConstLayout<SpecConstLayout, SpecConstBuf>
+	{
+		SPEC_CONST_BUF_ENTRY(SpecConstBuf, VERTEXCOLOR);
+
+	} static constexpr s_SpecConstLayout;
+
+	class Shader final : public ShaderNext<Shader, Params, SHADER_NOT_EDITABLE>
 	{
 	public:
 		const char* GetName() const override { return "DebugNormalMap"; }
 
-		// Inherited via ShaderNext
+		void OnInitShader(IShaderNextFactory& mgr) override;
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 		void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* pShaderInit,
 			const char* pMaterialName) override {}
@@ -30,17 +42,23 @@ namespace
 		IShaderGroup* m_XLitGenericPS = nullptr;
 	};
 
-	static const DebugNormalMap::InstanceRegister s_DebugNormalMap;
+	static const Shader::InstanceRegister s_DebugNormalMap;
 }
 
-void DebugNormalMap::OnInitShaderParams(IMaterialVar** params, const char* materialName)
+void Shader::OnInitShader(IShaderNextFactory& mgr)
+{
+	m_XLitGenericVS = &mgr.FindOrCreateShaderGroup(ShaderType::Vertex, "xlitgeneric_vs", s_SpecConstLayout);
+	m_XLitGenericPS = &mgr.FindOrCreateShaderGroup(ShaderType::Pixel, "xlitgeneric_ps", s_SpecConstLayout);
+}
+
+void Shader::OnInitShaderParams(IMaterialVar** params, const char* materialName)
 {
 	LOG_FUNC();
 
 	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 }
 
-void DebugNormalMap::OnDrawElements(const OnDrawElementsParams& params)
+void Shader::OnDrawElements(const OnDrawElementsParams& params)
 {
 	LOG_FUNC();
 
@@ -54,13 +72,7 @@ void DebugNormalMap::OnDrawElements(const OnDrawElementsParams& params)
 		// Set stream format (note that this shader supports compression)
 		shadow->VertexShaderVertexFormat(VERTEX_POSITION | VERTEX_FORMAT_COMPRESSED, 1);
 
-		NOT_IMPLEMENTED_FUNC();
-		//shadow->SetPixelShader(m_XLitGenericPS);
-		//shadow->SetPixelShader(m_XLitGenericPS);
-		/*shadow->SetVertexShader("xlitgeneric_vs",
-			{
-				{ "VERTEXCOLOR", false },
-			});*/
+		shadow->SetShaders(m_XLitGenericVS, m_XLitGenericPS);
 	}
 
 	if (dynamic)

@@ -18,6 +18,9 @@ namespace TF2Vulkan
 		}
 
 		virtual vk::PhysicalDevice GetAdapter() = 0;
+		virtual const vk::PhysicalDeviceProperties& GetAdapterProperties() const = 0;
+		virtual const vk::PhysicalDeviceFeatures& GetAdapterFeatures() const = 0;
+		const vk::PhysicalDeviceLimits& GetAdapterLimits() const { return GetAdapterProperties().limits; }
 
 		virtual const vk::Instance& GetInstance() const = 0;
 		virtual const vk::DispatchLoaderDynamic& GetDynamicDispatch() const = 0;

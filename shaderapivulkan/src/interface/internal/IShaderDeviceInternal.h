@@ -2,6 +2,8 @@
 
 #include "interface/internal/IVulkanCommandBuffer.h"
 #include "interface/internal/IVulkanQueue.h"
+
+#include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/Checked.h>
 
 #include <shaderapi/IShaderDevice.h>
@@ -21,7 +23,7 @@ namespace TF2Vulkan
 		return SetDebugName((uint64_t)(Vk ## type)obj, vk::ObjectType::e ## type, name); \
 	}
 
-	class IShaderDeviceInternal : public IShaderDevice
+	class IShaderDeviceInternal : public IShaderDevice, public Util::AutoInitTagBase<IShaderDeviceInternal>
 	{
 	public:
 		struct VulkanInitData

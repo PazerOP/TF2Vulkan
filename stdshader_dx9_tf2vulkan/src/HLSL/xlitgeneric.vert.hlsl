@@ -1,18 +1,5 @@
 #include "common_vs_fxc.hlsli"
-
-[[vk::binding(BINDING_CBUF_VS_CUSTOM)]] cbuffer VertexShaderCustomConstants
-{
-	float4 cBaseTexCoordTransform[2];
-	float4 cDetailTexCoordTransform[2];
-
-	float4 cMorphSubrect;
-	float3 cMorphTargetTextureDim;
-	float cSeamlessScale;
-	float4x4 g_FlashlightWorldToTexture;
-};
-
-[[vk::binding(11)]] SamplerState morphSampler;
-[[vk::binding(11)]] Texture2D morphTexture;
+#include "xlitgeneric.common.hlsli"
 
 #define SEAMLESS_SCALE (cSeamlessScale.x)
 
@@ -153,7 +140,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	// Transform into projection space
 	float4 vProjPos = mul(float4(worldPos, 1), cViewProj);
 	o.projPos = vProjPos;
-	vProjPos.z = dot(float4(worldPos, 1), cViewProjZ);
+	vProjPos.z = o.projPos.z; //dot(float4(worldPos, 1), cViewProjZ);
 
 	o.vProjPos = vProjPos;
 	o.fogFactorW.w = CalcFog(worldPos, vProjPos.xyz, DOWATERFOG);

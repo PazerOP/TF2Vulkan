@@ -20,7 +20,7 @@ namespace TF2Vulkan
 		virtual void DummyFunc9() const final { NOT_IMPLEMENTED_FUNC(); }
 
 	public:
-		virtual void Init() = 0;
+		//virtual void Init() = 0;
 		virtual bool NeedsShaderSRGBConversionImpl() const = 0;
 
 		int NeedsShaderSRGBConversion() const override final

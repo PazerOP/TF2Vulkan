@@ -1,5 +1,7 @@
 #include "stdafx.h"
-#include "VertexFormat.h"
+
+#include <TF2Vulkan/VertexFormat.h>
+#include "FormatInfo.h"
 
 #include <materialsystem/imesh.h>
 
@@ -126,11 +128,6 @@ size_t VertexFormat::GetVertexSize() const
 	NOT_IMPLEMENTED_FUNC();
 
 	return size;
-}
-
-uint_fast8_t VertexFormat::GetTexCoordSize(uint_fast8_t index) const
-{
-	return TexCoordSize(index, m_BaseFmt);
 }
 
 VertexCompressionType_t VertexFormat::GetCompressionType() const

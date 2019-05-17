@@ -1,5 +1,5 @@
 #include "FormatInfo.h"
-#include "ShaderDeviceMgr.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 
 #include <bitmap/imageformat.h>
 

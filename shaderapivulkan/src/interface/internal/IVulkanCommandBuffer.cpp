@@ -1,6 +1,6 @@
 #include "IVulkanCommandBuffer.h"
 #include "IVulkanQueue.h"
-#include "TF2Vulkan/ShaderDeviceMgr.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "TF2Vulkan/VulkanUtil.h"
 
 using namespace TF2Vulkan;

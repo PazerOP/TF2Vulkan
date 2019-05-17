@@ -87,9 +87,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="src\HLSL\bufferclearobeystencil.common.hlsli" />
     <None Include="src\HLSL\common_fxc.hlsli" />
     <None Include="src\HLSL\common_ps_fxc.hlsli" />
     <None Include="src\HLSL\common_vs_fxc.hlsli" />
+    <None Include="src\HLSL\xlitgeneric.common.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="src\HLSL\xlitgeneric.vert.hlsl">

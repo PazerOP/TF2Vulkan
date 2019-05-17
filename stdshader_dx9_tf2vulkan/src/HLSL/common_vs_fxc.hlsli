@@ -17,36 +17,9 @@
 #define FOGTYPE_RANGE				0
 #define FOGTYPE_HEIGHT				1
 
-cbuffer VertexShaderMatrices
-{
-	float4x4 cModelViewProj;
-	float4x4 cViewProj;
-
-	float4 cModelViewProjZ;
-	float4 cViewProjZ;
-};
-
 cbuffer VertexShaderModelMatrices
 {
 	float4x3 cModel[53];
-};
-
-cbuffer VertexShaderCommonConstants
-{
-	float cOOGamma;
-	float cOneThird;
-	int g_nLightCountRegister;
-	bool4 g_bLightEnabled;
-
-	float3 cEyePos;
-	float cWaterZ;
-
-	float4 cFlexScale;
-
-	FogParams cFogParams;
-
-	LightInfo cLightInfo[4];
-	AmbientLightCube cAmbientCube;
 };
 
 static const float cOverbright = 2.0f;

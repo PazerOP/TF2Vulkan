@@ -84,6 +84,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\TF2Vulkan\Util\AutoInit.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Buffer.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
     <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />

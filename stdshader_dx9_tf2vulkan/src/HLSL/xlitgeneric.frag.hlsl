@@ -1,4 +1,5 @@
 #include "common_ps_fxc.hlsli"
+#include "xlitgeneric.common.hlsli"
 
 struct PS_INPUT
 {
@@ -18,14 +19,13 @@ struct PS_INPUT
 	float4 fogFactorW           : COLOR1;
 };
 
-Texture2D BaseTexture;
-SamplerState BaseTextureSampler;
-
 float4 main(const PS_INPUT i) : SV_Target
 {
+	//return float4(i.baseTexCoord.xy, 0.5f, 1);
+
 	float4 color = (float4)1;
 
-	//if (VERTEXCOLOR)
+	if (VERTEXCOLOR)
 		color *= i.color;
 
 	color *= BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);

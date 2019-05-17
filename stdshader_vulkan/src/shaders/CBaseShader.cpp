@@ -7,6 +7,7 @@
 #include "IShaderSystem.h"
 #include "ShaderDLL.h"
 
+#include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/SafeConvert.h>
 #include <TF2Vulkan/Util/ValuePusher.h>
 
@@ -109,6 +110,8 @@ int CBaseShader::GetParamFlags(int paramIndex) const
 
 void CBaseShader::InitShaderParams(IMaterialVar** params, const char* materialName)
 {
+	LOG_FUNC();
+
 	assert(!s_ppParams);
 	Util::ValuePusher paramsPusher(s_ppParams, params);
 	return OnInitShaderParams(params, materialName);
@@ -117,6 +120,8 @@ void CBaseShader::InitShaderParams(IMaterialVar** params, const char* materialNa
 void CBaseShader::InitShaderInstance(IMaterialVar** params, IShaderInit* init,
 	const char* materialName, const char* textureGroupName)
 {
+	LOG_FUNC();
+
 	assert(!s_ppParams);
 	Util::ValuePusher paramsPusher(s_ppParams, params);
 
@@ -132,6 +137,8 @@ void CBaseShader::InitShaderInstance(IMaterialVar** params, IShaderInit* init,
 void CBaseShader::DrawElements(IMaterialVar** params, int modulationFlags, IShaderShadow* shadow,
 	IShaderDynamicAPI* dynamic, VertexCompressionType_t vtxCompression, CBasePerMaterialContextData** context)
 {
+	LOG_FUNC();
+
 	assert(!s_ppParams);
 	Util::ValuePusher paramsPusher(s_ppParams, params);
 	Util::ValuePusher shadowPusher(s_pShaderShadow, shadow);
@@ -205,6 +212,8 @@ bool CBaseShader::IsTranslucent(IMaterialVar** params) const
 
 void CBaseShader::Draw(bool makeActualDrawCall)
 {
+	LOG_FUNC();
+
 	if (IsSnapshotting())
 	{
 		// Turn off transparency if we're asked to....
@@ -241,6 +250,8 @@ void CBaseShader::Draw(bool makeActualDrawCall)
 
 void CBaseShader::SetInitialShadowState()
 {
+	LOG_FUNC();
+
 	// Set the default state
 	s_pShaderShadow->SetDefaultState();
 
@@ -313,17 +324,24 @@ bool CBaseShader::UsingEditor(IMaterialVar** params) const
 
 void CBaseShader::BindTexture(Sampler_t sampler1, int textureVarIndex, int frameVarIndex)
 {
+	LOG_FUNC();
+
 	return BindTexture(sampler1, (Sampler_t)-1, textureVarIndex, frameVarIndex);
 }
 
 void CBaseShader::BindTexture(Sampler_t sampler1, ITexture* texture, int frame)
 {
+	LOG_FUNC();
+
 	return BindTexture(sampler1, (Sampler_t)-1, texture, frame);
 }
 
 void CBaseShader::BindTexture(Sampler_t sampler1, Sampler_t sampler2, ITexture* pTexture, int frame)
 {
-	assert(!IsSnapshotting());
+	LOG_FUNC();
+
+	if (IsSnapshotting())
+		return;
 
 	if (sampler2 < 0)
 		GetShaderSystem()->BindTexture(sampler1, pTexture, frame);
@@ -333,6 +351,8 @@ void CBaseShader::BindTexture(Sampler_t sampler1, Sampler_t sampler2, ITexture* 
 
 void CBaseShader::BindTexture(Sampler_t sampler1, Sampler_t sampler2, int textureVarIndex, int frameVarIndex)
 {
+	LOG_FUNC();
+
 	assert(textureVarIndex >= 0);
 	assert(s_ppParams);
 
@@ -357,6 +377,8 @@ template<LoadType type>
 static void LoadResource(IMaterialVar** params, int paramCount, IShaderInit* init,
 	const char* texGroupName, int varIndex, int additionalFlags = 0)
 {
+	LOG_FUNC();
+
 	assert(params);
 	if (varIndex < 0)
 		return;
@@ -369,6 +391,7 @@ static void LoadResource(IMaterialVar** params, int paramCount, IShaderInit* ini
 
 	if (auto var = params[varIndex]; var && var->IsDefined())
 	{
+		assert(var->GetType() == MATERIAL_VAR_TYPE_TEXTURE || var->GetType() == MATERIAL_VAR_TYPE_STRING);
 		if constexpr (type == LoadType::Texture)
 		{
 			init->LoadTexture(var, texGroupName, additionalFlags);
@@ -387,18 +410,24 @@ static void LoadResource(IMaterialVar** params, int paramCount, IShaderInit* ini
 
 void CBaseShader::LoadTexture(int textureVarIndex, int additionalFlags)
 {
+	LOG_FUNC();
+
 	return LoadResource<LoadType::Texture>(s_ppParams, GetNumParams(),
 		s_pShaderInit, s_pTextureGroupName, textureVarIndex, additionalFlags);
 }
 
 void CBaseShader::LoadBumpMap(int textureVarIndex)
 {
+	LOG_FUNC();
+
 	return LoadResource<LoadType::Bumpmap>(s_ppParams, GetNumParams(),
 		s_pShaderInit, s_pTextureGroupName, textureVarIndex);
 }
 
 void CBaseShader::LoadCubeMap(int textureVarIndex, int additionalFlags)
 {
+	LOG_FUNC();
+
 	return LoadResource<LoadType::Cubemap>(s_ppParams, GetNumParams(),
 		s_pShaderInit, s_pTextureGroupName, textureVarIndex, additionalFlags);
 }

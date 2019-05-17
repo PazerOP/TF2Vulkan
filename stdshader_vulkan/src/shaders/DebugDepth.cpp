@@ -16,6 +16,7 @@ namespace
 	public:
 		const char* GetName() const override { return "DebugDepth"; }
 
+		void OnInitShader(IShaderNextFactory& mgr) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 
 		virtual void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* pShaderInit, const char* pMaterialName) override

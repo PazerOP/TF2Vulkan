@@ -3,7 +3,7 @@
 #include "interface/internal/IShaderAPITexture.h"
 #include "IShaderTextureManager.h"
 #include "interface/internal/IShaderDeviceInternal.h"
-#include "ShaderDeviceMgr.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "VulkanCommandBufferBase.h"
 #include "VulkanMesh.h"
 
@@ -669,6 +669,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		m_Data.m_TempPrimaryCmdBuf.reset();
 	}
 
+	InitAll();
 	return true;
 }
 

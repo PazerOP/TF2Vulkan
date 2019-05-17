@@ -85,12 +85,22 @@
     <ClCompile Include="src\shaders\Compositor.cpp" />
     <ClCompile Include="src\shaders\DebugDepth.cpp" />
     <ClCompile Include="src\shaders\DebugDrawEnvmapMask.cpp" />
+    <ClCompile Include="src\shaders\DebugLuxel.cpp" />
     <ClCompile Include="src\shaders\DebugNormalMap.cpp" />
     <ClCompile Include="src\shaders\DebugTangentSpace.cpp" />
     <ClCompile Include="src\shaders\DepthWrite.cpp" />
     <ClCompile Include="src\shaders\Eyeglint.cpp" />
     <ClCompile Include="src\shaders\Fillrate.cpp" />
+    <ClCompile Include="src\shaders\LightmappedGeneric.cpp" />
+    <ClCompile Include="src\shaders\Modulate.cpp" />
+    <ClCompile Include="src\shaders\MorphWeight.cpp" />
+    <ClCompile Include="src\shaders\Refract.cpp" />
     <ClCompile Include="src\shaders\ShaderParamNext.cpp" />
+    <ClCompile Include="src\shaders\ShadowBuild.cpp" />
+    <ClCompile Include="src\shaders\Sprite.cpp" />
+    <ClCompile Include="src\shaders\Spritecard.cpp" />
+    <ClCompile Include="src\shaders\UnlitTwoTexture.cpp" />
+    <ClCompile Include="src\shaders\WriteZ.cpp" />
     <ClCompile Include="src\shaders\XLitGeneric.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -102,6 +112,7 @@
     <ClInclude Include="src\shaders\CommonSpecConstLayout.h" />
     <ClInclude Include="src\shaders\ParamGroups.h" />
     <ClInclude Include="src\shaders\ShaderParamNext.h" />
+    <ClInclude Include="src\shaders\UniformBufConstructs\TextureTransform.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

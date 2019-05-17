@@ -1,6 +1,8 @@
 #include "BaseShaderNext.h"
 #include "ShaderParamNext.h"
 
+#include <stdshader_vulkan/ShaderData.h>
+#include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/SafeConvert.h>
 
@@ -25,8 +27,6 @@ BaseShaderNext::BaseShaderNext(const ShaderParamNext* params, size_t paramCount)
 
 const char* BaseShaderNext::GetParamName(int paramIndex) const
 {
-	LOG_FUNC();
-
 	if (auto param = TryGetParam(paramIndex))
 	{
 		auto name = param->GetName();
@@ -39,8 +39,6 @@ const char* BaseShaderNext::GetParamName(int paramIndex) const
 
 const char* BaseShaderNext::GetParamHelp(int paramIndex) const
 {
-	LOG_FUNC();
-
 	if (auto param = TryGetParam(paramIndex))
 		return param->GetHelp();
 
@@ -49,8 +47,6 @@ const char* BaseShaderNext::GetParamHelp(int paramIndex) const
 
 ShaderParamType_t BaseShaderNext::GetParamType(int paramIndex) const
 {
-	LOG_FUNC();
-
 	if (auto param = TryGetParam(paramIndex))
 		return param->GetType();
 
@@ -59,8 +55,6 @@ ShaderParamType_t BaseShaderNext::GetParamType(int paramIndex) const
 
 const char* BaseShaderNext::GetParamDefault(int paramIndex) const
 {
-	LOG_FUNC();
-
 	if (auto param = TryGetParam(paramIndex))
 		return param->GetDefault();
 
@@ -69,8 +63,6 @@ const char* BaseShaderNext::GetParamDefault(int paramIndex) const
 
 int BaseShaderNext::GetParamFlags(int paramIndex) const
 {
-	LOG_FUNC();
-
 	if (auto param = TryGetParam(paramIndex))
 		return param->GetFlags();
 
@@ -80,6 +72,11 @@ int BaseShaderNext::GetParamFlags(int paramIndex) const
 int BaseShaderNext::GetNumParams() const
 {
 	return Util::SafeConvert<int>(m_ParamCount) + BaseClass::GetNumParams();
+}
+
+void BaseShaderNext::InitShader(IShaderNextFactory& factory)
+{
+	OnInitShader(factory);
 }
 
 bool BaseShaderNext::CheckParamIndex(int paramIndex) const
@@ -161,4 +158,9 @@ const ShaderParamNext* BaseShaderNext::TryGetParam(int paramIndex) const
 const IMaterialVar* BaseShaderNext::OnDrawElementsParams::operator[](const ShaderParamNext& var) const
 {
 	return matvars[var.GetIndex()];
+}
+
+const IMaterialVar* BaseShaderNext::OnDrawElementsParams::operator[](ShaderMaterialVars_t var) const
+{
+	return matvars[var];
 }

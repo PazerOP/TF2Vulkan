@@ -1,8 +1,13 @@
-#include "interface/internal/IShaderInstanceInternal.h"
+#include "interface/internal/IShaderInternal.h"
+#include "interface/internal/IShaderDeviceInternal.h"
+#include "interface/internal/IUniformBufferPoolInternal.h"
+#include "VulkanFactories.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "shaders/VulkanShaderManager.h"
 
-#include <TF2Vulkan/IShaderNextInstanceMgr.h>
+#include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/ISpecConstLayout.h>
+#include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
 
@@ -32,7 +37,19 @@ namespace
 		size_t m_EntryCount;
 		size_t m_BufferSize;
 	};
+
+	struct ShaderGroupKey final
+	{
+		DEFAULT_STRONG_EQUALITY_OPERATOR(ShaderGroupKey);
+		CUtlSymbolDbg m_Name;
+		const SpecConstLayout* m_Layout = nullptr;;
+	};
 }
+
+STD_HASH_DEFINITION(ShaderGroupKey,
+	v.m_Name,
+	v.m_Layout
+);
 
 template<>
 struct ::std::hash<SpecConstLayout>
@@ -49,6 +66,9 @@ namespace
 	struct ShaderInstance final : IShaderInstanceInternal
 	{
 		ShaderInstance(const ShaderGroup& group, const void* specConstBuffer);
+		ShaderInstance(ShaderInstance&&) = default;
+		ShaderInstance& operator=(ShaderInstance&&) = default;
+		~ShaderInstance() { assert(m_DeletionAllowed); }
 
 		// Inherited via IShaderInstanceInternal
 		const ShaderGroup& GetGroupInternal() const;
@@ -56,7 +76,10 @@ namespace
 		const void* GetSpecConstBuffer() const override { return m_SpecConstBuffer.get(); }
 		void GetSpecializationInfo(vk::SpecializationInfo& info) const override;
 
+		void DisallowDeletion() { m_DeletionAllowed = false; }
+
 	private:
+		bool m_DeletionAllowed = true;
 		const ShaderGroup* m_Group = nullptr;
 		std::unique_ptr<const std::byte[]> m_SpecConstBuffer;
 	};
@@ -72,6 +95,7 @@ namespace
 		IShaderInstance& FindOrCreateInstance(const void* specConstBuf, size_t specConstBufSize) override;
 		const IVulkanShader& GetVulkanShader() const override { return *m_VulkanShader; }
 		const vk::SpecializationMapEntry* GetMapEntries(uint32_t& count) const;
+		UniformBufferIndex FindUniformBuffer(const std::string_view& name) const override;
 
 	private:
 		ShaderType m_Type;
@@ -94,22 +118,50 @@ namespace
 		std::unordered_map<const std::byte*, ShaderInstance, Hasher, KeyEqual> m_Instances;
 	};
 
-	class ShaderNextInstanceMgr final : IShaderNextInstanceMgr
+	class UniformBufferPool final : public IUniformBufferPoolInternal
 	{
 	public:
-		ShaderNextInstanceMgr();
+		UniformBufferPool(size_t minElementSize);
+
+		const vk::Buffer& GetBackingBuffer() const override { return m_BackingBuffer.GetBuffer(); }
+		size_t GetChildBufferSize() const override { return m_ElementSize; }
+		size_t GetChildBufferCount() const override { return m_ElementCount; }
+		UniformBuffer Create() override;
+		void Update(const void* data, size_t size, size_t offset) override;
+
+	private:
+		size_t m_ElementCount;
+		size_t m_ElementAlignment;
+		size_t m_ElementSize;
+		size_t m_NextOffset = 0;
+
+		vma::AllocatedBuffer CreateBackingBuffer() const;
+		vma::AllocatedBuffer m_BackingBuffer;
+	};
+
+	class ShaderNextFactory final : public IShaderNextFactory
+	{
+	public:
+		ShaderNextFactory();
+
+		IUniformBufferPool& FindOrCreateUniformBuf(size_t size) override;
 
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const ISpecConstLayout* layout) override;
 		const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutEntry* entries, size_t count) override;
 
 	private:
-		std::array<std::unordered_map<CUtlSymbolDbg, ShaderGroup>, 2> m_ShaderInstanceGroups;
+		std::array<std::unordered_map<ShaderGroupKey, ShaderGroup>, 2> m_ShaderInstanceGroups;
 		const SpecConstLayout* m_EmptySCLayout;
 		std::unordered_set<SpecConstLayout> m_SpecConstLayouts;
+		std::unordered_map<size_t, UniformBufferPool> m_UniformBufferPools;
 	};
 }
 
-ShaderNextInstanceMgr::ShaderNextInstanceMgr()
+static ShaderNextFactory s_ShaderInstMgr;
+IShaderNextFactory* TF2Vulkan::g_ShaderFactory = &s_ShaderInstMgr;
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderNextFactory, IShaderNextFactory, SHADERNEXTFACTORY_INTERFACE_VERSION, s_ShaderInstMgr);
+
+ShaderNextFactory::ShaderNextFactory()
 {
 	m_EmptySCLayout = &*m_SpecConstLayouts.emplace(SpecConstLayout(nullptr, 0)).first;
 }
@@ -131,19 +183,32 @@ SpecConstLayout::SpecConstLayout(const SpecConstLayoutEntry* entries, size_t ent
 	m_BufferSize = nextOffset;
 }
 
-ShaderInstance::ShaderInstance(const ShaderGroup & group, const void* specConstBuffer) :
+ShaderInstance::ShaderInstance(const ShaderGroup& group, const void* specConstBuffer) :
 	m_Group(&group)
 {
 	const auto bufSize = group.GetSpecConstLayout().GetBufferSize();
-	auto buf = std::make_unique<std::byte[]>(bufSize);
-	memcpy(buf.get(), specConstBuffer, bufSize);
+	if (bufSize)
+	{
+		auto buf = std::make_unique<std::byte[]>(bufSize);
+		memcpy(buf.get(), specConstBuffer, bufSize);
+		m_SpecConstBuffer = std::move(buf);
+	}
 }
 
-void ShaderInstance::GetSpecializationInfo(vk::SpecializationInfo & info) const
+void ShaderInstance::GetSpecializationInfo(vk::SpecializationInfo& info) const
 {
-	info.dataSize = m_Group->GetSpecConstLayout().GetBufferSize();
-	info.pData = m_SpecConstBuffer.get();
+	// TODO: Warning about providing data for spec constants that aren't referenced?
+
 	info.pMapEntries = GetGroupInternal().GetMapEntries(info.mapEntryCount);
+	if (info.pMapEntries)
+	{
+		info.dataSize = m_Group->GetSpecConstLayout().GetBufferSize();
+		info.pData = m_SpecConstBuffer.get();
+	}
+
+	assert(!info.mapEntryCount == !info.pMapEntries);
+	assert(!info.dataSize == !info.pData);
+	assert(!info.dataSize == !info.mapEntryCount);
 }
 
 const ShaderGroup& ShaderInstance::GetGroupInternal() const
@@ -161,11 +226,25 @@ const vk::SpecializationMapEntry* ShaderGroup::GetMapEntries(uint32_t & count) c
 	Util::SafeConvert(m_VkEntries.size(), count);
 	return m_VkEntries.data();
 }
+UniformBufferIndex ShaderGroup::FindUniformBuffer(const std::string_view& name) const
+{
+	const auto& buffers = GetVulkanShader().GetReflectionData().m_UniformBuffers;
+	size_t i = 0;
+	for (size_t i = 0; i < buffers.size(); i++)
+	{
+		const auto& buf = buffers[i];
+		if (buf.m_Name != name)
+			continue;
+
+		return Util::SafeConvert<UniformBufferIndex>(i);
+	}
+
+	return UniformBufferIndex::Invalid;
+}
 
 size_t ShaderGroup::Hasher::operator()(const std::byte * data) const
 {
 	// Probably more efficient to (ab)use a string_view?
-	__debugbreak(); // TODO: VERIFY THIS WORKS
 	return Util::hash_value(std::string_view((const char*)data, m_Size));
 }
 
@@ -182,7 +261,11 @@ ShaderGroup::ShaderGroup(ShaderType type, const IVulkanShader & shader, const Sp
 		const auto found = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
 			[&](const auto & sc) { return sc.m_Name == scEntry.m_Name; });
 		if (found == reflData.m_SpecConstants.end())
+		{
+			Warning(TF2VULKAN_PREFIX "Unable to find specialization constant %.*s in %s\n",
+				PRINTF_SV(scEntry.m_Name), shader.GetName().String());
 			continue;
+		}
 
 		auto & vkEntry = m_VkEntries.emplace_back();
 		vkEntry.constantID = found->m_ConstantID;
@@ -194,6 +277,8 @@ ShaderGroup::ShaderGroup(ShaderType type, const IVulkanShader & shader, const Sp
 IShaderInstance& ShaderGroup::FindOrCreateInstance(const void* specConstBuf,
 	size_t specConstBufSize)
 {
+	LOG_FUNC();
+
 	if (specConstBufSize != m_SpecConstLayout->GetBufferSize())
 		throw VulkanException("Mismatching specialization constant buffer size", EXCEPTION_DATA());
 
@@ -203,16 +288,22 @@ IShaderInstance& ShaderGroup::FindOrCreateInstance(const void* specConstBuf,
 		return found->second;
 
 	// Couldn't find a matching instance, create a new one now
-	return m_Instances.emplace(byteBuf, ShaderInstance(*this, specConstBuf)).first->second;
+	ShaderInstance tmpInst(*this, specConstBuf);
+	auto& retVal = m_Instances.emplace(reinterpret_cast<const std::byte*>(tmpInst.GetSpecConstBuffer()), std::move(tmpInst)).first->second;
+	retVal.DisallowDeletion();
+	return retVal;
 }
 
-IShaderGroup & ShaderNextInstanceMgr::FindOrCreateShaderGroup(ShaderType type,
+IShaderGroup & ShaderNextFactory::FindOrCreateShaderGroup(ShaderType type,
 	const char* name, const ISpecConstLayout * layout)
 {
+	LOG_FUNC();
+
 	auto& scLayout = layout ? *assert_cast<const SpecConstLayout*>(layout) : *m_EmptySCLayout;
 
+	const ShaderGroupKey key{ name, &scLayout };
 	auto& groupMap = m_ShaderInstanceGroups.at(size_t(type));
-	if (auto found = groupMap.find(name); found != groupMap.end())
+	if (auto found = groupMap.find(key); found != groupMap.end())
 	{
 		auto& foundGroup = found->second;
 		assert(&foundGroup.GetSpecConstLayout() == &scLayout);
@@ -220,13 +311,15 @@ IShaderGroup & ShaderNextInstanceMgr::FindOrCreateShaderGroup(ShaderType type,
 	}
 
 	// Not found, create now
-	return groupMap.emplace(name, ShaderGroup(
+	return groupMap.emplace(key, ShaderGroup(
 		type, g_ShaderManager.FindOrCreateShader(name), scLayout)).first->second;
 }
 
-const ISpecConstLayout& ShaderNextInstanceMgr::FindOrCreateSpecConstLayout(
+const ISpecConstLayout& ShaderNextFactory::FindOrCreateSpecConstLayout(
 	const SpecConstLayoutEntry * entries, size_t count)
 {
+	LOG_FUNC();
+
 	return *m_SpecConstLayouts.emplace(SpecConstLayout(entries, count)).first;
 }
 
@@ -238,4 +331,50 @@ bool SpecConstLayout::operator==(const SpecConstLayout & other) const
 	auto result = std::equal(begin(), end(), other.begin());
 	assert(!result || (m_BufferSize == other.m_BufferSize));
 	return result;
+}
+
+IUniformBufferPool& ShaderNextFactory::FindOrCreateUniformBuf(size_t size)
+{
+	if (auto found = m_UniformBufferPools.find(size); found != m_UniformBufferPools.end())
+		return found->second;
+
+	return m_UniformBufferPools.emplace(size, UniformBufferPool(size)).first->second;
+}
+
+vma::AllocatedBuffer UniformBufferPool::CreateBackingBuffer() const
+{
+	return Factories::BufferFactory{}
+		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+		.SetSize(m_ElementSize * m_ElementCount)
+		.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible)
+		.SetAllowMapping(true)
+		.Create();
+}
+
+UniformBufferPool::UniformBufferPool(size_t minElementSize) :
+	m_ElementCount(1024),
+	m_ElementAlignment(g_ShaderDeviceMgr.GetAdapterLimits().minUniformBufferOffsetAlignment),
+	m_ElementSize(ALIGN_VALUE(minElementSize, m_ElementAlignment)),
+	m_BackingBuffer(CreateBackingBuffer())
+{
+}
+
+void UniformBufferPool::Update(const void* data, size_t size, size_t offset)
+{
+	if (offset % m_ElementAlignment)
+		throw VulkanException("Invalid offset alignment", EXCEPTION_DATA());
+	if (size > m_ElementSize)
+		throw VulkanException("Size greater than initial creation size", EXCEPTION_DATA());
+
+	m_BackingBuffer.GetAllocation().Write(data, size, offset);
+}
+
+UniformBuffer UniformBufferPool::Create()
+{
+	ASSERT_MAIN_THREAD();
+
+	auto offset = m_NextOffset;
+	m_NextOffset = (m_NextOffset + m_ElementSize) % (m_ElementSize * m_ElementCount);
+
+	return UniformBuffer(offset, *this);
 }

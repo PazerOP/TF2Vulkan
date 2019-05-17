@@ -1,7 +1,7 @@
 #include "BaseShaderNext.h"
 #include "ParamGroups.h"
 
-#include <TF2Vulkan/IShaderNextInstanceMgr.h>
+#include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/Util/Macros.h>
 
 using namespace TF2Vulkan;
@@ -26,21 +26,22 @@ inline namespace BufferClearObeyStencil
 			const char* pMaterialName) override;
 		void OnDrawElements(const OnDrawElementsParams& params) override;
 
-		void InitShader(IShaderNextInstanceMgr& instanceMgr) override;
+		void OnInitShader(IShaderNextFactory& instanceMgr) override;
 
 	private:
 		IShaderGroup* m_BufferClearObeyStencilVS = nullptr;
 		IShaderGroup* m_BufferClearObeyStencilPS = nullptr;
 	};
 
-	struct SpecConstBuffer
+	struct SpecConstBuffer : BaseSpecConstBuffer<SpecConstBuffer>
 	{
 		bool32 USESCOLOR;
 	};
-	struct SpecConstLayoutInfo
+	struct SpecConstLayoutInfo : BaseSpecConstLayout<SpecConstLayoutEntry, SpecConstBuffer>
 	{
 		SPEC_CONST_BUF_ENTRY(SpecConstBuffer, USESCOLOR);
-	};
+
+	} static constexpr s_SpecConstLayoutInfo;
 
 	struct Context : CBasePerMaterialContextData
 	{
@@ -50,12 +51,12 @@ inline namespace BufferClearObeyStencil
 
 static const Shader::InstanceRegister s_Shader;
 
-void Shader::InitShader(IShaderNextInstanceMgr& instanceMgr)
+void Shader::OnInitShader(IShaderNextFactory& instanceMgr)
 {
 	m_BufferClearObeyStencilVS = &instanceMgr.FindOrCreateShaderGroup(
 		ShaderType::Vertex, "bufferclearobeystencil_vs");
 	m_BufferClearObeyStencilPS = &instanceMgr.FindOrCreateShaderGroup(
-		ShaderType::Pixel, "bufferclearobeystencil_ps");
+		ShaderType::Pixel, "bufferclearobeystencil_ps", s_SpecConstLayoutInfo);
 }
 
 void Shader::OnInitShaderInstance(IMaterialVar** params,
@@ -87,17 +88,13 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 		shadow->SetVertexShader(m_BufferClearObeyStencilVS);
 		shadow->SetPixelShader(m_BufferClearObeyStencilPS);
-
-		/*shadow->SetPixelShader("bufferclearobeystencil_ps",
-			{
-				{ "USESCOLOR", bEnableColorWrites || bEnableAlphaWrites },
-			});*/
 	}
 
 	if (dynamic)
 	{
-		NOT_IMPLEMENTED_FUNC();
-		//dynamic->SetPixelShaderIndex
+		SpecConstBuffer sc;
+		sc.USESCOLOR = bEnableColorWrites || bEnableAlphaWrites;
+		dynamic->SetPixelShader(m_BufferClearObeyStencilPS->FindOrCreateInstance(sc));
 	}
 
 	Draw();

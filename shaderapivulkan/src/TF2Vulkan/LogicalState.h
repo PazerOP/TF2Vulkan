@@ -1,9 +1,9 @@
 #pragma once
 
-#include "VertexFormat.h"
-
 #include <stdshader_vulkan/ShaderData.h>
 
+#include <TF2Vulkan/VertexFormat.h>
+#include <TF2Vulkan/IUniformBufferPool.h>
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
@@ -50,6 +50,8 @@ namespace TF2Vulkan
 		const IShaderInstanceInternal* m_VSShader = nullptr;
 		const IShaderInstanceInternal* m_PSShader = nullptr;
 
+		std::array<UniformBuffer, 8> m_UniformBuffers = {};
+
 		// Stencil settings
 		bool m_StencilEnable = false;
 		StencilOperation_t m_StencilFailOp = STENCILOPERATION_KEEP;
@@ -62,8 +64,6 @@ namespace TF2Vulkan
 
 		MaterialCullMode_t m_CullMode = MATERIAL_CULLMODE_CCW;
 
-		Shaders::ShaderData m_ShaderData;
-
 		LightState_t m_LightState;
 		std::array<LightDesc_t, 4> m_Lights;
 		std::array<Vector4D, 6> m_LightAmbientCube;
@@ -73,9 +73,6 @@ namespace TF2Vulkan
 		std::array<float, MAX_FLOAT_RENDER_PARMS> m_RenderParamsFloat;
 
 		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
-
-		// Shader constants
-		float m_SCOverbright = 1.0f; // standard vertex shader constant
 	};
 
 	struct LogicalShadowState final

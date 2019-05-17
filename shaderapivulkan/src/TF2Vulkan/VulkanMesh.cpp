@@ -65,6 +65,12 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 	LOG_FUNC();
 	AssertCheckHeap();
 
+	if (!m_VertexBuffer.VertexCount())
+	{
+		Warning(TF2VULKAN_PREFIX "No vertices\n");
+		return;
+	}
+
 	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
 	auto indexBuf = Factories::BufferFactory{}
@@ -476,7 +482,8 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	const auto vtxElemsCount = uncompressedFormat.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
 	Util::SafeConvert(vertexCount, m_VertexCount);
-	m_DataBuffer.resize(totalVtxSize * m_VertexCount);;
+	m_DataBuffer.resize(totalVtxSize * m_VertexCount);
+	assert(!m_DataBuffer.empty());
 
 	Util::SafeConvert(totalVtxSize, desc.m_ActualVertexSize);
 	desc.m_CompressionType = uncompressedFormat.GetCompressionType();

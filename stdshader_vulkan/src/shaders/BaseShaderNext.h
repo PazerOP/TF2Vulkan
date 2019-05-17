@@ -14,7 +14,7 @@
 
 namespace TF2Vulkan
 {
-	class IShaderNextInstanceMgr;
+	class IShaderNextFactory;
 }
 
 namespace TF2Vulkan{ namespace Shaders
@@ -32,13 +32,15 @@ namespace TF2Vulkan{ namespace Shaders
 		int GetParamFlags(int paramIndex) const override final;
 		int GetNumParams() const override final;
 
+		void InitShader(IShaderNextFactory& factory);
+
 	protected:
-		virtual void InitShader(IShaderNextInstanceMgr& instanceMgr) {}
 		void InitIntParam(int param, IMaterialVar** params, int defaultVal) const;
 		void InitFloatParam(int param, IMaterialVar** params, float defaultVal) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
+		virtual void OnInitShader(IShaderNextFactory& instanceMgr) = 0;
 
 		struct OnDrawElementsParams
 		{
@@ -49,6 +51,7 @@ namespace TF2Vulkan{ namespace Shaders
 			CBasePerMaterialContextData** context;
 
 			const IMaterialVar* operator[](const ShaderParamNext& var) const;
+			const IMaterialVar* operator[](ShaderMaterialVars_t var) const;
 		};
 
 		virtual void OnDrawElements(const OnDrawElementsParams& params) = 0;
@@ -87,12 +90,12 @@ namespace TF2Vulkan{ namespace Shaders
 	protected:
 		using BaseClass = BaseShaderNext;
 	public:
-		ShaderNext() : BaseShaderNext(GetAsShaderParams(InitParamIndices(GetParams())), GetShaderParamCount<TParams>())
+		ShaderNext() : BaseShaderNext(GetAsShaderParams(InitParamIndices(GetParamsObj())), GetShaderParamCount<TParams>())
 		{
 		}
 
-		TParams& GetParams() { return *this; }
-		const TParams& GetParams() const { return *this; }
+		TParams& GetParamsObj() { return *this; }
+		const TParams& GetParamsObj() const { return *this; }
 
 		using InstanceRegister = DefaultInstanceRegister<T>;
 
@@ -105,6 +108,7 @@ namespace TF2Vulkan{ namespace Shaders
 	public: \
 		const char* GetName() const override { return #shaderName; } \
 		const char* GetFallbackShader(IMaterialVar**) const override { return #fallbackShaderName; } \
+		void OnInitShader(IShaderNextFactory&) override {} \
 	protected: \
 		void OnInitShaderInstance(IMaterialVar**, IShaderInit*, const char*) override { /*throw __FUNCSIG__;*/ } \
 		void OnDrawElements(const OnDrawElementsParams& params) override { /*throw __FUNCSIG__*/ } \

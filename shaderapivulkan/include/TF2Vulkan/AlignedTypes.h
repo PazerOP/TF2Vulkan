@@ -28,11 +28,18 @@ namespace TF2Vulkan{ namespace Shaders
 	template<typename T, int size> struct vector;
 	template<typename T, int sizeX, int sizeY> struct matrix;
 
+	namespace detail
+	{
+		template<typename T, int size> static constexpr auto GetVectorSize(const vector<T, size>&) { return size; }
+		template<typename T, int sizeY, int sizeX> static constexpr auto GetMatrixSizeX(const matrix<T, sizeX, sizeY>&) { return sizeX; }
+		template<typename T, int sizeY, int sizeX> static constexpr auto GetMatrixSizeY(const matrix<T, sizeX, sizeY>&) { return sizeY; }
+	}
+
 	template<typename T>
 	struct alignas(sizeof(T)) vector<T, 1>
 	{
 		using ThisType = vector<T, 1>;
-		vector() = default;
+		constexpr vector() = default;
 		vector(const ThisType&) = default;
 		constexpr vector(const T& val) : x(val) {}
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
@@ -49,9 +56,13 @@ namespace TF2Vulkan{ namespace Shaders
 	template<typename T>
 	struct alignas(sizeof(T) * 2) vector<T, 2>
 	{
+		constexpr vector() = default;
 		using ThisType = vector<T, 2>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 		static constexpr size_t ELEM_COUNT = 2;
+
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
 
 		T x;
 		T y;
@@ -59,6 +70,7 @@ namespace TF2Vulkan{ namespace Shaders
 	template<typename T>
 	struct vector<T, 3>
 	{
+		constexpr vector() = default;
 		using ThisType = vector<T, 3>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 		static constexpr size_t ELEM_COUNT = 3;
@@ -70,6 +82,9 @@ namespace TF2Vulkan{ namespace Shaders
 			z = src[2];
 		}
 
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
+
 		T x;
 		T y;
 		T z;
@@ -77,6 +92,9 @@ namespace TF2Vulkan{ namespace Shaders
 	template<typename T>
 	struct alignas(sizeof(T) * 4) vector<T, 4>
 	{
+		constexpr vector() = default;
+		explicit constexpr vector(T all) : x(all), y(all), z(all), w(all) {}
+		constexpr vector(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
 		using ThisType = vector<T, 4>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
 		static constexpr size_t ELEM_COUNT = 4;
@@ -87,6 +105,18 @@ namespace TF2Vulkan{ namespace Shaders
 			y = src[1];
 			z = src[2];
 			w = src[3];
+		}
+
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
+
+		ThisType& Set(const T& x_, const T& y_, const T& z_, const T& w_)
+		{
+			x = x_;
+			y = y_;
+			z = z_;
+			w = w_;
+			return *this;
 		}
 
 		T x;
@@ -101,6 +131,10 @@ namespace TF2Vulkan{ namespace Shaders
 		constexpr matrix() = default;
 		using ThisType = matrix<T, sizeY, 1>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 1;
+
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
 
 		vector<T, sizeY> x;
 	};
@@ -110,6 +144,10 @@ namespace TF2Vulkan{ namespace Shaders
 		constexpr matrix() = default;
 		using ThisType = matrix<T, sizeY, 2>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 2;
+
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
 
 		vector<T, sizeY> x;
 		vector<T, sizeY> y;
@@ -120,6 +158,10 @@ namespace TF2Vulkan{ namespace Shaders
 		constexpr matrix() = default;
 		using ThisType = matrix<T, sizeY, 3>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 3;
+
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
 
 		vector<T, sizeY> x;
 		vector<T, sizeY> y;
@@ -131,9 +173,10 @@ namespace TF2Vulkan{ namespace Shaders
 		constexpr matrix() = default;
 		using ThisType = matrix<T, sizeY, 4>;
 		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
+		static constexpr size_t ELEM_COUNT = 4;
 
-		auto& operator[](size_t i) { return *(&x + i); }
-		auto& operator[](size_t i) const { return *(&x + i); }
+		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
+		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
 
 		void SetFrom(const VMatrix& mtx)
 		{
@@ -148,6 +191,20 @@ namespace TF2Vulkan{ namespace Shaders
 		vector<T, sizeY> z;
 		vector<T, sizeY> w;
 	};
+
+	template<uint_fast8_t cols, uint_fast8_t rows, typename T = float>
+	inline constexpr auto MatrixFromVMatrix(const VMatrix& vm)
+	{
+		matrix<T, cols, rows> retVal;
+
+		for (uint_fast8_t y = 0; y < rows; y++)
+		{
+			for (uint_fast8_t x = 0; x < cols; x++)
+				retVal[y][x] = vm.m[y][x];
+		}
+
+		return retVal;
+	}
 
 	using bool1 = vector<bool32, 1>;
 	using bool2 = vector<bool32, 2>;

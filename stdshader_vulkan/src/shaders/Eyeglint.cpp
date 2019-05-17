@@ -18,6 +18,7 @@ namespace
 
 		//void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 
+		void OnInitShader(IShaderNextFactory& mgr) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		virtual void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* pShaderInit, const char* pMaterialName) override
 		{
 			NOT_IMPLEMENTED_FUNC_NOBREAK();

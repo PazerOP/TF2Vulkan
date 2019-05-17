@@ -1,6 +1,6 @@
 #pragma once
 
-#include "IShaderInstance.h"
+#include "IShaderGroup.h"
 #include <shaderapi/ishadershadow.h>
 
 #include <TF2Vulkan/Util/Macros.h>
@@ -19,6 +19,14 @@ namespace TF2Vulkan
 		void SetPixelShader(IShaderGroup& group) { return SetShaderGroup(ShaderType::Pixel, group); }
 		void SetVertexShader(IShaderGroup* group) { return SetShaderGroup(ShaderType::Vertex, group); }
 		void SetVertexShader(IShaderGroup& group) { return SetShaderGroup(ShaderType::Vertex, group); }
+		void SetShaders(IShaderGroup* vertex, IShaderGroup* pixel)
+		{
+			SetShaderGroup(ShaderType::Vertex, vertex);
+			SetShaderGroup(ShaderType::Pixel, pixel);
+		}
+		void SetShaders(IShaderGroup* vertex, IShaderGroup& pixel) { SetShaders(vertex, &pixel); }
+		void SetShaders(IShaderGroup& vertex, IShaderGroup* pixel) { SetShaders(&vertex, pixel); }
+		void SetShaders(IShaderGroup& vertex, IShaderGroup& pixel) { SetShaders(&vertex, &pixel); }
 
 	private:
 		void SetPixelShader(const char* name, int staticIndex) override final

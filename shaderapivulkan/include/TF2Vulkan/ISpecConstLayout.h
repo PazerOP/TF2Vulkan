@@ -18,7 +18,7 @@ namespace TF2Vulkan
 	template<typename T>
 	static constexpr SpecConstType GetSpecConstType()
 	{
-		if constexpr (std::is_same_v<T, Shaders::bool32>)
+		if constexpr (std::is_same_v<T, Shaders::bool32> || std::is_same_v<T, Shaders::bool1>)
 			return SpecConstType::Bool;
 		else if constexpr (std::is_same_v<T, Shaders::int1>)
 			return SpecConstType::Int;
@@ -53,17 +53,17 @@ namespace TF2Vulkan
 		}
 
 		const void* data() const { return reinterpret_cast<const void*>(this); }
-		constexpr size_t size() const
+		static constexpr size_t size()
 		{
 			static_assert(sizeof(TBuffer) % 4 == 0);
-			return sizeof(TBuffer) / 4;
+			return sizeof(TBuffer);
 		}
 	};
 
 	template<typename TInfo, typename TBuffer>
-	struct BaseSpecConstLayoutInfo
+	struct BaseSpecConstLayout
 	{
-		constexpr BaseSpecConstLayoutInfo()
+		constexpr BaseSpecConstLayout()
 		{
 			static_assert(std::is_base_of_v<BaseSpecConstBuffer<TBuffer>, TBuffer>,
 				"TBuffer must inherit from BaseSpecConstBuffer<TBuffer>");
@@ -72,7 +72,7 @@ namespace TF2Vulkan
 				"Mismatching element count for info struct and buffer struct");
 		}
 
-		constexpr size_t size() const
+		static constexpr size_t size()
 		{
 			static_assert(sizeof(TInfo) % sizeof(SpecConstLayoutEntry) == 0);
 			return sizeof(TInfo) / sizeof(SpecConstLayoutEntry);

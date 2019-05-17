@@ -1,6 +1,5 @@
 #include "common_vs_fxc.hlsli"
-
-[[vk::constant_id(SPEC_CONST_ID_BASE_VS + 0)]] const bool USESCOLOR = false;
+#include "bufferclearobeystencil.common.hlsli"
 
 struct VS_INPUT
 {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <TF2Vulkan/DataFormat.h>
+
 #include <cstdint>
 
 enum ImageFormat;
@@ -13,20 +15,6 @@ namespace TF2Vulkan
 		DepthStencil,
 
 		COUNT,
-	};
-
-	enum class DataFormat : uint_fast8_t
-	{
-		Invalid = uint_fast8_t(-1),
-
-		UNorm = 0,
-		SNorm,
-		UIntCastFloat,
-		SIntCastFloat,
-		UInt,
-		SInt,
-		UFloat,
-		SFloat,
 	};
 }
 

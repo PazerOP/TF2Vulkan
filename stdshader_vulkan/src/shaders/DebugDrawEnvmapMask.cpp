@@ -18,6 +18,7 @@ namespace
 		const char* GetName() const override { return "DebugDrawEnvmapMask"; }
 
 		// Inherited via ShaderNext
+		void OnInitShader(IShaderNextFactory& mgr) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		void OnInitShaderInstance(IMaterialVar** ppParams, IShaderInit* pShaderInit, const char* pMaterialName) override
 		{
 			NOT_IMPLEMENTED_FUNC_NOBREAK();

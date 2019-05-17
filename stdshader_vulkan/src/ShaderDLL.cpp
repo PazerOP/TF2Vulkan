@@ -1,6 +1,8 @@
 #include "IShaderSystem.h"
+#include "shaders/BaseShaderNext.h"
 
 #include <TF2Vulkan/IShaderDynamicNext.h>
+#include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/SafeConvert.h>
@@ -41,6 +43,7 @@ IShaderSystem* g_ShaderSystem;
 IMaterialSystemHardwareConfig* g_pHardwareConfig;
 const MaterialSystem_Config_t* g_pConfig;
 IShaderDynamicNext* TF2Vulkan::g_ShaderDynamic;
+IShaderNextFactory* TF2Vulkan::g_ShaderFactory;
 
 static VulkanShaderDLL& GetShaderDLLRef()
 {
@@ -70,12 +73,22 @@ bool VulkanShaderDLL::Connect(CreateInterfaceFn factory, bool isMaterialSystem)
 	ConnectInterface(factory, SHADERSYSTEM_INTERFACE_VERSION, g_ShaderSystem);
 	ConnectInterface(factory, MATERIALSYSTEM_CONFIG_VERSION, g_pConfig);
 	ConnectInterface(factory, MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION, g_pHardwareConfig);
-	ConnectInterface(factory, SHADERDYNAMICNEXT_INTERFACE_VERSION, g_ShaderDynamic);
+
+	auto shaderapiFactory = Sys_GetFactory("shaderapidx9");
+	ConnectInterface(shaderapiFactory, SHADERDYNAMICNEXT_INTERFACE_VERSION, g_ShaderDynamic);
+	ConnectInterface(shaderapiFactory, SHADERNEXTFACTORY_INTERFACE_VERSION, g_ShaderFactory);
 
 	if (!CommandLine()->CheckParm("-insecure"))
 	{
 		Error("Attempted to use stdshader_vulkan.dll without -insecure");
 		return false;
+	}
+
+	// Initialize all shaders
+	for (const auto& shader : m_Shaders)
+	{
+		if (auto nShader = dynamic_cast<Shaders::BaseShaderNext*>(shader))
+			nShader->InitShader(*g_ShaderFactory);
 	}
 
 	return true;

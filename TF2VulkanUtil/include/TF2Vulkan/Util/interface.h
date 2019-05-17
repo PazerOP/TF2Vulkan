@@ -66,9 +66,15 @@ inline CreateInterfaceFn Sys_GetFactory(CSysModule* pModule)
 template<typename T>
 inline void ConnectInterface(CreateInterfaceFn factory, const char* interfaceName, T*& interfacePtr)
 {
+	if (!factory)
+	{
+		assert(factory);
+		Error("[TF2Vulkan] " __FUNCTION__ "(): Factory was null");
+	}
+
 	if (!(interfacePtr = (T*)factory(interfaceName, nullptr)))
 	{
-		assert(false);
+		assert(interfacePtr);
 		Error("[TF2Vulkan] " __FUNCTION__ "(): Failed to connect to %s", interfaceName);
 	}
 }

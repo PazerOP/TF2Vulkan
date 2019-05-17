@@ -1,5 +1,6 @@
 #pragma once
 
+#include <TF2Vulkan/IShaderGroup.h>
 #include <TF2Vulkan/IShaderInstance.h>
 
 namespace TF2Vulkan

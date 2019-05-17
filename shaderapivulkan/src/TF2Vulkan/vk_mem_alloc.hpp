@@ -1,10 +1,40 @@
 #pragma once
 
 #include <TF2Vulkan/Util/Checked.h>
+#include <TF2Vulkan/Util/Enums.h>
 #include <TF2Vulkan/Util/UniqueObject.h>
 
 #include <vulkan/vulkan.hpp>
 #include "vk_mem_alloc.h"
+
+namespace vma
+{
+	enum class MemoryUsage
+	{
+		eUnknown = VMA_MEMORY_USAGE_UNKNOWN,
+		eGpuOnly = VMA_MEMORY_USAGE_GPU_ONLY,
+		eCpuOnly = VMA_MEMORY_USAGE_CPU_ONLY,
+		eCpuToGpu = VMA_MEMORY_USAGE_CPU_TO_GPU,
+		eGpuToCpu = VMA_MEMORY_USAGE_GPU_TO_CPU,
+	};
+
+	enum class AllocationCreateFlagBits
+	{
+		eDedicatedMemory = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+		eNeverAllocate = VMA_ALLOCATION_CREATE_NEVER_ALLOCATE_BIT,
+		eCreateMapped = VMA_ALLOCATION_CREATE_MAPPED_BIT,
+		eCanBecomeLost = VMA_ALLOCATION_CREATE_CAN_BECOME_LOST_BIT,
+		eCanMakeOtherLost = VMA_ALLOCATION_CREATE_CAN_MAKE_OTHER_LOST_BIT,
+		eUserDataCopyString = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT,
+		eUpperAddress = VMA_ALLOCATION_CREATE_UPPER_ADDRESS_BIT,
+		eBestFit = VMA_ALLOCATION_CREATE_STRATEGY_BEST_FIT_BIT,
+		eWorstFit = VMA_ALLOCATION_CREATE_STRATEGY_WORST_FIT_BIT,
+		eFirstFit = VMA_ALLOCATION_CREATE_STRATEGY_FIRST_FIT_BIT,
+	};
+}
+
+ENABLE_ENUM_FLAG_OPS(vma::MemoryUsage);
+ENABLE_ENUM_FLAG_OPS(vma::AllocationCreateFlagBits);
 
 namespace vma
 {

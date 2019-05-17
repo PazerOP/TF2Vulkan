@@ -271,8 +271,6 @@ namespace
 
 		ITexture* GetRenderTargetEx(int renderTargetID) override;
 
-		float GetLightMapScaleFactor() const override { NOT_IMPLEMENTED_FUNC(); }
-
 		void LoadBoneMatrix(int boneIndex, const float* m) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended) override { NOT_IMPLEMENTED_FUNC(); }
@@ -321,6 +319,8 @@ namespace
 
 static ShaderAPI s_ShaderAPI;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderAPI, SHADERAPI_INTERFACE_VERSION, s_ShaderAPI);
+EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderDynamicNext, SHADERDYNAMICNEXT_INTERFACE_VERSION, s_ShaderAPI);
+//EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderDynamicAPI, SHADERDYNAMIC_INTERFACE_VERSION, s_ShaderAPI);
 
 IShaderAPI_StateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
 IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
@@ -685,10 +685,13 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 {
 	LOG_FUNC();
 
+	// Everything should be single-pass in vulkan due to unrestricted shader instruction count
+	assert(passID == 0);
+	assert(passCount == 1);
+
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
 	cmdBuf.InsertDebugLabel("ShaderAPI::RenderPass(%i, %i)", passID, passCount);
 
-	g_StateManagerDynamic.PreDraw();
 	g_StateManagerStatic.ApplyCurrentState(cmdBuf);
 
 	auto& activeMesh = GetActiveMesh();

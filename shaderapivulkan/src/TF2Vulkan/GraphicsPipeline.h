@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VertexFormat.h"
+#include <TF2Vulkan/VertexFormat.h>
 
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/std_array.h>
