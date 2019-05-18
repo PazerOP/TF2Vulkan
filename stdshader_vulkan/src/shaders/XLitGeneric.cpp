@@ -65,6 +65,13 @@ inline namespace XLitGeneric
 		float1 m_RefractAmount;
 		float4 m_RefractColorTint;
 		float4x2 m_ViewProjR01;
+
+		float4 m_MorphSubrect;
+		float3 m_MorphTargetTextureDim;
+		float m_SeamlessScale;
+		float4x4 m_FlashlightWorldToTexture;
+
+		float m_VertexAlpha;
 	};
 
 	struct SpecConstBuf final : BaseSpecConstBuffer<SpecConstBuf>
@@ -511,6 +518,8 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		auto& modelMats = drawParams.m_ModelMatrices;
 		[[maybe_unused]] auto& custom = drawParams.m_Uniforms;
 		dynamic->GetWorldSpaceCameraPosition(common.m_EyePos);
+
+		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;
 
 		// Base Matrices
 		{

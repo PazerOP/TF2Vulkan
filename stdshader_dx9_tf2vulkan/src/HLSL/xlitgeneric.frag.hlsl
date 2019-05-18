@@ -30,6 +30,6 @@ float4 main(const PS_INPUT i) : SV_Target
 		baseTextureColor = BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
 
 	const float3 finalColor = diffuseColor.rgb * baseTextureColor.rgb;
-	const float finalAlpha = baseTextureColor.a;
+	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, g_fVertexAlpha);
 	return float4(finalColor, finalAlpha);
 }

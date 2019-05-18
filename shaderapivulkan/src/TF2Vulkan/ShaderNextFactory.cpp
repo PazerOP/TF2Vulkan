@@ -229,14 +229,12 @@ const vk::SpecializationMapEntry* ShaderGroup::GetMapEntries(uint32_t & count) c
 UniformBufferIndex ShaderGroup::FindUniformBuffer(const std::string_view& name) const
 {
 	const auto& buffers = GetVulkanShader().GetReflectionData().m_UniformBuffers;
-	size_t i = 0;
-	for (size_t i = 0; i < buffers.size(); i++)
+	for (auto& buf : buffers)
 	{
-		const auto& buf = buffers[i];
 		if (buf.m_Name != name)
 			continue;
 
-		return Util::SafeConvert<UniformBufferIndex>(i);
+		return Util::SafeConvert<UniformBufferIndex>(buf.m_Binding);
 	}
 
 	return UniformBufferIndex::Invalid;

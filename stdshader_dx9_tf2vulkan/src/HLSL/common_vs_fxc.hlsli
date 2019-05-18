@@ -17,7 +17,7 @@
 #define FOGTYPE_RANGE				0
 #define FOGTYPE_HEIGHT				1
 
-cbuffer VertexShaderModelMatrices
+[[vk::binding(BINDING_CBUF_VSMODELMATRICES)]] cbuffer VertexShaderModelMatrices
 {
 	float4x3 cModel[53];
 };

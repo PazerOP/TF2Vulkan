@@ -378,35 +378,43 @@ static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupIntern
 
 	auto& bindings = layout.m_Bindings;
 
+	const auto TryAddBinding = [&bindings](uint32_t binding, vk::DescriptorType type, vk::ShaderStageFlags stages)
+	{
+		bool found = false;
+
+		for (auto& existingBinding : bindings)
+		{
+			if (existingBinding.binding != binding ||
+				existingBinding.descriptorType != type)
+			{
+				continue;
+			}
+
+			existingBinding.stageFlags |= stages;
+			found = true;
+		}
+
+		if (!found)
+		{
+			auto& newBinding = bindings.emplace_back();
+			newBinding.binding = binding;
+			newBinding.descriptorCount = 1;
+			newBinding.descriptorType = type;
+			newBinding.stageFlags = stages;
+		}
+	};
+
 	// Samplers
 	for (const auto& samplerIn : reflectionData.m_Samplers)
-	{
-		auto& samplerOut = bindings.emplace_back();
-		samplerOut.binding = samplerIn.m_Binding;
-		samplerOut.descriptorCount = 1;
-		samplerOut.descriptorType = vk::DescriptorType::eSampler;
-		samplerOut.stageFlags = reflectionData.m_ShaderStage;
-	}
+		TryAddBinding(samplerIn.m_Binding, vk::DescriptorType::eSampler, reflectionData.m_ShaderStage);
 
 	// Textures
 	for (const auto& textureIn : reflectionData.m_Textures)
-	{
-		auto& textureOut = bindings.emplace_back();
-		textureOut.binding = textureIn.m_Binding;
-		textureOut.descriptorCount = 1;
-		textureOut.descriptorType = vk::DescriptorType::eSampledImage;
-		textureOut.stageFlags = reflectionData.m_ShaderStage;
-	}
+		TryAddBinding(textureIn.m_Binding, vk::DescriptorType::eSampledImage, reflectionData.m_ShaderStage);
 
 	// Constant buffers
 	for (const auto& cbufIn : reflectionData.m_UniformBuffers)
-	{
-		auto& cbufOut = bindings.emplace_back();
-		cbufOut.binding = cbufIn.m_Binding;
-		cbufOut.descriptorCount = 1;
-		cbufOut.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
-		cbufOut.stageFlags = reflectionData.m_ShaderStage;
-	}
+		TryAddBinding(cbufIn.m_Binding, vk::DescriptorType::eUniformBufferDynamic, reflectionData.m_ShaderStage);
 }
 
 static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& key)
@@ -1100,18 +1108,23 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 				write.pBufferInfo = &bufInfo;
 				bufInfo.offset = 0;
 
+				if (dynamicOffsets.size() <= binding.binding)
+					dynamicOffsets.resize(binding.binding + 1);
+
+				auto& dynamicOffset = dynamicOffsets.at(binding.binding);
+
 				if (bufferEntry)
 				{
 					const auto& pool = static_cast<const IUniformBufferPoolInternal&>(bufferEntry.GetPool());
 					bufInfo.buffer = pool.GetBackingBuffer();
 					bufInfo.range = pool.GetChildBufferSize();
-					dynamicOffsets.emplace_back(bufferEntry.GetOffset());
+					dynamicOffset = bufferEntry.GetOffset();
 				}
 				else
 				{
 					bufInfo.buffer = m_DummyUniformBuffer.GetBuffer();
 					bufInfo.range = VK_WHOLE_SIZE;
-					dynamicOffsets.emplace_back(0);
+					dynamicOffset = 0;
 				}
 
 				break;

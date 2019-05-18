@@ -30,11 +30,13 @@
 
 static const int SPEC_CONST_ID_BASE = 20;
 
-static const int BINDING_CBUF_VSMODELMATRICES = 10;
+static const int BINDING_CBUF_SHADERCOMMON = 0;
+static const int BINDING_CBUF_SHADERCUSTOM = 1;
+static const int BINDING_CBUF_VSMODELMATRICES = 2;
 
 static const float cOneThird = 1.0f / 3.0f;
 
-[[vk::binding(0)]] cbuffer ShaderCommonConstants
+[[vk::binding(BINDING_CBUF_SHADERCOMMON)]] cbuffer ShaderCommonConstants
 {
 	// VS standard
 	float4x4 cModelViewProj;

@@ -36,6 +36,24 @@ namespace Util{ namespace algorithm
 		return false;
 	}
 
+	template<typename TContainer, typename TFunc>
+	inline auto find_if(const TContainer& container, const TFunc& func)
+	{
+		return std::find_if(std::begin(container), std::end(container), func);
+	}
+
+	template<typename TContainer, typename TSearchFunc, typename TFoundFunc>
+	inline bool find_if_and(const TContainer& container, const TSearchFunc& searchFunc, const TFoundFunc& foundFunc)
+	{
+		if (auto found = find_if(container, searchFunc); found != std::end(container))
+		{
+			foundFunc(found);
+			return true;
+		}
+
+		return false;
+	}
+
 	template<typename TContainer, typename TValue, typename TFunc>
 	inline bool find_and(TContainer& container, const TValue& value, const TFunc& func)
 	{
