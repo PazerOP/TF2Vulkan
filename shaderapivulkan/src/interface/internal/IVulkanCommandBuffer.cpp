@@ -66,7 +66,11 @@ void IVulkanCommandBuffer::bindDescriptorSets(const vk::PipelineBindPoint& pipel
 
 void IVulkanCommandBuffer::bindPipeline(const vk::PipelineBindPoint& pipelineBindPoint, const vk::Pipeline& pipeline)
 {
-	return GetCmdBuffer().bindPipeline(pipelineBindPoint, pipeline);
+	if (m_ActivePipeline != pipeline)
+	{
+		m_ActivePipeline = pipeline;
+		return GetCmdBuffer().bindPipeline(pipelineBindPoint, pipeline);
+	}
 }
 
 void IVulkanCommandBuffer::bindIndexBuffer(const vk::Buffer& buffer,
@@ -105,6 +109,13 @@ void IVulkanCommandBuffer::drawIndexed(uint32_t indexCount, uint32_t instanceCou
 	return GetCmdBuffer().drawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
+void IVulkanCommandBuffer::ResetActiveState()
+{
+	m_ActiveRenderPass.reset();
+	m_ActivePipeline = nullptr;
+	m_DebugScopeCount = 0;
+}
+
 void IVulkanCommandBuffer::end()
 {
 	while (m_DebugScopeCount > 0)
@@ -118,6 +129,7 @@ void IVulkanCommandBuffer::end()
 void IVulkanCommandBuffer::reset(vk::CommandBufferResetFlags flags)
 {
 	assert(!m_IsActive);
+	ResetActiveState();
 	GetCmdBuffer().reset(flags);
 }
 

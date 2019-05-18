@@ -30,6 +30,8 @@ STD_HASH_DEFINITION(vk::Extent2D,
 	v.height
 );
 
+STD_HASH_DEFINITION(vk::Buffer, (VkBuffer)v);
+
 STD_HASH_DEFINITION(vk::ComponentMapping,
 	v.r,
 	v.g,
@@ -100,10 +102,18 @@ namespace TF2Vulkan
 }
 
 #ifndef __INTELLISENSE__
-inline std::strong_ordering operator<=>(const vk::ImageView& lhs, const vk::ImageView& rhs)
-{
-	return (VkImageView)lhs <=> (VkImageView)rhs;
-}
+
+#pragma push_macro("VULKAN_3WAY_COMPARISON_OP")
+#undef VULKAN_3WAY_COMPARISON_OP
+#define VULKAN_3WAY_COMPARISON_OP(base) \
+	inline std::strong_ordering operator<=>(const vk::base& lhs, const vk::base& rhs) \
+	{ \
+		return (Vk ## base)lhs <=> (Vk ## base)rhs; \
+	}
+
+VULKAN_3WAY_COMPARISON_OP(Buffer);
+VULKAN_3WAY_COMPARISON_OP(ImageView);
+
 inline std::strong_ordering operator<=>(const vk::Extent2D& lhs, const vk::Extent2D& rhs)
 {
 	auto result = lhs.width <=> rhs.width;

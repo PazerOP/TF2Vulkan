@@ -73,47 +73,42 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 
 	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
-	auto indexBuf = Factories::BufferFactory{}
-		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer)
-		.SetInitialData(m_IndexBuffer.IndexData(), m_IndexBuffer.IndexDataSize())
-		.SetDebugName(__FUNCTION__ "(): Test index buffer")
+	const size_t indexDataSize = m_IndexBuffer.IndexDataSize();
+	const size_t vertexDataSize = m_VertexBuffer.VertexDataSize();
+	static constexpr size_t indexOffset = 0;
+	const size_t vertexOffset = indexDataSize;
+
+	auto indexVertexBuf = Factories::BufferFactory{}
+		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
+		.SetSize(indexDataSize + vertexDataSize)
+		.SetAllowMapping()
+		.SetDebugName(__FUNCTION__ "(): Test index/vertex buffer")
 		.Create();
 
-	auto vertexBuf = Factories::BufferFactory{}
-		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-		.SetInitialData(m_VertexBuffer.VertexData(), m_VertexBuffer.VertexDataSize())
-		.SetDebugName(__FUNCTION__ "(): Test vertex buffer")
-		.Create();
+	indexVertexBuf.GetAllocation().Write(m_IndexBuffer.IndexData(), indexDataSize, indexOffset);
+	indexVertexBuf.GetAllocation().Write(m_VertexBuffer.VertexData(), vertexDataSize, vertexOffset);
 
-	auto dummyVertexBuf = Factories::BufferFactory{}
-		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
-		.SetSize(sizeof(s_FallbackMeshData))
-		.SetDebugName(__FUNCTION__ "(): Dummy vertex buffer (unused attributes)")
-		.Create();
-
-	cmdBuf.bindIndexBuffer(indexBuf.GetBuffer(), 0, vk::IndexType::eUint16);
-	cmdBuf.AddResource(std::move(indexBuf));
+	cmdBuf.bindIndexBuffer(indexVertexBuf.GetBuffer(), indexOffset, vk::IndexType::eUint16);
 
 	// Bind vertex buffers
 	{
 		const vk::Buffer vtxBufs[] =
 		{
-			vertexBuf.GetBuffer(),
-			dummyVertexBuf.GetBuffer(),
+			indexVertexBuf.GetBuffer(),
+			g_ShaderDevice.GetDummyVertexBuffer(),
 		};
 		const vk::DeviceSize offsets[] =
 		{
-			0,
+			vertexOffset,
 			0,
 		};
 		static_assert(std::size(vtxBufs) == std::size(offsets));
 		cmdBuf.bindVertexBuffers(0, TF2Vulkan::to_array_proxy(vtxBufs), TF2Vulkan::to_array_proxy(offsets));
-		cmdBuf.AddResource(std::move(vertexBuf));
-		cmdBuf.AddResource(std::move(dummyVertexBuf));
 	}
 
 	assert(firstIndex == 0); // TODO: What happens when we actually have offsets?
 	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(indexCount));
+	cmdBuf.AddResource(std::move(indexVertexBuf));
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)

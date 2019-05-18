@@ -20,7 +20,7 @@ namespace Util
 		using iterator = std::add_pointer_t<T>;
 		using const_iterator = std::add_pointer_t<std::add_const_t<T>>;
 
-		constexpr InPlaceVector() = default;
+		InPlaceVector() = default;
 		InPlaceVector(const std::initializer_list<T>& values)
 		{
 			for (auto& val : values)
@@ -157,6 +157,21 @@ namespace Util
 			data()[m_Elements++] = std::move(val);
 		}
 
+		void resize(size_t newSize)
+		{
+			if (newSize > m_Elements)
+			{
+				check_overflow(newSize - m_Elements);
+				while (newSize > m_Elements)
+					emplace_back();
+			}
+			else
+			{
+				while (m_Elements > newSize)
+					pop_back();
+			}
+		}
+
 		void erase(const_iterator pos)
 		{
 			assert(size() > 0);
@@ -186,6 +201,11 @@ namespace Util
 
 			m_Elements = 0;
 		}
+
+#ifdef VULKAN_HPP
+		operator vk::ArrayProxy<T>() { return vk::ArrayProxy<T>(size(), data()); }
+		operator vk::ArrayProxy<const T>() const { return vk::ArrayProxy<const T>(size(), data()); }
+#endif
 
 	private:
 		void check_overflow(size_t addCount) const

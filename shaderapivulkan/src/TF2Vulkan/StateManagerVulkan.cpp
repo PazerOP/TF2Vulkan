@@ -14,6 +14,7 @@
 #include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/MemoryPool.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
+#include <TF2Vulkan/Util/StackArray.h>
 #include <TF2Vulkan/Util/std_array.h>
 
 #include <stdshader_vulkan/ShaderData.h>
@@ -176,6 +177,53 @@ STD_HASH_DEFINITION(DescriptorPoolKey,
 
 namespace
 {
+	struct DescriptorSetKey
+	{
+		DescriptorSetKey(const DescriptorSetLayout& layout, const LogicalDynamicState& dynamicState);
+
+		DEFAULT_STRONG_EQUALITY_OPERATOR(DescriptorSetKey);
+
+		struct UBRef
+		{
+			UBRef(const UniformBuffer& buf);
+			vk::Buffer m_Buffer;
+			size_t m_Length = 0;
+
+			DEFAULT_STRONG_EQUALITY_OPERATOR(UBRef);
+
+			operator bool() const { return !!m_Buffer; }
+		};
+
+		const DescriptorSetLayout* m_Layout = nullptr;
+		std::array<UBRef, 8> m_UniformBuffers;
+		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures = {};
+	};
+}
+
+STD_HASH_DEFINITION(DescriptorSetKey::UBRef,
+	v.m_Buffer,
+	v.m_Length
+);
+
+STD_HASH_DEFINITION(DescriptorSetKey,
+	v.m_Layout,
+	v.m_UniformBuffers,
+	v.m_BoundTextures
+);
+
+namespace
+{
+	struct DescriptorSet final
+	{
+		DescriptorSet(const DescriptorSetKey& key);
+
+		vk::UniqueDescriptorSet m_DescriptorSet;
+
+		std::vector<vk::WriteDescriptorSet> m_Writes;
+		std::forward_list<vk::DescriptorBufferInfo> m_BufferInfos;
+		std::forward_list<vk::DescriptorImageInfo> m_ImageInfos;
+	};
+
 	struct Sampler final
 	{
 		vk::SamplerCreateInfo m_CreateInfo;
@@ -302,7 +350,7 @@ namespace
 		VulkanStateID m_ID;
 	};
 
-	class StateManagerVulkan final : public IStateManagerVulkan, Util::IAutoInit<IShaderDeviceInternal>
+	class StateManagerVulkan final : public IStateManagerVulkan
 	{
 	public:
 		void ApplyState(VulkanStateID stateID,
@@ -312,18 +360,20 @@ namespace
 		VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
 			const LogicalDynamicState& dynamicState) override;
 
-		void AutoInit() override;
+		const DescriptorSet& FindOrCreateDescriptorSet(const DescriptorSetKey& key);
+		const DescriptorPool& FindOrCreateDescriptorPool(const DescriptorPoolKey& key);
+		const Sampler& FindOrCreateSampler(const SamplerKey& sampler);
+
+		const vk::Buffer& GetDummyUniformBuffer() const { return g_ShaderDevice.GetDummyUniformBuffer(); }
 
 	private:
 		void ApplyRenderPass(const RenderPass& renderPass, IVulkanCommandBuffer& buf);
 		void ApplyDescriptorSets(const Pipeline& pipeline,
 			const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf);
 
-		const DescriptorPool& FindOrCreateDescriptorPool(const DescriptorPoolKey& key);
 		const PipelineLayout& FindOrCreatePipelineLayout(const PipelineLayoutKey& key);
 		const RenderPass& FindOrCreateRenderPass(const RenderPassKey& key);
 		const Framebuffer& FindOrCreateFramebuffer(const FramebufferKey& key);
-		const Sampler& FindOrCreateSampler(const SamplerKey& sampler);
 
 		Pipeline CreatePipeline(const PipelineKey& key,
 			const PipelineLayout& layout,
@@ -337,9 +387,8 @@ namespace
 		std::unordered_map<RenderPassKey, RenderPass> m_StatesToRenderPasses;
 		std::unordered_map<FramebufferKey, Framebuffer> m_StatesToFramebuffers;
 		std::unordered_map<DescriptorPoolKey, DescriptorPool> m_StatesToDescPools;
+		std::unordered_map<DescriptorSetKey, DescriptorSet> m_StatesToDescSets;
 		std::unordered_map<SamplerKey, Sampler> m_StatesToSamplers;
-
-		vma::AllocatedBuffer m_DummyUniformBuffer;
 	};
 }
 
@@ -1041,91 +1090,126 @@ void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCo
 	}
 }
 
-void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
-	const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
+DescriptorSet::DescriptorSet(const DescriptorSetKey& key)
 {
 	auto& device = g_ShaderDevice.GetVulkanDevice();
 
+	auto& writes = m_Writes;
+	auto& imageInfos = m_ImageInfos;
+	auto& bufferInfos = m_BufferInfos;
+
+	assert(key.m_Layout);
+	const auto& layout = *key.m_Layout;
+	auto& pool = s_SMVulkan.FindOrCreateDescriptorPool(layout);
+
+	vk::DescriptorSetAllocateInfo allocInfo;
+	allocInfo.descriptorPool = pool.m_DescriptorPool.get();
+	allocInfo.pSetLayouts = &layout.m_Layout.get();
+	allocInfo.descriptorSetCount = 1;
+
+	m_DescriptorSet = std::move(device.allocateDescriptorSetsUnique(allocInfo).at(0));
+
+	writes.reserve(layout.m_Bindings.size());
+	for (size_t i = 0; i < layout.m_Bindings.size(); i++)
+	{
+		const vk::DescriptorSetLayoutBinding& binding = layout.m_Bindings.at(i);
+
+		auto& write = writes.emplace_back();
+		write.descriptorType = binding.descriptorType;
+		write.descriptorCount = binding.descriptorCount;
+		write.dstBinding = binding.binding;
+		write.dstSet = m_DescriptorSet.get();
+
+		switch (write.descriptorType)
+		{
+		case vk::DescriptorType::eSampler:
+		{
+			auto& imgInfo = imageInfos.emplace_front();
+			auto& sampler = s_SMVulkan.FindOrCreateSampler(SamplerSettings{});
+			imgInfo.sampler = sampler.m_Sampler.get();
+			write.pImageInfo = &imgInfo;
+			break;
+		}
+		case vk::DescriptorType::eSampledImage:
+		{
+			auto& imgInfo = imageInfos.emplace_front();
+			auto& tex = g_TextureManager.TryGetTexture(
+				key.m_BoundTextures.at(binding.binding - BINDING_TEXTURE_OFFSET),
+				TEXTURE_BLACK);
+			imgInfo.imageView = tex.FindOrCreateView();
+			//imgInfo.sampler = FindOrCreateSampler(SamplerSettings{}).m_Sampler.get();
+			imgInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+			write.pImageInfo = &imgInfo;
+			break;
+		}
+		case vk::DescriptorType::eUniformBufferDynamic:
+		{
+			const auto& bufferEntry = key.m_UniformBuffers.at(binding.binding);
+
+			vk::DescriptorBufferInfo& bufInfo = bufferInfos.emplace_front();
+			write.pBufferInfo = &bufInfo;
+			bufInfo.offset = 0;
+
+			if (bufferEntry)
+			{
+				bufInfo.buffer = bufferEntry.m_Buffer;
+				bufInfo.range = bufferEntry.m_Length;
+			}
+			else
+			{
+				bufInfo.buffer = s_SMVulkan.GetDummyUniformBuffer();
+				bufInfo.range = VK_WHOLE_SIZE;
+			}
+
+			break;
+		}
+
+		default:
+			throw VulkanException("Unexpected DescriptorType", EXCEPTION_DATA());
+		}
+	}
+
+	device.updateDescriptorSets(writes, nullptr);
+}
+
+const DescriptorSet& StateManagerVulkan::FindOrCreateDescriptorSet(const DescriptorSetKey& key)
+{
+	std::lock_guard lock(m_Mutex);
+	return m_StatesToDescSets.try_emplace(key, key).first->second;
+}
+
+void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
+	const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
+{
 	const auto& layouts = pipeline.m_Layout->m_SetLayouts;
 	assert(layouts.size() == 1);
 
-	std::vector<vk::UniqueDescriptorSet> descriptorSets;
-	std::vector<vk::WriteDescriptorSet> writes;
-	std::vector<vk::CopyDescriptorSet> copies;
-	std::vector<uint32_t> dynamicOffsets;
-	std::forward_list<vk::DescriptorImageInfo> imageInfos;
-	std::forward_list<vk::DescriptorBufferInfo> bufferInfos;
+	Util::InPlaceVector<vk::DescriptorSet, 8> descSets;
+	Util::InPlaceVector<uint32_t, 16> dynamicOffsets;
 	for (const auto& layout : layouts)
 	{
-		auto& pool = FindOrCreateDescriptorPool(layout);
+		const auto& descSet = FindOrCreateDescriptorSet(DescriptorSetKey(layout, dynamicState));
+		descSets.push_back(descSet.m_DescriptorSet.get());
 
-		vk::DescriptorSetAllocateInfo allocInfo;
-		allocInfo.descriptorPool = pool.m_DescriptorPool.get();
-		allocInfo.pSetLayouts = &layout.m_Layout.get();
-		allocInfo.descriptorSetCount = 1;
-
-		auto& newSet = descriptorSets.emplace_back(std::move(device.allocateDescriptorSetsUnique(allocInfo).at(0)));
-
-		for (size_t i = 0; i < layout.m_Bindings.size(); i++)
+		for (const auto& write : descSet.m_Writes)
 		{
-			const vk::DescriptorSetLayoutBinding &binding = layout.m_Bindings.at(i);
-
-			auto& write = writes.emplace_back();
-			write.descriptorType = binding.descriptorType;
-			write.descriptorCount = binding.descriptorCount;
-			write.dstBinding = binding.binding;
-			write.dstSet = newSet.get();
-
 			switch (write.descriptorType)
 			{
+				// Do nothing
 			case vk::DescriptorType::eSampler:
-			{
-				auto& imgInfo = imageInfos.emplace_front();
-				auto& sampler = FindOrCreateSampler(SamplerSettings{});
-				imgInfo.sampler = sampler.m_Sampler.get();
-				write.pImageInfo = &imgInfo;
-				break;
-			}
 			case vk::DescriptorType::eSampledImage:
-			{
-				auto& imgInfo = imageInfos.emplace_front();
-				auto& tex = g_TextureManager.TryGetTexture(
-					dynamicState.m_BoundTextures.at(binding.binding - BINDING_TEXTURE_OFFSET),
-					TEXTURE_BLACK);
-				imgInfo.imageView = tex.FindOrCreateView();
-				//imgInfo.sampler = FindOrCreateSampler(SamplerSettings{}).m_Sampler.get();
-				imgInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-				write.pImageInfo = &imgInfo;
 				break;
-			}
+
 			case vk::DescriptorType::eUniformBufferDynamic:
 			{
-				const auto& bufferEntry = dynamicState.m_UniformBuffers.at(binding.binding);
+				const auto bindingIndex = write.dstBinding;
+				const auto& bufferEntry = dynamicState.m_UniformBuffers.at(bindingIndex);
 
-				const bool isBufferBound = !!bufferEntry;
+				if (dynamicOffsets.size() <= bindingIndex)
+					dynamicOffsets.resize(bindingIndex + 1);
 
-				vk::DescriptorBufferInfo& bufInfo = bufferInfos.emplace_front();
-				write.pBufferInfo = &bufInfo;
-				bufInfo.offset = 0;
-
-				if (dynamicOffsets.size() <= binding.binding)
-					dynamicOffsets.resize(binding.binding + 1);
-
-				auto& dynamicOffset = dynamicOffsets.at(binding.binding);
-
-				if (bufferEntry)
-				{
-					const auto& pool = static_cast<const IUniformBufferPoolInternal&>(bufferEntry.GetPool());
-					bufInfo.buffer = pool.GetBackingBuffer();
-					bufInfo.range = pool.GetChildBufferSize();
-					dynamicOffset = bufferEntry.GetOffset();
-				}
-				else
-				{
-					bufInfo.buffer = m_DummyUniformBuffer.GetBuffer();
-					bufInfo.range = VK_WHOLE_SIZE;
-					dynamicOffset = 0;
-				}
+				auto& dynamicOffset = dynamicOffsets.at(bindingIndex);
+				dynamicOffset = bufferEntry ? bufferEntry.GetOffset() : 0;
 
 				break;
 			}
@@ -1136,12 +1220,8 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 		}
 	}
 
-	device.updateDescriptorSets(writes, copies);
-
-	TF2VULKAN_MAKE_NONUNIQUE_STACK_COPY(rawSets, descriptorSets);
-
-	buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.m_Layout->m_Layout.get(), 0, { descriptorSets.size(), rawSets }, dynamicOffsets);
-	buf.AddResource(std::move(descriptorSets));
+	buf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipeline.m_Layout->m_Layout.get(), 0,
+		{ descSets.size(), descSets.data() }, dynamicOffsets);
 }
 
 void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& staticState,
@@ -1359,11 +1439,32 @@ void Pipeline::FixupPointers()
 	ci.renderPass = m_RenderPass->m_RenderPass.get();
 }
 
-void StateManagerVulkan::AutoInit()
+DescriptorSetKey::UBRef::UBRef(const UniformBuffer& buf)
 {
-	m_DummyUniformBuffer = Factories::BufferFactory{}
-		.SetDebugName("Dummy uniform buffer")
-		.SetSize(g_ShaderDeviceMgr.GetAdapterLimits().maxUniformBufferRange)
-		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
-		.Create();
+	if (buf)
+	{
+		auto& pool = buf.GetPool();
+		m_Buffer = static_cast<const IUniformBufferPoolInternal&>(pool).GetBackingBuffer();
+		m_Length = pool.GetChildBufferSize();
+	}
+}
+
+template<size_t size, size_t... Is>
+static std::array<DescriptorSetKey::UBRef, size> ToUBRefArray(
+	const std::array<UniformBuffer, size>& bufs, std::index_sequence<Is...>)
+{
+	return std::array<DescriptorSetKey::UBRef, size>{ DescriptorSetKey::UBRef(bufs[Is])... };
+}
+
+template<size_t size>
+static std::array<DescriptorSetKey::UBRef, size> ToUBRefArray(const std::array<UniformBuffer, size>& bufs)
+{
+	return ToUBRefArray(bufs, std::make_index_sequence<size>{});
+}
+
+DescriptorSetKey::DescriptorSetKey(const DescriptorSetLayout& layout, const LogicalDynamicState& dynamicState) :
+	m_Layout(&layout),
+	m_UniformBuffers{ ToUBRefArray(dynamicState.m_UniformBuffers) },
+	m_BoundTextures(dynamicState.m_BoundTextures)
+{
 }

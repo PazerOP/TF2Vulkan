@@ -3,7 +3,6 @@
 #include "interface/internal/IVulkanCommandBuffer.h"
 #include "interface/internal/IVulkanQueue.h"
 
-#include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/Checked.h>
 
 #include <shaderapi/IShaderDevice.h>
@@ -23,7 +22,7 @@ namespace TF2Vulkan
 		return SetDebugName((uint64_t)(Vk ## type)obj, vk::ObjectType::e ## type, name); \
 	}
 
-	class IShaderDeviceInternal : public IShaderDevice, public Util::AutoInitTagBase<IShaderDeviceInternal>
+	class IShaderDeviceInternal : public IShaderDevice
 	{
 	public:
 		struct VulkanInitData
@@ -43,6 +42,9 @@ namespace TF2Vulkan
 		virtual IVulkanQueue & GetGraphicsQueue() = 0;
 
 		virtual Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() = 0;
+
+		virtual const vk::Buffer& GetDummyUniformBuffer() const = 0;
+		virtual const vk::Buffer& GetDummyVertexBuffer() const = 0;
 
 		virtual const IShaderAPITexture & GetBackBufferColorTexture() const = 0;
 		IShaderAPITexture & GetBackBufferColorTexture()

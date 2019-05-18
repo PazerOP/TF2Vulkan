@@ -5,6 +5,7 @@
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "VulkanCommandBufferBase.h"
+#include "VulkanFactories.h"
 #include "VulkanMesh.h"
 
 #include <TF2Vulkan/Util/interface.h>
@@ -122,6 +123,9 @@ namespace
 		IVulkanQueue& GetGraphicsQueue() override;
 		Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() override;
 
+		const vk::Buffer& GetDummyUniformBuffer() const override { return m_Data.m_DummyUniformBuffer.GetBuffer(); }
+		const vk::Buffer& GetDummyVertexBuffer() const override { return m_Data.m_DummyVertexBuffer.GetBuffer(); }
+
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
 
 		using IShaderDeviceInternal::SetDebugName;
@@ -149,6 +153,8 @@ namespace
 			vk::DispatchLoaderDynamic m_DynamicLoader;
 
 			std::unique_ptr<IVulkanCommandBuffer> m_TempPrimaryCmdBuf;
+			vma::AllocatedBuffer m_DummyUniformBuffer;
+			vma::AllocatedBuffer m_DummyVertexBuffer;
 
 			const IShaderAPITexture* m_DepthTexture = nullptr;
 
@@ -503,6 +509,18 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 
 	if (m_Data.m_TransferQueueIndex)
 		m_Data.m_TransferQueue = CreateQueueWrapper(device.get(), m_Data.m_TransferQueueIndex.value(), "Transfer");
+
+	m_Data.m_DummyUniformBuffer = Factories::BufferFactory{}
+		.SetDebugName(__FUNCTION__ "(): Dummy uniform buffer")
+		.SetSize(g_ShaderDeviceMgr.GetAdapterLimits().maxUniformBufferRange)
+		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
+		.Create();
+
+	m_Data.m_DummyVertexBuffer = Factories::BufferFactory{}
+		.SetDebugName(__FUNCTION__ "(): Dummy Vertex Buffer")
+		.SetSize(256)
+		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
+		.Create();
 }
 
 const vk::Device& ShaderDevice::GetVulkanDevice()
@@ -669,7 +687,6 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		m_Data.m_TempPrimaryCmdBuf.reset();
 	}
 
-	InitAll();
 	return true;
 }
 

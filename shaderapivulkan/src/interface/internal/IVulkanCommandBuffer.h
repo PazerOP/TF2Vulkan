@@ -85,8 +85,11 @@ namespace TF2Vulkan
 		virtual const vk::CommandBuffer& GetCmdBuffer() const = 0;
 
 	private:
+		void ResetActiveState();
+
 		bool m_IsActive = false; // Is inside begin()..end()
 		std::optional<ActiveRenderPass> m_ActiveRenderPass;
+		vk::Pipeline m_ActivePipeline;
 		int m_DebugScopeCount = 0;
 	};
 
