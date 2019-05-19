@@ -5,6 +5,7 @@
 #include "interface/internal/IStateManagerStatic.h"
 #include "shaders/VulkanShaderManager.h"
 
+#include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
 
 #include <materialsystem/IShader.h>
@@ -86,7 +87,8 @@ void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 {
 	LOG_FUNC();
 
-	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel("Bind %s: %s", material->GetShaderName(), material->GetName());
+	constexpr auto bindMessageColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
+	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(bindMessageColor, "Bind %s: %s", material->GetShaderName(), material->GetName());
 
 	auto internal = assert_cast<IMaterialInternal*>(material);
 	auto isPrecached = internal->IsPrecached();

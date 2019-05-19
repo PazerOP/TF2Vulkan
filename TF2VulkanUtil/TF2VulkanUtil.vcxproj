@@ -87,6 +87,9 @@
     <ClInclude Include="include\TF2Vulkan\Util\AutoInit.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Buffer.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\color.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\ConstexprCRC.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\ConstexprRandom.h" />
     <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Enums.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ForwardingHelpers.h" />

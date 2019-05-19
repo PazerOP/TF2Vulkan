@@ -8,6 +8,7 @@
 #include "VulkanMesh.h"
 #include "VulkanUtil.h"
 
+#include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/ImageManip.h>
 #include <TF2Vulkan/Util/InPlaceVector.h>
@@ -402,7 +403,11 @@ StateSnapshot_t ShaderAPI::TakeSnapshot()
 
 void ShaderAPI::FlushBufferedPrimitives()
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	if (g_ShaderDevice.IsReady())
+	{
+		constexpr auto flushBufferedPrimitivesColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
+		g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(flushBufferedPrimitivesColor, "ShaderAPI::FlushBufferedPrimitives()");
+	}
 }
 
 void ShaderAPI::SetPIXMarker(const Color& color, const char* name)

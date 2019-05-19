@@ -12,6 +12,7 @@
 #include "VulkanFactories.h"
 
 #include <TF2Vulkan/Util/AutoInit.h>
+#include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/MemoryPool.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
 #include <TF2Vulkan/Util/StackArray.h>
@@ -488,7 +489,7 @@ static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& ke
 		AttachVector(ci.pBindings, ci.bindingCount, retVal.m_Bindings);
 
 		retVal.m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci);
-		g_ShaderDevice.SetDebugName(retVal.m_Layout, "test descriptor set layout");
+		g_ShaderDevice.SetDebugName(retVal.m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX", Util::hash_value(key));
 	}
 
 	return retVal;
@@ -1088,6 +1089,9 @@ void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCo
 
 	if (!buf.IsRenderPassActive(rpInfo, vk::SubpassContents::eInline))
 	{
+		constexpr auto applyRenderPassColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
+		buf.InsertDebugLabel(applyRenderPassColor, "ApplyRenderPass()");
+
 		if (buf.GetActiveRenderPass())
 			buf.endRenderPass();
 
@@ -1234,8 +1238,6 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& 
 {
 	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
-
-	auto pixScope = buf.DebugRegionBegin("StateManagerVulkan::ApplyState(%zu)", Util::UValue(id));
 
 	const auto& state = *m_IDsToPipelines.at(size_t(id));
 

@@ -115,8 +115,6 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 		return;
 	}
 
-	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
-
 	vk::Buffer indexBuffer, vertexBuffer;
 	size_t indexBufferOffset, vertexBufferOffset;
 	m_IndexBuffer.GetGPUBuffer(indexBuffer, indexBufferOffset);

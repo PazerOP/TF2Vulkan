@@ -2,6 +2,7 @@
 #include "IVulkanQueue.h"
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "TF2Vulkan/VulkanUtil.h"
+#include <TF2Vulkan/Util/color.h>
 
 using namespace TF2Vulkan;
 
@@ -68,6 +69,9 @@ void IVulkanCommandBuffer::bindPipeline(const vk::PipelineBindPoint& pipelineBin
 {
 	if (m_ActivePipeline != pipeline)
 	{
+		constexpr auto bindPipelineColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
+		InsertDebugLabel(bindPipelineColor, "IVulkanCommandBuffer::bindPipeline()");
+
 		m_ActivePipeline = pipeline;
 		return GetCmdBuffer().bindPipeline(pipelineBindPoint, pipeline);
 	}

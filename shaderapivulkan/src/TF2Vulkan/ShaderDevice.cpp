@@ -771,5 +771,8 @@ IVulkanCommandBuffer& ShaderDevice::GetPrimaryCmdBuf()
 	if (scData.m_Images.size() > scData.m_CurrentFrame)
 		return *scData.m_Images[scData.m_CurrentFrame].m_PrimaryCmdBuf;
 	else
+	{
+		assert(m_Data.m_TempPrimaryCmdBuf);
 		return *m_Data.m_TempPrimaryCmdBuf;
+	}
 }

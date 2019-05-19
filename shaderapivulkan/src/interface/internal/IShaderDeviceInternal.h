@@ -85,9 +85,16 @@ namespace TF2Vulkan
 		SET_DEBUG_NAME_FN(ShaderModule);
 		SET_DEBUG_NAME_FN(SwapchainKHR);
 		template<typename Type, typename Dispatch>
-		void SetDebugName(const vk::UniqueHandle<Type, Dispatch>& obj, const char* name)
+		inline void SetDebugName(const vk::UniqueHandle<Type, Dispatch>& obj, const char* name)
 		{
 			return SetDebugName(obj.get(), name);
+		}
+		template<typename Type, typename... TArgs>
+		inline void SetDebugName(const Type& obj, const char* fmt, const TArgs&... args)
+		{
+			char buf[512];
+			sprintf_s(buf, fmt, args...);
+			return SetDebugName(obj, buf);
 		}
 
 		virtual void SetDebugName(uint64_t obj, vk::ObjectType type, const char* name) = 0;
