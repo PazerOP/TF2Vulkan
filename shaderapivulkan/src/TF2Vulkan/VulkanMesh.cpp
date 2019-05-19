@@ -1,5 +1,6 @@
 #include "StateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
+#include "interface/internal/IBufferPoolInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
 #include "VulkanFactories.h"
@@ -17,11 +18,32 @@ static void AssertCheckHeap()
 #endif
 }
 
-static void UpdateOrRecreateBuffer(vma::AllocatedBuffer& buffer, const char* dbgName,
+void VulkanGPUBuffer::UpdateInnerBuffer(const char* dbgName,
 	const void* newData, size_t newSize, vk::BufferUsageFlags usage)
 {
-	if (true)//(!buffer || buffer.size() < newSize)
+	if (IsDynamic())
 	{
+		if (m_Buffer.index() == 0)
+			m_Buffer.emplace<BufferPoolEntry>();
+
+		auto& buffer = std::get<BufferPoolEntry>(m_Buffer);
+
+		if (usage & vk::BufferUsageFlagBits::eVertexBuffer)
+			buffer = g_ShaderDevice.GetVertexBufferPool().Create(newSize, newData);
+		else if (usage & vk::BufferUsageFlagBits::eIndexBuffer)
+			buffer = g_ShaderDevice.GetIndexBufferPool().Create(newSize, newData);
+		else
+		{
+			assert(!"Invalid buffer usage flags");
+		}
+	}
+	else
+	{
+		if (m_Buffer.index() == 0)
+			m_Buffer.emplace<vma::AllocatedBuffer>();
+
+		auto& buffer = std::get<vma::AllocatedBuffer>(m_Buffer);
+
 		if (buffer)
 			g_ShaderDevice.GetPrimaryCmdBuf().AddResource(std::move(buffer));
 
@@ -36,15 +58,11 @@ static void UpdateOrRecreateBuffer(vma::AllocatedBuffer& buffer, const char* dbg
 			.SetUsage(usage)
 			.Create();
 	}
-	else
-	{
-		// Just copy the data in
-		buffer.GetAllocation().Write(newData, newSize);
-	}
 }
 
-VulkanMesh::VulkanMesh(const VertexFormat& fmt) :
-	m_VertexBuffer(fmt)
+VulkanMesh::VulkanMesh(const VertexFormat& fmt, bool isDynamic) :
+	m_VertexBuffer(fmt, isDynamic),
+	m_IndexBuffer(isDynamic)
 {
 }
 
@@ -99,18 +117,22 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 
 	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
-	cmdBuf.bindIndexBuffer(m_IndexBuffer.GetGPUBuffer(), 0, vk::IndexType::eUint16);
+	vk::Buffer indexBuffer, vertexBuffer;
+	size_t indexBufferOffset, vertexBufferOffset;
+	m_IndexBuffer.GetGPUBuffer(indexBuffer, indexBufferOffset);
+	m_VertexBuffer.GetGPUBuffer(vertexBuffer, vertexBufferOffset);
+	cmdBuf.bindIndexBuffer(indexBuffer, indexBufferOffset, vk::IndexType::eUint16);
 
 	// Bind vertex buffers
 	{
 		const vk::Buffer vtxBufs[] =
 		{
-			m_VertexBuffer.GetGPUBuffer(),
+			vertexBuffer,
 			g_ShaderDevice.GetDummyVertexBuffer(),
 		};
 		const vk::DeviceSize offsets[] =
 		{
-			0,
+			vertexBufferOffset,
 			0,
 		};
 		static_assert(std::size(vtxBufs) == std::size(offsets));
@@ -323,6 +345,11 @@ int VulkanMesh::GetRoomRemaining() const
 	return min(vtxRoom, idxRoom);
 }
 
+VulkanIndexBuffer::VulkanIndexBuffer(bool isDynamic) :
+	m_IsDynamic(isDynamic)
+{
+}
+
 int VulkanIndexBuffer::IndexCount() const
 {
 	LOG_FUNC();
@@ -337,8 +364,8 @@ MaterialIndexFormat_t VulkanIndexBuffer::IndexFormat() const
 
 bool VulkanIndexBuffer::IsDynamic() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return m_IsDynamic;
 }
 
 void VulkanIndexBuffer::BeginCastBuffer(MaterialIndexFormat_t format)
@@ -383,8 +410,8 @@ void VulkanIndexBuffer::Unlock(int writtenIndexCount, IndexDesc_t& desc)
 	AssertCheckHeap();
 	assert(Util::SafeConvert<size_t>(writtenIndexCount) <= (m_Indices.size() * sizeof(m_Indices[0])));
 
-	UpdateOrRecreateBuffer(m_IndexBuffer, "VulkanIndexBuffer", IndexData(),
-		writtenIndexCount * sizeof(m_Indices[0]), vk::BufferUsageFlagBits::eIndexBuffer);
+	UpdateInnerBuffer("VulkanIndexBuffer", IndexData(), writtenIndexCount * sizeof(m_Indices[0]),
+		vk::BufferUsageFlagBits::eIndexBuffer);
 }
 
 void VulkanIndexBuffer::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
@@ -407,9 +434,22 @@ void VulkanIndexBuffer::ValidateData(int indexCount, const IndexDesc_t& desc)
 	NOT_IMPLEMENTED_FUNC();
 }
 
-const vk::Buffer& VulkanIndexBuffer::GetGPUBuffer() const
+void VulkanGPUBuffer::GetGPUBuffer(vk::Buffer& buffer, size_t& offset) const
 {
-	return m_IndexBuffer.GetBuffer();
+	if (auto foundBuf = std::get_if<vma::AllocatedBuffer>(&m_Buffer))
+	{
+		buffer = foundBuf->GetBuffer();
+		offset = 0;
+	}
+	else if (auto foundBuf = std::get_if<BufferPoolEntry>(&m_Buffer))
+	{
+		offset = foundBuf->GetOffset();
+		buffer = static_cast<const IBufferPoolInternal&>(foundBuf->GetPool()).GetBuffer(offset);
+	}
+	else
+	{
+		throw VulkanException("Invalid buffer state", EXCEPTION_DATA());
+	}
 }
 
 const unsigned short* VulkanIndexBuffer::IndexData() const
@@ -422,7 +462,8 @@ size_t VulkanIndexBuffer::IndexDataSize() const
 	return m_Indices.size() * sizeof(m_Indices[0]);
 }
 
-VulkanVertexBuffer::VulkanVertexBuffer(const VertexFormat& format) :
+VulkanVertexBuffer::VulkanVertexBuffer(const VertexFormat& format, bool isDynamic) :
+	m_IsDynamic(isDynamic),
 	m_Format(format)
 {
 }
@@ -441,8 +482,8 @@ VertexFormat_t VulkanVertexBuffer::GetVertexFormat() const
 
 bool VulkanVertexBuffer::IsDynamic() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return m_IsDynamic;
 }
 
 void VulkanVertexBuffer::BeginCastBuffer(VertexFormat_t format)
@@ -581,10 +622,10 @@ void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 	LOG_FUNC();
 	AssertCheckHeap();
 	ValidateData(vertexCount, desc);
-	assert(vertexCount == m_VertexCount);
+	assert(Util::SafeConvert<size_t>(vertexCount) <= m_VertexCount);
 
-	UpdateOrRecreateBuffer(m_VertexBuffer, "VulkanVertexBuffer",
-		VertexData(), (VertexDataSize() / m_VertexCount) * vertexCount, vk::BufferUsageFlagBits::eVertexBuffer);
+	UpdateInnerBuffer("VulkanVertexBuffer", VertexData(),
+		(VertexDataSize() / m_VertexCount) * vertexCount, vk::BufferUsageFlagBits::eVertexBuffer);
 }
 
 void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)
@@ -621,11 +662,6 @@ void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)
 	{
 		ValidateType<Shaders::float3>(desc.m_pPosition, i, desc.m_VertexSize_Position);
 	}
-}
-
-const vk::Buffer& VulkanVertexBuffer::GetGPUBuffer() const
-{
-	return m_VertexBuffer.GetBuffer();
 }
 
 const std::byte* VulkanVertexBuffer::VertexData() const

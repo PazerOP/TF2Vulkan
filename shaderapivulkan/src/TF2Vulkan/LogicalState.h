@@ -166,6 +166,8 @@ STD_HASH_DEFINITION(TF2Vulkan::LogicalShadowState,
 	v.m_OMAlphaWrite,
 	v.m_OMSrcFactor,
 	v.m_OMDstFactor,
+	v.m_OMDepthRT,
+	v.m_OMColorRTs,
 
 	v.m_FogMode
 );

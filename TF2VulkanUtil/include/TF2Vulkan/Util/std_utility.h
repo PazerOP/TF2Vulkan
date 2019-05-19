@@ -53,10 +53,15 @@ namespace Util
 		return ::Util::hash_range(std::begin(value), std::end(value));
 	}
 
-	template<typename... T>
-	[[nodiscard]] inline size_t hash_multi(const T& ... args)
+	template<typename TOnly>
+	[[nodiscard]] inline size_t hash_multi(const TOnly& only)
 	{
-		return ::Util::hash_combine({ ::Util::hash_value(args)... });
+		return ::Util::hash_value(only);
+	}
+	template<typename TFirst, typename... TExtra>
+	[[nodiscard]] inline size_t hash_multi(const TFirst& first, const TExtra& ... args)
+	{
+		return ::Util::hash_combine({ ::Util::hash_value(first), ::Util::hash_value(args)... });
 	}
 }
 

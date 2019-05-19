@@ -426,10 +426,7 @@ IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFor
 
 	const VertexFormat fmt(vertexFormat);
 
-	if (auto found = m_DynamicMeshes.find(fmt); found != m_DynamicMeshes.end())
-		return &found->second;
-
-	return &m_DynamicMeshes.emplace(fmt, VulkanMesh(fmt)).first->second;
+	return &m_DynamicMeshes.try_emplace(fmt, fmt, true).first->second;
 }
 
 bool ShaderAPI::IsTranslucent(StateSnapshot_t id) const
@@ -690,7 +687,6 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 	assert(passCount == 1);
 
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
-	cmdBuf.InsertDebugLabel("ShaderAPI::RenderPass(%i, %i)", passID, passCount);
 
 	g_StateManagerStatic.ApplyCurrentState(cmdBuf);
 

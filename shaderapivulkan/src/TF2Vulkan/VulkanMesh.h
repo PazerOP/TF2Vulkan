@@ -5,6 +5,7 @@
 #include "interface/internal/IMeshInternal.h"
 
 #include <atomic>
+#include <variant>
 #include <vector>
 
 namespace Util
@@ -14,10 +15,24 @@ namespace Util
 
 namespace TF2Vulkan
 {
-	class VulkanVertexBuffer final : public IVertexBufferInternal
+	class VulkanGPUBuffer
 	{
 	public:
-		explicit VulkanVertexBuffer(const VertexFormat& format);
+		void GetGPUBuffer(vk::Buffer& buffer, size_t& offset) const;
+
+		virtual bool IsDynamic() const = 0;
+
+	protected:
+		void UpdateInnerBuffer(const char* dbgName, const void* newData, size_t newSize, vk::BufferUsageFlags usage);
+
+	private:
+		std::variant<std::monostate, vma::AllocatedBuffer, BufferPoolEntry> m_Buffer;
+	};
+
+	class VulkanVertexBuffer final : public IVertexBufferInternal, public VulkanGPUBuffer
+	{
+	public:
+		explicit VulkanVertexBuffer(const VertexFormat& format, bool isDynamic);
 
 		int VertexCount() const override;
 		VertexFormat_t GetVertexFormat() const override;
@@ -36,22 +51,22 @@ namespace TF2Vulkan
 
 		void ValidateData(int vertexCount, const VertexDesc_t& desc) override;
 
-		const vk::Buffer& GetGPUBuffer() const;
 		const std::byte* VertexData() const;
 		size_t VertexDataSize() const;
 
 	private:
+		bool m_IsDynamic;
 		VertexFormat m_Format;
 
 		std::vector<std::byte> m_DataBuffer;
 		size_t m_VertexCount = 0;
-
-		vma::AllocatedBuffer m_VertexBuffer;
 	};
 
-	class VulkanIndexBuffer final : public IIndexBufferInternal
+	class VulkanIndexBuffer final : public IIndexBufferInternal, public VulkanGPUBuffer
 	{
 	public:
+		VulkanIndexBuffer(bool isDynamic);
+
 		int IndexCount() const override;
 		MaterialIndexFormat_t IndexFormat() const override;
 
@@ -72,19 +87,18 @@ namespace TF2Vulkan
 
 		void ValidateData(int indexCount, const IndexDesc_t& desc) override;
 
-		const vk::Buffer& GetGPUBuffer() const;
 		const unsigned short* IndexData() const;
 		size_t IndexDataSize() const;
 
 	private:
+		bool m_IsDynamic = false;
 		std::vector<unsigned short> m_Indices;
-		vma::AllocatedBuffer m_IndexBuffer;
 	};
 
 	class VulkanMesh final : public IMeshInternal
 	{
 	public:
-		explicit VulkanMesh(const VertexFormat& fmt);
+		explicit VulkanMesh(const VertexFormat& fmt, bool isDynamic);
 
 		void SetPrimitiveType(MaterialPrimitiveType_t type) override;
 

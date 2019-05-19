@@ -2,6 +2,9 @@
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "VulkanFactories.h"
 
+#undef min
+#undef max
+
 using namespace TF2Vulkan;
 
 vma::AllocatedBuffer BufferPoolContiguous::CreateBackingBuffer(vk::BufferUsageFlags usage) const
@@ -18,24 +21,26 @@ static size_t GetAlignment(vk::BufferUsageFlags usage)
 {
 	const auto& limits = g_ShaderDeviceMgr.GetAdapterLimits();
 
-	switch ((vk::BufferUsageFlagBits)(VkBufferUsageFlags)usage)
-	{
-	case vk::BufferUsageFlagBits::eUniformBuffer:
-		return limits.minUniformBufferOffsetAlignment;
-	case vk::BufferUsageFlagBits::eStorageBuffer:
-		return limits.minStorageBufferOffsetAlignment;
-	case vk::BufferUsageFlagBits::eStorageTexelBuffer:
-		return limits.minTexelBufferOffsetAlignment;
+	vk::DeviceSize alignment = 1;
+	if (usage & vk::BufferUsageFlagBits::eUniformBuffer)
+		alignment = std::max(alignment, limits.minUniformBufferOffsetAlignment);
+	if (usage & vk::BufferUsageFlagBits::eStorageBuffer)
+		alignment = std::max(alignment, limits.minStorageBufferOffsetAlignment);
+	if (usage & vk::BufferUsageFlagBits::eStorageTexelBuffer)
+		alignment = std::max(alignment, limits.minTexelBufferOffsetAlignment);
+	if (usage & vk::BufferUsageFlagBits::eVertexBuffer)
+		alignment = std::max<vk::DeviceSize>(alignment, 4);
+	if (usage & vk::BufferUsageFlagBits::eIndexBuffer)
+		alignment = std::max<vk::DeviceSize>(alignment, 2);
 
-	default:
-		return 1;
-	}
+	return Util::SafeConvert<size_t>(alignment);
 }
 
 BufferPoolContiguous::BufferPoolContiguous(size_t backingBufferSize, vk::BufferUsageFlags usage) :
 	m_BackingBufferSize(backingBufferSize),
 	m_ElementAlignment(GetAlignment(usage)),
-	m_BackingBuffer(CreateBackingBuffer(usage))
+	m_BackingBuffer(CreateBackingBuffer(usage)),
+	m_SliceInfo(backingBufferSize / m_ElementAlignment)
 {
 }
 
@@ -49,7 +54,7 @@ void BufferPoolContiguous::Update(const void* data, size_t size, size_t offset)
 
 auto BufferPoolContiguous::GetBackingBufferInfo() const -> BufferInfo
 {
-	return BufferInfo{ m_BackingBuffer.GetBuffer(), m_BackingBufferSize, m_BackingBufferSize };
+	return BufferInfo{ m_BackingBuffer.GetBuffer(), m_BackingBufferSize };
 }
 
 BufferPoolEntry BufferPoolContiguous::Create(size_t size)
@@ -73,13 +78,18 @@ BufferPoolEntry BufferPoolContiguous::Create(size_t size)
 	assert((offset + size) <= m_BackingBufferSize);
 	assert(ALIGN_VALUE(offset, m_ElementAlignment) == offset);
 
+	m_SliceInfo.at(offset / m_ElementAlignment).m_Length = size;
+
 	return BufferPoolEntry(size, offset, *this);
 }
 
 BufferPool::BufferPool(vk::BufferUsageFlags usage)
 {
-	//VmaPoolCreateInfo ci{};
+	NOT_IMPLEMENTED_FUNC();
+	VmaPoolCreateInfo ci{};
 	//ci.flags = VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT;
+
+	//vmaFindMemoryTypeIndex()
 	//ci.memoryTypeIndex =
 }
 
@@ -96,4 +106,13 @@ BufferPoolEntry BufferPool::Create(size_t size)
 void BufferPool::Update(const void* data, size_t size, size_t offset)
 {
 	NOT_IMPLEMENTED_FUNC();
+}
+
+auto BufferPoolContiguous::GetBufferInfo(size_t offset) const -> BufferInfo
+{
+	assert((offset % m_ElementAlignment) == 0);
+
+	const auto elemIdx = offset / m_ElementAlignment;
+
+	return BufferInfo(m_BackingBuffer.GetBuffer(), m_SliceInfo.at(elemIdx).m_Length);
 }

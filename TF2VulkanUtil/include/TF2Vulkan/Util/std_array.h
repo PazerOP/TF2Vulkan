@@ -11,7 +11,10 @@ namespace std
 	{
 		size_t operator()(const std::array<T, size>& a) const
 		{
-			return ::Util::hash_range(a.begin(), a.end());
+			if constexpr (std::has_unique_object_representations_v<T> && ((sizeof(T) * 2) == sizeof(T[2])))
+				return ::Util::hash_value(std::string_view(reinterpret_cast<const char*>(a.data()), sizeof(a) * sizeof(char)));
+			else
+				return ::Util::hash_range(a.begin(), a.end());
 		}
 	};
 }

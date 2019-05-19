@@ -119,6 +119,7 @@ STD_HASH_DEFINITION(PipelineKey,
 	v.m_RSBackFaceCulling,
 	v.m_RSPolyMode,
 
+	v.m_OMAlphaBlending,
 	v.m_OMSrcFactor,
 	v.m_OMDstFactor,
 
@@ -156,7 +157,8 @@ STD_HASH_DEFINITION(FramebufferKey::RTRef,
 
 STD_HASH_DEFINITION(FramebufferKey,
 	v.m_OMDepthRT,
-	v.m_OMColorRTs
+	v.m_OMColorRTs,
+	v.m_RenderPass
 );
 
 namespace
@@ -349,7 +351,10 @@ namespace
 		bool operator!() const { return !m_Pipeline; }
 		VulkanStateID m_ID;
 	};
+}
 
+namespace TF2Vulkan
+{
 	class StateManagerVulkan final : public IStateManagerVulkan
 	{
 	public:
@@ -389,6 +394,8 @@ namespace
 		std::unordered_map<DescriptorPoolKey, DescriptorPool> m_StatesToDescPools;
 		std::unordered_map<DescriptorSetKey, DescriptorSet> m_StatesToDescSets;
 		std::unordered_map<SamplerKey, Sampler> m_StatesToSamplers;
+
+		VulkanStateID m_ActiveState = VulkanStateID::Invalid;
 	};
 }
 

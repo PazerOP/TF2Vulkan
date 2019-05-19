@@ -161,8 +161,8 @@ namespace
 			vma::AllocatedBuffer m_DummyUniformBuffer;
 			vma::AllocatedBuffer m_DummyVertexBuffer;
 
-			std::optional<BufferPool> m_VertexBufferPool;
-			std::optional<BufferPool> m_IndexBufferPool;
+			std::optional<BufferPoolContiguous> m_VertexBufferPool;
+			std::optional<BufferPoolContiguous> m_IndexBufferPool;
 
 			const IShaderAPITexture* m_DepthTexture = nullptr;
 
@@ -391,7 +391,7 @@ IMesh* ShaderDevice::CreateStaticMesh(VertexFormat_t format, const char* texture
 {
 	// TODO
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
-	return new VulkanMesh(VertexFormat(format));
+	return new VulkanMesh(VertexFormat(format), false);
 }
 
 void ShaderDevice::DestroyStaticMesh(IMesh* mesh)
@@ -529,6 +529,9 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 		.SetSize(256)
 		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
 		.Create();
+
+	m_Data.m_VertexBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eVertexBuffer);
+	m_Data.m_IndexBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eIndexBuffer);
 
 	AutoInitAll();
 }
