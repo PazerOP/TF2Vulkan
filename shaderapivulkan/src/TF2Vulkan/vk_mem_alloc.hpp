@@ -9,7 +9,7 @@
 
 namespace vma
 {
-	enum class MemoryUsage
+	enum class MemoryType
 	{
 		eUnknown = VMA_MEMORY_USAGE_UNKNOWN,
 		eGpuOnly = VMA_MEMORY_USAGE_GPU_ONLY,
@@ -33,7 +33,7 @@ namespace vma
 	};
 }
 
-ENABLE_ENUM_FLAG_OPS(vma::MemoryUsage);
+ENABLE_ENUM_FLAG_OPS(vma::MemoryType);
 ENABLE_ENUM_FLAG_OPS(vma::AllocationCreateFlagBits);
 
 namespace vma
@@ -74,10 +74,13 @@ namespace vma
 
 		AllocationInfo getAllocationInfo() const;
 
+		bool IsMapped() const;
+
 		void Write(const void* srcData, size_t srcSize, size_t dstOffset = 0);
 		void Read(void* dstData, size_t srcSize) const;
 
-		template<typename T> void Write(const T& data, size_t dstOffset = 0)
+		template<typename T, typename = std::enable_if_t<!std::is_pointer_v<T>>>
+		void Write(const T& data, size_t dstOffset = 0)
 		{
 			return Write(&data, sizeof(data), dstOffset);
 		}
@@ -86,7 +89,6 @@ namespace vma
 		// OTHERWISE, *PLEASE* JUST USE READ/WRITE ABOVE FOR SAFER ACCESS.
 		std::byte* data();
 		const std::byte* data() const;
-		size_t size();
 
 		operator bool() const;
 
@@ -131,13 +133,18 @@ namespace vma
 	struct AllocatedBuffer final
 	{
 		AllocatedBuffer() = default;
-		AllocatedBuffer(VkBuffer buf, UniqueAllocation&& allocation);
+		AllocatedBuffer(VkBuffer buf, UniqueAllocation&& allocation, size_t realSize);
 
 		const vk::Buffer& GetBuffer() const;
 		UniqueAllocation& GetAllocation();
 		const UniqueAllocation& GetAllocation() const;
 
+		size_t size() const;
+
+		operator bool() const;
+
 	private:
+		size_t m_RealSize = 0;
 		Util::UniqueObject<vk::Buffer, detail::AllocatedObjectDeleter> m_Buffer;
 	};
 
@@ -149,6 +156,8 @@ namespace vma
 		const vk::Image& GetImage() const;
 		UniqueAllocation& GetAllocation();
 		const UniqueAllocation& GetAllocation() const;
+
+		operator bool() const;
 
 	private:
 		Util::UniqueObject<vk::Image, detail::AllocatedObjectDeleter> m_Image;

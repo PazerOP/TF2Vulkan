@@ -101,15 +101,16 @@
     <ClInclude Include="include\TF2Vulkan\IShaderInstance.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderShadowNext.h" />
     <ClInclude Include="include\TF2Vulkan\ISpecConstLayout.h" />
-    <ClInclude Include="include\TF2Vulkan\IUniformBufferPool.h" />
+    <ClInclude Include="include\TF2Vulkan\IBufferPool.h" />
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderInternal.h" />
     <ClInclude Include="src\interface\internal\IStateManagerDynamic.h" />
-    <ClInclude Include="src\interface\internal\IUniformBufferPoolInternal.h" />
+    <ClInclude Include="src\interface\internal\IBufferPoolInternal.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
+    <ClInclude Include="src\TF2Vulkan\BufferPool.h" />
     <ClInclude Include="src\TF2Vulkan\Exceptions.h" />
     <ClInclude Include="src\TF2Vulkan\FormatConverter.h" />
     <ClInclude Include="src\TF2Vulkan\IShaderTextureManager.h" />
@@ -149,6 +150,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\TF2Vulkan\BufferPool.cpp" />
     <ClCompile Include="src\TF2Vulkan\DebugTextureInfo.cpp" />
     <ClCompile Include="src\TF2Vulkan\Exceptions.cpp" />
     <ClCompile Include="src\TF2Vulkan\FormatConverter.cpp" />

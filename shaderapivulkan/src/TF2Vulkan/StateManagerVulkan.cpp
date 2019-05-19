@@ -1,13 +1,13 @@
- #include "interface/internal/IShaderAPIInternal.h"
+#include "interface/internal/IShaderAPIInternal.h"
 #include "IShaderTextureManager.h"
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"
 #include "SamplerSettings.h"
+#include "interface/internal/IBufferPoolInternal.h"
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IShaderInternal.h"
-#include "interface/internal/IUniformBufferPoolInternal.h"
 #include "shaders/VulkanShaderManager.h"
 #include "VulkanFactories.h"
 
@@ -185,7 +185,7 @@ namespace
 
 		struct UBRef
 		{
-			UBRef(const UniformBuffer& buf);
+			UBRef(const BufferPoolEntry& buf);
 			vk::Buffer m_Buffer;
 			size_t m_Length = 0;
 
@@ -1072,8 +1072,6 @@ void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCo
 	rpInfo.clearValueCount = std::size(clearVal);
 	rpInfo.pClearValues = clearVal;
 
-	//state.m_RenderPass->m_CreateInfo.
-
 	// Hack!
 	const auto& fb = FindOrCreateFramebuffer(renderPass);
 	rpInfo.framebuffer = fb.m_Framebuffer.get();
@@ -1246,7 +1244,7 @@ static DescriptorPool CreateDescriptorPool(const DescriptorPoolKey& key)
 	LOG_FUNC();
 	DescriptorPool retVal;
 
-	constexpr auto POOL_SIZE = 1024;
+	constexpr auto POOL_SIZE = 8192;
 
 	// Sizes
 	for (const auto& binding : key.m_Layout->m_Bindings)
@@ -1439,25 +1437,26 @@ void Pipeline::FixupPointers()
 	ci.renderPass = m_RenderPass->m_RenderPass.get();
 }
 
-DescriptorSetKey::UBRef::UBRef(const UniformBuffer& buf)
+DescriptorSetKey::UBRef::UBRef(const BufferPoolEntry& buf)
 {
 	if (buf)
 	{
 		auto& pool = buf.GetPool();
-		m_Buffer = static_cast<const IUniformBufferPoolInternal&>(pool).GetBackingBuffer();
-		m_Length = pool.GetChildBufferSize();
+		const auto bufInfo = static_cast<const IBufferPoolInternal&>(pool).GetBufferInfo(buf);
+		m_Buffer = bufInfo.m_Buffer;
+		m_Length = bufInfo.m_Size;
 	}
 }
 
 template<size_t size, size_t... Is>
 static std::array<DescriptorSetKey::UBRef, size> ToUBRefArray(
-	const std::array<UniformBuffer, size>& bufs, std::index_sequence<Is...>)
+	const std::array<BufferPoolEntry, size>& bufs, std::index_sequence<Is...>)
 {
 	return std::array<DescriptorSetKey::UBRef, size>{ DescriptorSetKey::UBRef(bufs[Is])... };
 }
 
 template<size_t size>
-static std::array<DescriptorSetKey::UBRef, size> ToUBRefArray(const std::array<UniformBuffer, size>& bufs)
+static std::array<DescriptorSetKey::UBRef, size> ToUBRefArray(const std::array<BufferPoolEntry, size>& bufs)
 {
 	return ToUBRefArray(bufs, std::make_index_sequence<size>{});
 }

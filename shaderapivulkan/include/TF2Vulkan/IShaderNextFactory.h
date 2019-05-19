@@ -6,11 +6,11 @@
 
 namespace TF2Vulkan
 {
-	class IUniformBufferPool;
+	class IBufferPool;
 	class IShaderNextFactory
 	{
 	public:
-		virtual IUniformBufferPool& FindOrCreateUniformBuf(size_t size) = 0;
+		virtual IBufferPool& GetUniformBufferPool() = 0;
 
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name);
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const ISpecConstLayout& layout);

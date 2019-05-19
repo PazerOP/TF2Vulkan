@@ -36,6 +36,7 @@ namespace TF2Vulkan
 
 		void ValidateData(int vertexCount, const VertexDesc_t& desc) override;
 
+		const vk::Buffer& GetGPUBuffer() const;
 		const std::byte* VertexData() const;
 		size_t VertexDataSize() const;
 
@@ -44,6 +45,8 @@ namespace TF2Vulkan
 
 		std::vector<std::byte> m_DataBuffer;
 		size_t m_VertexCount = 0;
+
+		vma::AllocatedBuffer m_VertexBuffer;
 	};
 
 	class VulkanIndexBuffer final : public IIndexBufferInternal
@@ -69,11 +72,13 @@ namespace TF2Vulkan
 
 		void ValidateData(int indexCount, const IndexDesc_t& desc) override;
 
+		const vk::Buffer& GetGPUBuffer() const;
 		const unsigned short* IndexData() const;
 		size_t IndexDataSize() const;
 
 	private:
 		std::vector<unsigned short> m_Indices;
+		vma::AllocatedBuffer m_IndexBuffer;
 	};
 
 	class VulkanMesh final : public IMeshInternal

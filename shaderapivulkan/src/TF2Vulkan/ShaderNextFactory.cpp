@@ -1,12 +1,14 @@
+#include "BufferPool.h"
 #include "interface/internal/IShaderInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
-#include "interface/internal/IUniformBufferPoolInternal.h"
+#include "interface/internal/IBufferPoolInternal.h"
 #include "VulkanFactories.h"
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "shaders/VulkanShaderManager.h"
 
 #include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/ISpecConstLayout.h>
+#include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/utlsymbol.h>
@@ -118,33 +120,14 @@ namespace
 		std::unordered_map<const std::byte*, ShaderInstance, Hasher, KeyEqual> m_Instances;
 	};
 
-	class UniformBufferPool final : public IUniformBufferPoolInternal
-	{
-	public:
-		UniformBufferPool(size_t minElementSize);
-
-		const vk::Buffer& GetBackingBuffer() const override { return m_BackingBuffer.GetBuffer(); }
-		size_t GetChildBufferSize() const override { return m_ElementSize; }
-		size_t GetChildBufferCount() const override { return m_ElementCount; }
-		UniformBuffer Create() override;
-		void Update(const void* data, size_t size, size_t offset) override;
-
-	private:
-		size_t m_ElementCount;
-		size_t m_ElementAlignment;
-		size_t m_ElementSize;
-		size_t m_NextOffset = 0;
-
-		vma::AllocatedBuffer CreateBackingBuffer() const;
-		vma::AllocatedBuffer m_BackingBuffer;
-	};
-
-	class ShaderNextFactory final : public IShaderNextFactory
+	class ShaderNextFactory final : public IShaderNextFactory, Util::IAutoInit<IShaderDeviceInternal>
 	{
 	public:
 		ShaderNextFactory();
 
-		IUniformBufferPool& FindOrCreateUniformBuf(size_t size) override;
+		void AutoInit() override;
+
+		IBufferPool& GetUniformBufferPool() override { return m_UniformBufferPool.value(); }
 
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const ISpecConstLayout* layout) override;
 		const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutEntry* entries, size_t count) override;
@@ -153,7 +136,7 @@ namespace
 		std::array<std::unordered_map<ShaderGroupKey, ShaderGroup>, 2> m_ShaderInstanceGroups;
 		const SpecConstLayout* m_EmptySCLayout;
 		std::unordered_set<SpecConstLayout> m_SpecConstLayouts;
-		std::unordered_map<size_t, UniformBufferPool> m_UniformBufferPools;
+		std::optional<BufferPoolContiguous> m_UniformBufferPool;
 	};
 }
 
@@ -164,6 +147,11 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderNextFactory, IShaderNextFactory, SHADERN
 ShaderNextFactory::ShaderNextFactory()
 {
 	m_EmptySCLayout = &*m_SpecConstLayouts.emplace(SpecConstLayout(nullptr, 0)).first;
+}
+
+void ShaderNextFactory::AutoInit()
+{
+	m_UniformBufferPool.emplace(1024 * 1024 * 8, vk::BufferUsageFlagBits::eUniformBuffer);
 }
 
 SpecConstLayout::SpecConstLayout(const SpecConstLayoutEntry* entries, size_t entryCount) :
@@ -329,50 +317,4 @@ bool SpecConstLayout::operator==(const SpecConstLayout & other) const
 	auto result = std::equal(begin(), end(), other.begin());
 	assert(!result || (m_BufferSize == other.m_BufferSize));
 	return result;
-}
-
-IUniformBufferPool& ShaderNextFactory::FindOrCreateUniformBuf(size_t size)
-{
-	if (auto found = m_UniformBufferPools.find(size); found != m_UniformBufferPools.end())
-		return found->second;
-
-	return m_UniformBufferPools.emplace(size, UniformBufferPool(size)).first->second;
-}
-
-vma::AllocatedBuffer UniformBufferPool::CreateBackingBuffer() const
-{
-	return Factories::BufferFactory{}
-		.SetUsage(vk::BufferUsageFlagBits::eUniformBuffer)
-		.SetSize(m_ElementSize * m_ElementCount)
-		.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible)
-		.SetAllowMapping(true)
-		.Create();
-}
-
-UniformBufferPool::UniformBufferPool(size_t minElementSize) :
-	m_ElementCount(1024),
-	m_ElementAlignment(g_ShaderDeviceMgr.GetAdapterLimits().minUniformBufferOffsetAlignment),
-	m_ElementSize(ALIGN_VALUE(minElementSize, m_ElementAlignment)),
-	m_BackingBuffer(CreateBackingBuffer())
-{
-}
-
-void UniformBufferPool::Update(const void* data, size_t size, size_t offset)
-{
-	if (offset % m_ElementAlignment)
-		throw VulkanException("Invalid offset alignment", EXCEPTION_DATA());
-	if (size > m_ElementSize)
-		throw VulkanException("Size greater than initial creation size", EXCEPTION_DATA());
-
-	m_BackingBuffer.GetAllocation().Write(data, size, offset);
-}
-
-UniformBuffer UniformBufferPool::Create()
-{
-	ASSERT_MAIN_THREAD();
-
-	auto offset = m_NextOffset;
-	m_NextOffset = (m_NextOffset + m_ElementSize) % (m_ElementSize * m_ElementCount);
-
-	return UniformBuffer(offset, *this);
 }

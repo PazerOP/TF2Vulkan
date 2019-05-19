@@ -202,7 +202,7 @@ void IShaderAPI_StateManagerDynamic::SetShaderInstance(ShaderType type, const IS
 	}
 }
 
-void IShaderAPI_StateManagerDynamic::BindUniformBuffer(UniformBuffer& buf, UniformBufferIndex index)
+void IShaderAPI_StateManagerDynamic::BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index)
 {
 	if (index == UniformBufferIndex::Invalid)
 		return; // Nothing to do

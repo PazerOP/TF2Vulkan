@@ -78,6 +78,12 @@ BufferFactory& BufferFactory::SetDebugName(std::string&& dbgName)
 	return *this;
 }
 
+BufferFactory& BufferFactory::SetMemoryType(vma::MemoryType type)
+{
+	m_AllocInfo.usage = (VmaMemoryUsage)type;
+	return *this;
+}
+
 vma::AllocatedBuffer BufferFactory::Create() const
 {
 	const bool hasInitialData = m_InitialData && m_InitialDataSize > 0;

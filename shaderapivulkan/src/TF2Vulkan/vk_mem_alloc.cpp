@@ -29,6 +29,11 @@ AllocationInfo UniqueAllocation::getAllocationInfo() const
 	return retVal;
 }
 
+bool UniqueAllocation::IsMapped() const
+{
+	return !!data();
+}
+
 void UniqueAllocation::Write(const void* srcData, size_t srcSize, size_t dstOffset)
 {
 	auto allocInfo = getAllocationInfo();
@@ -55,12 +60,10 @@ std::byte* UniqueAllocation::data()
 
 const std::byte* UniqueAllocation::data() const
 {
-	return reinterpret_cast<const std::byte*>(getAllocationInfo().pMappedData);
-}
+	if (m_Allocation)
+		return reinterpret_cast<const std::byte*>(getAllocationInfo().pMappedData);
 
-size_t UniqueAllocation::size()
-{
-	return getAllocationInfo().size;
+	return nullptr;
 }
 
 UniqueAllocation::operator bool() const
@@ -97,7 +100,7 @@ AllocatedBuffer UniqueAllocator::createBufferUnique(const vk::BufferCreateInfo& 
 		throw VulkanException(result, EXCEPTION_DATA());
 	}
 
-	return { outBuf, UniqueAllocation(m_Allocator.get(), outAllocation) };
+	return { outBuf, UniqueAllocation(m_Allocator.get(), outAllocation), Util::SafeConvert<size_t>(bufCreateInfo.size) };
 }
 
 AllocatedImage UniqueAllocator::createImageUnique(const vk::ImageCreateInfo& imgCreateInfo,
@@ -120,8 +123,8 @@ AllocatedImage UniqueAllocator::createImageUnique(const vk::ImageCreateInfo& img
 	return { outImg, UniqueAllocation(m_Allocator.get(), outAllocation) };
 }
 
-AllocatedBuffer::AllocatedBuffer(VkBuffer buf, UniqueAllocation&& allocation) :
-	m_Buffer(vk::Buffer(buf), std::move(allocation))
+AllocatedBuffer::AllocatedBuffer(VkBuffer buf, UniqueAllocation&& allocation, size_t realSize) :
+	m_Buffer(vk::Buffer(buf), std::move(allocation)), m_RealSize(realSize)
 {
 }
 
@@ -138,6 +141,16 @@ UniqueAllocation& AllocatedBuffer::GetAllocation()
 const UniqueAllocation& AllocatedBuffer::GetAllocation() const
 {
 	return m_Buffer.get_deleter().m_Allocation;
+}
+
+size_t AllocatedBuffer::size() const
+{
+	return m_RealSize;
+}
+
+AllocatedBuffer::operator bool() const
+{
+	return !!GetBuffer();
 }
 
 AllocatedImage::AllocatedImage(VkImage img, UniqueAllocation&& allocation) :
@@ -158,6 +171,11 @@ UniqueAllocation& AllocatedImage::GetAllocation()
 const UniqueAllocation& AllocatedImage::GetAllocation() const
 {
 	return m_Image.get_deleter().m_Allocation;
+}
+
+AllocatedImage::operator bool() const
+{
+	return !!GetImage();
 }
 
 void detail::Deleter::operator()(VmaAllocator allocator) const

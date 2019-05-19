@@ -1,6 +1,6 @@
 #include "BaseShaderNext.h"
 
-#include <TF2Vulkan/IUniformBufferPool.h>
+#include <TF2Vulkan/IBufferPool.h>
 #include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/Util/Macros.h>
 
@@ -45,7 +45,7 @@ inline namespace Fillrate
 		void OnDrawElements(const OnDrawElementsParams& params) override;
 
 	private:
-		IUniformBufferPool* m_PSDataCustom = nullptr;
+		IBufferPool* m_PSDataCustom = nullptr;
 		UniformBufferIndex m_PSDataCustomIndex = UniformBufferIndex::Invalid;
 		IShaderGroup* m_FillrateVS = nullptr;
 		IShaderGroup* m_FillratePS = nullptr;
@@ -59,7 +59,7 @@ void Shader::OnInitShader(IShaderNextFactory& mgr)
 	m_FillrateVS = &mgr.FindOrCreateShaderGroup(ShaderType::Vertex, "fillrate_vs", s_SpecConstLayout);
 	m_FillratePS = &mgr.FindOrCreateShaderGroup(ShaderType::Pixel, "fillrate_ps");
 
-	m_PSDataCustom = &mgr.FindOrCreateUniformBuf(sizeof(PSDataCustom));
+	m_PSDataCustom = &mgr.GetUniformBufferPool();
 	m_PSDataCustomIndex = m_FillratePS->FindUniformBuffer(UniformBufferStandardType::ShaderCustom);
 }
 
@@ -110,7 +110,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		psData.m_Color[1] = 0.0f;
 		psData.m_Color[2] = 0.0f;
 		psData.m_Color[3] = 0.0f;
-		dynamic->BindUniformBuffer(m_PSDataCustom->Create().Update(psData), m_PSDataCustomIndex);
+		dynamic->BindUniformBuffer(m_PSDataCustom->Create(psData), m_PSDataCustomIndex);
 
 		SpecConstBuf sc;
 		sc.SKINNING = dynamic->GetCurrentNumBones() > 0;
@@ -132,7 +132,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	if (dynamic)
 	{
 		psData.m_Color.Set(0, 0.05f, 0.05f, 0);
-		dynamic->BindUniformBuffer(m_PSDataCustom->Create().Update(psData), m_PSDataCustomIndex);
+		dynamic->BindUniformBuffer(m_PSDataCustom->Create(psData), m_PSDataCustomIndex);
 	}
 
 	Draw();

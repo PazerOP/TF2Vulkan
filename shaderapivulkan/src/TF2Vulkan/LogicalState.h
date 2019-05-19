@@ -3,7 +3,7 @@
 #include <stdshader_vulkan/ShaderData.h>
 
 #include <TF2Vulkan/VertexFormat.h>
-#include <TF2Vulkan/IUniformBufferPool.h>
+#include <TF2Vulkan/IBufferPool.h>
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
@@ -50,7 +50,7 @@ namespace TF2Vulkan
 		const IShaderInstanceInternal* m_VSShader = nullptr;
 		const IShaderInstanceInternal* m_PSShader = nullptr;
 
-		std::array<UniformBuffer, 8> m_UniformBuffers = {};
+		std::array<BufferPoolEntry, 8> m_UniformBuffers = {};
 
 		// Stencil settings
 		bool m_StencilEnable = false;

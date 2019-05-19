@@ -7,7 +7,7 @@
 #include <TF2Vulkan/AlignedTypes.h>
 #include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/ISpecConstLayout.h>
-#include <TF2Vulkan/IUniformBufferPool.h>
+#include <TF2Vulkan/IBufferPool.h>
 #include <TF2Vulkan/VertexFormat.h>
 #include <TF2Vulkan/Util/std_array.h>
 #include <TF2Vulkan/Util/Macros.h>
@@ -157,13 +157,13 @@ inline namespace XLitGeneric
 		IShaderGroup* m_PSShader = nullptr;
 		IShaderGroup* m_VSShader = nullptr;
 
-		IUniformBufferPool* m_UBufCommon = nullptr;
+		IBufferPool* m_UBufCommon = nullptr;
 		UniformBufferIndex m_UBufCommonIndex = UniformBufferIndex::Invalid;
 
-		IUniformBufferPool* m_UBufModelMatrices = nullptr;
+		IBufferPool* m_UBufModelMatrices = nullptr;
 		UniformBufferIndex m_UBufModelMatricesIndex = UniformBufferIndex::Invalid;
 
-		IUniformBufferPool* m_UniformBuf = nullptr;
+		IBufferPool* m_UniformBuf = nullptr;
 		UniformBufferIndex m_UniformBufferIndex = UniformBufferIndex::Invalid;
 	};
 
@@ -220,13 +220,13 @@ void Shader::OnInitShader(IShaderNextFactory& instanceMgr)
 	m_VSShader = &instanceMgr.FindOrCreateShaderGroup(ShaderType::Vertex, "xlitgeneric_vs", s_SpecConstLayout);
 	m_PSShader = &instanceMgr.FindOrCreateShaderGroup(ShaderType::Pixel, "xlitgeneric_ps", s_SpecConstLayout);
 
-	m_UBufCommon = &instanceMgr.FindOrCreateUniformBuf(sizeof(ShaderDataCommon));
+	m_UBufCommon = &instanceMgr.GetUniformBufferPool();
 	m_UBufCommonIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::ShaderCommon);
 
-	m_UBufModelMatrices = &instanceMgr.FindOrCreateUniformBuf(sizeof(VSModelMatrices));
+	m_UBufModelMatrices = &instanceMgr.GetUniformBufferPool();
 	m_UBufModelMatricesIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::VSModelMatrices);
 
-	m_UniformBuf = &instanceMgr.FindOrCreateUniformBuf(sizeof(UniformBuf));
+	m_UniformBuf = &instanceMgr.GetUniformBufferPool();
 	m_UniformBufferIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::ShaderCustom);
 }
 
@@ -556,9 +556,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		}
 
 		// Update data and bind uniform buffers
-		params.dynamic->BindUniformBuffer(m_UniformBuf->Create().Update(drawParams.m_Uniforms), m_UniformBufferIndex);
-		params.dynamic->BindUniformBuffer(m_UBufCommon->Create().Update(drawParams.m_UniformsCommon), m_UBufCommonIndex);
-		params.dynamic->BindUniformBuffer(m_UBufModelMatrices->Create().Update(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBuf->Create(drawParams.m_Uniforms), m_UniformBufferIndex);
+		params.dynamic->BindUniformBuffer(m_UBufCommon->Create(drawParams.m_UniformsCommon), m_UBufCommonIndex);
+		params.dynamic->BindUniformBuffer(m_UBufModelMatrices->Create(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
 
 		// Set
 		params.dynamic->SetVertexShader(m_VSShader->FindOrCreateInstance(drawParams.m_SpecConsts));

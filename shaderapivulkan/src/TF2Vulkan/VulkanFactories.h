@@ -21,6 +21,7 @@ namespace TF2Vulkan{ namespace Factories
 		BufferFactory& SetInitialData(const void* initialData, size_t initialDataSize, size_t writeOffset = 0);
 		BufferFactory& SetMemoryRequiredFlags(const vk::MemoryPropertyFlags& flags);
 		BufferFactory& SetDebugName(std::string&& dbgName);
+		BufferFactory& SetMemoryType(vma::MemoryType type);
 
 		vma::AllocatedBuffer Create() const;
 

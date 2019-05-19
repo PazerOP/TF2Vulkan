@@ -136,7 +136,7 @@ namespace TF2Vulkan
 
 		// IShaderDynamicNext
 		void SetShaderInstance(ShaderType type, const IShaderInstance* instance) override final;
-		void BindUniformBuffer(UniformBuffer& buf, UniformBufferIndex index) override final;
+		void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) override final;
 
 		// Helpers
 		void SetOverbright(float overbright);
@@ -152,7 +152,7 @@ namespace TF2Vulkan
 		LogicalDynamicState m_State;
 		bool m_Dirty = true;
 
-		IUniformBufferPool* m_VSMatricesBufPool = nullptr;
+		IBufferPool* m_VSMatricesBufPool = nullptr;
 	};
 
 	extern IShaderAPI_StateManagerDynamic& g_StateManagerDynamic;

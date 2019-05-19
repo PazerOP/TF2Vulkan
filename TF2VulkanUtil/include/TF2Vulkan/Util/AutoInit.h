@@ -8,8 +8,8 @@ namespace Util
 	class AutoInitTagBase
 	{
 	protected:
-		static void InitAll();
-		static void ShutdownAll();
+		static void AutoInitAll();
+		static void AutoShutdownAll();
 	};
 
 	template<typename Tag>
@@ -36,14 +36,14 @@ namespace Util
 	};
 
 	template<typename Tag>
-	inline void AutoInitTagBase<Tag>::InitAll()
+	inline void AutoInitTagBase<Tag>::AutoInitAll()
 	{
 		for (auto inst : IAutoInit<Tag>::m_Instances)
 			inst->AutoInit();
 	}
 
 	template<typename Tag>
-	inline void AutoInitTagBase<Tag>::ShutdownAll()
+	inline void AutoInitTagBase<Tag>::AutoShutdownAll()
 	{
 		for (auto inst : IAutoInit<Tag>::m_Instances)
 			inst->AutoShutdown();

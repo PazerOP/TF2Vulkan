@@ -1,3 +1,4 @@
+#include "BufferPool.h"
 #include "FormatInfo.h"
 #include "interface/internal/IShaderAPIInternal.h"
 #include "interface/internal/IShaderAPITexture.h"
@@ -8,6 +9,7 @@
 #include "VulkanFactories.h"
 #include "VulkanMesh.h"
 
+#include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/interface.h>
 
 #pragma push_macro("min")
@@ -126,6 +128,9 @@ namespace
 		const vk::Buffer& GetDummyUniformBuffer() const override { return m_Data.m_DummyUniformBuffer.GetBuffer(); }
 		const vk::Buffer& GetDummyVertexBuffer() const override { return m_Data.m_DummyVertexBuffer.GetBuffer(); }
 
+		IBufferPoolInternal& GetVertexBufferPool() override { return m_Data.m_VertexBufferPool.value(); }
+		IBufferPoolInternal& GetIndexBufferPool() override { return m_Data.m_IndexBufferPool.value(); }
+
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
 
 		using IShaderDeviceInternal::SetDebugName;
@@ -155,6 +160,9 @@ namespace
 			std::unique_ptr<IVulkanCommandBuffer> m_TempPrimaryCmdBuf;
 			vma::AllocatedBuffer m_DummyUniformBuffer;
 			vma::AllocatedBuffer m_DummyVertexBuffer;
+
+			std::optional<BufferPool> m_VertexBufferPool;
+			std::optional<BufferPool> m_IndexBufferPool;
 
 			const IShaderAPITexture* m_DepthTexture = nullptr;
 
@@ -521,6 +529,8 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 		.SetSize(256)
 		.SetUsage(vk::BufferUsageFlagBits::eVertexBuffer)
 		.Create();
+
+	AutoInitAll();
 }
 
 const vk::Device& ShaderDevice::GetVulkanDevice()

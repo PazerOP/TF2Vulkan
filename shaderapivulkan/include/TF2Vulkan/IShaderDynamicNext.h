@@ -1,6 +1,6 @@
 #pragma once
 
-#include <TF2Vulkan/IUniformBufferPool.h>
+#include <TF2Vulkan/IBufferPool.h>
 #include <TF2Vulkan/IShaderGroup.h>
 #include <TF2Vulkan/IShaderInstance.h>
 #include <TF2Vulkan/Util/Macros.h>
@@ -15,7 +15,7 @@ namespace TF2Vulkan
 
 	public:
 		virtual void SetShaderInstance(ShaderType type, const IShaderInstance* instance) = 0;
-		virtual void BindUniformBuffer(UniformBuffer& buf, UniformBufferIndex index) = 0;
+		virtual void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) = 0;
 
 		// From IShaderDynamicAPI
 		virtual int GetCurrentNumBones(void) const = 0;
@@ -29,7 +29,7 @@ namespace TF2Vulkan
 		void SetVertexShader(const IShaderInstance* instance) { SetShaderInstance(ShaderType::Vertex, instance); }
 		void SetVertexShader(const IShaderInstance& instance) { SetShaderInstance(ShaderType::Vertex, &instance); }
 
-		void BindUniformBuffer(UniformBuffer* buf, UniformBufferIndex index)
+		void BindUniformBuffer(const BufferPoolEntry* buf, UniformBufferIndex index)
 		{
 			if (buf)
 				BindUniformBuffer(*buf, index);

@@ -17,6 +17,32 @@ static void AssertCheckHeap()
 #endif
 }
 
+static void UpdateOrRecreateBuffer(vma::AllocatedBuffer& buffer, const char* dbgName,
+	const void* newData, size_t newSize, vk::BufferUsageFlags usage)
+{
+	if (true)//(!buffer || buffer.size() < newSize)
+	{
+		if (buffer)
+			g_ShaderDevice.GetPrimaryCmdBuf().AddResource(std::move(buffer));
+
+		char dbgNameFormatted[128];
+		sprintf_s(dbgNameFormatted, "%s(): %s (size %zu)", __FUNCTION__, dbgName, newSize);
+
+		// Recreate
+		buffer = Factories::BufferFactory{}
+			.SetMemoryType(vma::MemoryType::eCpuToGpu)
+			.SetDebugName(dbgNameFormatted)
+			.SetInitialData(newData, newSize)
+			.SetUsage(usage)
+			.Create();
+	}
+	else
+	{
+		// Just copy the data in
+		buffer.GetAllocation().Write(newData, newSize);
+	}
+}
+
 VulkanMesh::VulkanMesh(const VertexFormat& fmt) :
 	m_VertexBuffer(fmt)
 {
@@ -73,33 +99,18 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 
 	auto pixScope = cmdBuf.DebugRegionBegin(Color(128, 255, 128), "VulkanMesh::DrawInternal()");
 
-	const size_t indexDataSize = m_IndexBuffer.IndexDataSize();
-	const size_t vertexDataSize = m_VertexBuffer.VertexDataSize();
-	static constexpr size_t indexOffset = 0;
-	const size_t vertexOffset = indexDataSize;
-
-	auto indexVertexBuf = Factories::BufferFactory{}
-		.SetUsage(vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
-		.SetSize(indexDataSize + vertexDataSize)
-		.SetAllowMapping()
-		.SetDebugName(__FUNCTION__ "(): Test index/vertex buffer")
-		.Create();
-
-	indexVertexBuf.GetAllocation().Write(m_IndexBuffer.IndexData(), indexDataSize, indexOffset);
-	indexVertexBuf.GetAllocation().Write(m_VertexBuffer.VertexData(), vertexDataSize, vertexOffset);
-
-	cmdBuf.bindIndexBuffer(indexVertexBuf.GetBuffer(), indexOffset, vk::IndexType::eUint16);
+	cmdBuf.bindIndexBuffer(m_IndexBuffer.GetGPUBuffer(), 0, vk::IndexType::eUint16);
 
 	// Bind vertex buffers
 	{
 		const vk::Buffer vtxBufs[] =
 		{
-			indexVertexBuf.GetBuffer(),
+			m_VertexBuffer.GetGPUBuffer(),
 			g_ShaderDevice.GetDummyVertexBuffer(),
 		};
 		const vk::DeviceSize offsets[] =
 		{
-			vertexOffset,
+			0,
 			0,
 		};
 		static_assert(std::size(vtxBufs) == std::size(offsets));
@@ -108,7 +119,6 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 
 	assert(firstIndex == 0); // TODO: What happens when we actually have offsets?
 	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(indexCount));
-	cmdBuf.AddResource(std::move(indexVertexBuf));
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
@@ -372,7 +382,9 @@ void VulkanIndexBuffer::Unlock(int writtenIndexCount, IndexDesc_t& desc)
 	LOG_FUNC();
 	AssertCheckHeap();
 	assert(Util::SafeConvert<size_t>(writtenIndexCount) <= (m_Indices.size() * sizeof(m_Indices[0])));
-	// TODO: Send data to GPU
+
+	UpdateOrRecreateBuffer(m_IndexBuffer, "VulkanIndexBuffer", IndexData(),
+		writtenIndexCount * sizeof(m_Indices[0]), vk::BufferUsageFlagBits::eIndexBuffer);
 }
 
 void VulkanIndexBuffer::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
@@ -393,6 +405,11 @@ void VulkanIndexBuffer::Spew(int indexCount, const IndexDesc_t& desc)
 void VulkanIndexBuffer::ValidateData(int indexCount, const IndexDesc_t& desc)
 {
 	NOT_IMPLEMENTED_FUNC();
+}
+
+const vk::Buffer& VulkanIndexBuffer::GetGPUBuffer() const
+{
+	return m_IndexBuffer.GetBuffer();
 }
 
 const unsigned short* VulkanIndexBuffer::IndexData() const
@@ -561,10 +578,13 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	LOG_FUNC();
 	AssertCheckHeap();
 	ValidateData(vertexCount, desc);
-	// TODO: Send data to GPU
+	assert(vertexCount == m_VertexCount);
+
+	UpdateOrRecreateBuffer(m_VertexBuffer, "VulkanVertexBuffer",
+		VertexData(), (VertexDataSize() / m_VertexCount) * vertexCount, vk::BufferUsageFlagBits::eVertexBuffer);
 }
 
 void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)
@@ -601,6 +621,11 @@ void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)
 	{
 		ValidateType<Shaders::float3>(desc.m_pPosition, i, desc.m_VertexSize_Position);
 	}
+}
+
+const vk::Buffer& VulkanVertexBuffer::GetGPUBuffer() const
+{
+	return m_VertexBuffer.GetBuffer();
 }
 
 const std::byte* VulkanVertexBuffer::VertexData() const
