@@ -19,6 +19,7 @@ namespace TF2Vulkan
 		using BaseClass = IShaderTextureManager;
 
 	public:
+		IShaderAPI_StateManagerDynamic();
 
 		void SetViewports(int count, const ShaderViewport_t* viewports) override final;
 		int GetViewports(ShaderViewport_t* viewports, int maxViewports) const override final { NOT_IMPLEMENTED_FUNC(); }
@@ -144,10 +145,10 @@ namespace TF2Vulkan
 		const LogicalDynamicState& GetDynamicState() const { return m_State; }
 
 	private:
-		void AssertMatrixMode();
 
 		MaterialMatrixMode_t m_MatrixMode = {};
-		std::array<std::stack<VMatrix, std::vector<VMatrix>>, NUM_MATRIX_MODES> m_MatrixStacks;
+		using MatrixStack = std::stack<VMatrix, std::vector<VMatrix>>;
+		std::array<MatrixStack, NUM_MATRIX_MODES> m_MatrixStacks;
 
 		LogicalDynamicState m_State;
 		bool m_Dirty = true;

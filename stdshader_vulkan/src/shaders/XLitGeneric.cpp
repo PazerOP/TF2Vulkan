@@ -135,9 +135,9 @@ inline namespace XLitGeneric
 
 			SpecConstBuf m_SpecConsts;
 			VertexFormat m_Format;
-			ShaderDataCommon m_UniformsCommon;
-			VSModelMatrices m_ModelMatrices;
-			UniformBuf m_Uniforms;
+			ShaderDataCommon m_UniformsCommon{};
+			VSModelMatrices m_ModelMatrices{};
+			UniformBuf m_Uniforms{};
 
 			bool m_UsingBaseTexture = false;
 			bool m_UsingRefraction = false;
@@ -537,8 +537,8 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 			dynamic->GetMatrix(MATERIAL_VIEW, view);
 			dynamic->GetMatrix(MATERIAL_PROJECTION, proj);
 
-			common.m_ViewProj = proj * view;
-			common.m_ModelViewProj = (common.m_ViewProj * model).Transpose();
+			common.m_ViewProj = view * proj;
+			common.m_ModelViewProj = (model * common.m_ViewProj).Transpose();
 			common.m_ViewProj = common.m_ViewProj.Transpose();
 		}
 
@@ -546,6 +546,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		{
 			VMatrix tmp;
 			dynamic->GetMatrix(MATERIAL_MODEL, tmp);
+			//assert(tmp.IsIdentity());
 			modelMats.m_Model[0] = tmp.Transpose().As3x4();
 		}
 

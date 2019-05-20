@@ -421,7 +421,6 @@ IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount,
 {
 	LOG_FUNC();
 	return GetDynamicMeshEx(material, material->GetVertexFormat(), hwSkinBoneCount, buffered, vertexOverride, indexOverride);
-	const VertexFormat fmt(material->GetVertexFormat());
 }
 
 IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFormat,
@@ -430,6 +429,9 @@ IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFor
 	LOG_FUNC();
 
 	const VertexFormat fmt(vertexFormat);
+	assert(hwSkinBoneCount == 0);
+	assert(fmt.m_BoneWeightCount == 0);
+	assert(!(fmt.m_Flags & VertexFormatFlags::BoneIndex));
 
 	return &m_DynamicMeshes.try_emplace(fmt, fmt, true).first->second;
 }

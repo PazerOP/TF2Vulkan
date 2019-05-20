@@ -109,6 +109,12 @@ void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITex
 	Util::SetDirtyVar(m_State.m_BoundTextures, sampler, textureHandle, m_Dirty);
 }
 
+IShaderAPI_StateManagerDynamic::IShaderAPI_StateManagerDynamic()
+{
+	//for (auto& stack : m_MatrixStacks)
+	//	stack.emplace().Identity();
+}
+
 void IShaderAPI_StateManagerDynamic::SetViewports(int count, const ShaderViewport_t* viewports)
 {
 	LOG_FUNC();
@@ -250,13 +256,12 @@ void IShaderAPI_StateManagerDynamic::GetMatrix(MaterialMatrixMode_t mode, float*
 void IShaderAPI_StateManagerDynamic::GetMatrix(MaterialMatrixMode_t mode, VMatrix & dst) const
 {
 	LOG_FUNC();
-	dst = m_State.m_Matrices.at(mode);
-}
+	auto& stack = m_MatrixStacks.at(mode);
 
-void IShaderAPI_StateManagerDynamic::AssertMatrixMode()
-{
-	assert(m_MatrixMode >= 0);
-	assert(m_MatrixMode < NUM_MATRIX_MODES);
+	if (!stack.empty())
+		dst = stack.top();
+	else
+		dst.Identity();
 }
 
 void IShaderAPI_StateManagerDynamic::PushMatrix()
@@ -264,28 +269,28 @@ void IShaderAPI_StateManagerDynamic::PushMatrix()
 	LOG_FUNC();
 
 	auto& stack = m_MatrixStacks.at(m_MatrixMode);
-	auto& mat = m_State.m_Matrices.at(m_MatrixMode);
-	stack.emplace(mat);
+
+	if (!stack.empty())
+		stack.push(stack.top());
+	else
+		stack.emplace().Identity();
 }
 
 void IShaderAPI_StateManagerDynamic::PopMatrix()
 {
 	LOG_FUNC();
 
-	auto& mat = m_State.m_Matrices.at(m_MatrixMode);
 	auto& stack = m_MatrixStacks.at(m_MatrixMode);
 
-	mat = stack.top();
-	m_Dirty = true;
-
-	stack.pop();
+	if (!stack.empty())
+		stack.pop();
 }
 
 void IShaderAPI_StateManagerDynamic::LoadIdentity()
 {
 	LOG_FUNC();
 
-	m_State.m_Matrices.at(m_MatrixMode).Identity();
+	m_MatrixStacks.at(m_MatrixMode).top().Identity();
 	m_Dirty = true;
 }
 
@@ -298,7 +303,7 @@ void IShaderAPI_StateManagerDynamic::LoadMatrix(float* m)
 void IShaderAPI_StateManagerDynamic::LoadMatrix(const VMatrix & m)
 {
 	LOG_FUNC();
-	Util::SetDirtyVar(m_State.m_Matrices.at(m_MatrixMode), m, m_Dirty);
+	Util::SetDirtyVar(m_MatrixStacks.at(m_MatrixMode).top(), m, m_Dirty);
 }
 
 void IShaderAPI_StateManagerDynamic::MultMatrix(float* m)

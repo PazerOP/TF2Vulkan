@@ -32,8 +32,6 @@ namespace TF2Vulkan
 	{
 		constexpr LogicalDynamicState() = default;
 
-		std::array<VMatrix, NUM_MATRIX_MODES> m_Matrices;
-
 		bool m_InFlashlightMode = false;
 		IMaterial* m_BoundMaterial = nullptr;
 		int m_BoneCount = 0;

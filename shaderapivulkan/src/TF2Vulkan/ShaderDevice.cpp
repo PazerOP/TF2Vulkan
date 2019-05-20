@@ -396,6 +396,9 @@ IMesh* ShaderDevice::CreateStaticMesh(VertexFormat_t format, const char* texture
 {
 	// TODO
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
+
+	const VertexFormat fmt(format);
+	assert(fmt.m_BoneWeightCount == 0);
 	return new VulkanMesh(VertexFormat(format), false);
 }
 

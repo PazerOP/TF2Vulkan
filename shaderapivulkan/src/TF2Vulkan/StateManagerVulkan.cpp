@@ -800,8 +800,11 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 
 		// Scissor(s)
 		{
-			m_Scissor.extent.width = m_ViewportStateCI.pViewports[0].width;
-			m_Scissor.extent.height = m_ViewportStateCI.pViewports[0].height;
+			const auto& vp = m_ViewportStateCI.pViewports[0];
+			m_Scissor.offset.x = vp.x;
+			m_Scissor.offset.y = vp.y;
+			m_Scissor.extent.width = vp.width;
+			m_Scissor.extent.height = vp.height;
 			m_ViewportStateCI.pScissors = &m_Scissor;
 			m_ViewportStateCI.scissorCount = 1;
 		}
@@ -865,9 +868,9 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 		auto& ci = m_DepthStencilStateCI;
 		m_CreateInfo.pDepthStencilState = &ci;
 
-		ci.depthTestEnable = false;// key.m_DepthTest;
-		//ci.depthWriteEnable = key.m_DepthWrite;
-		//ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
+		ci.depthTestEnable = key.m_DepthTest;
+		ci.depthWriteEnable = key.m_DepthWrite;
+		ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
 	}
 
 	// Graphics pipeline

@@ -29,6 +29,9 @@ float4 main(const PS_INPUT i) : SV_Target
 	if (TEXACTIVE_BASETEXTURE)
 		baseTextureColor = BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
 
+	if (DIFFUSELIGHTING)
+		return baseTextureColor;
+
 	const float3 finalColor = diffuseColor.rgb * baseTextureColor.rgb;
 	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, g_fVertexAlpha);
 	return float4(finalColor, finalAlpha);
