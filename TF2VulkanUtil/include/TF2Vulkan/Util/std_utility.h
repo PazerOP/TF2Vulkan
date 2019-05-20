@@ -13,7 +13,7 @@ namespace Util
 	}
 
 	template<typename T>
-	[[nodiscard]] inline size_t hash_value(const T& value)
+	[[nodiscard]] __forceinline size_t hash_value(const T& value)
 	{
 		return std::hash<T>{}(value);
 	}
@@ -31,7 +31,7 @@ namespace Util
 		return retVal;
 	}
 
-	[[nodiscard]] inline size_t hash_combine(const std::initializer_list<size_t>& hashes)
+	[[nodiscard]] __forceinline size_t hash_combine(const std::initializer_list<size_t>& hashes)
 	{
 		return ::Util::hash_combine_range(hashes.begin(), hashes.end());
 	}
@@ -48,18 +48,18 @@ namespace Util
 	}
 
 	template<typename T, size_t size>
-	[[nodiscard]] inline size_t hash_value(const T(&value)[size])
+	[[nodiscard]] __forceinline size_t hash_value(const T(&value)[size])
 	{
 		return ::Util::hash_range(std::begin(value), std::end(value));
 	}
 
 	template<typename TOnly>
-	[[nodiscard]] inline size_t hash_multi(const TOnly& only)
+	[[nodiscard]] __forceinline size_t hash_multi(const TOnly& only)
 	{
 		return ::Util::hash_value(only);
 	}
 	template<typename TFirst, typename... TExtra>
-	[[nodiscard]] inline size_t hash_multi(const TFirst& first, const TExtra& ... args)
+	[[nodiscard]] __forceinline size_t hash_multi(const TFirst& first, const TExtra& ... args)
 	{
 		return ::Util::hash_combine({ ::Util::hash_value(first), ::Util::hash_value(args)... });
 	}

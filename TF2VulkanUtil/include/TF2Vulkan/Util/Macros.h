@@ -77,3 +77,15 @@ static constexpr const char* PRINTF_BOOL(bool val) { return val ? "true" : "fals
 
 #define ORDERING_OP_LT_IMPL(varName) ORDERING_OP_LT_IMPL_GENERIC(varName, other. ## varName)
 #define ORDERING_OP_LT_IMPL_PUB(varName) ORDERING_OP_LT_IMPL_GENERIC(lhs. ## varName, rhs. ## varName)
+
+#define DISABLE_OBJ_MOVE(type) \
+	type(type&&) = delete; \
+	type& operator=(type&&) = delete;
+
+#define DISABLE_OBJ_COPY(type) \
+	type(const type&) = delete; \
+	type& operator=(const type&) = delete;
+
+#define DISABLE_OBJ_COPY_MOVE(type) \
+	DISABLE_OBJ_MOVE(type); \
+	DISABLE_OBJ_COPY(type);

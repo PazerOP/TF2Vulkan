@@ -25,12 +25,14 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(DebugTextureInfo, IDebugTextureInfo, DEBUG_TEX
 
 void DebugTextureInfo::EnableDebugTextureList(bool enable)
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	if (enable)
+		NOT_IMPLEMENTED_FUNC();
 }
 
 void DebugTextureInfo::EnableGetAllTextures(bool enable)
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	if (enable)
+		NOT_IMPLEMENTED_FUNC();
 }
 
 KeyValues* DebugTextureInfo::GetDebugTextureList()

@@ -11,6 +11,7 @@
 
 #include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/interface.h>
+#include <TF2Vulkan/Util/std_algorithm.h>
 
 #pragma push_macro("min")
 #pragma push_macro("max")
@@ -139,6 +140,8 @@ namespace
 		const IShaderAPITexture& GetBackBufferColorTexture() const override { return m_BackbufferColorTexture; }
 		const IShaderAPITexture& GetBackBufferDepthTexture() const override;
 
+		vk::PipelineCache GetPipelineCache() const override { return m_Data.m_PipelineCache.get(); }
+
 		bool IsReady() const override;
 		IVulkanCommandBuffer& GetPrimaryCmdBuf() override;
 		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override { return m_Data.m_DynamicLoader; }
@@ -163,6 +166,8 @@ namespace
 
 			std::optional<BufferPoolContiguous> m_VertexBufferPool;
 			std::optional<BufferPoolContiguous> m_IndexBufferPool;
+
+			vk::UniquePipelineCache m_PipelineCache;
 
 			const IShaderAPITexture* m_DepthTexture = nullptr;
 
@@ -533,6 +538,13 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 	m_Data.m_VertexBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eVertexBuffer);
 	m_Data.m_IndexBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eIndexBuffer);
 
+	// Pipeline cache
+	{
+		vk::PipelineCacheCreateInfo ci;
+		m_Data.m_PipelineCache = device->createPipelineCacheUnique(ci);
+		SetDebugName(m_Data.m_PipelineCache, "TF2Vulkan Pipeline Cache");
+	}
+
 	AutoInitAll();
 }
 
@@ -600,7 +612,32 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		scCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
 		scCreateInfo.queueFamilyIndexCount = 1;
 		scCreateInfo.pQueueFamilyIndices = &m_Data.m_GraphicsQueueIndex;
-		scCreateInfo.presentMode = presentModes.at(0);
+
+		// Choose a present mode
+		{
+			static constexpr vk::PresentModeKHR PREFERRED_PRESENT_MODES[] =
+			{
+				vk::PresentModeKHR::eMailbox,      // double buffered vsync with no sleeping
+				vk::PresentModeKHR::eImmediate,    // no vsync
+				vk::PresentModeKHR::eFifoRelaxed,  // vsync, unless fps drops below vsync interval
+				vk::PresentModeKHR::eFifo,         // vsync
+			};
+
+			bool found = false;
+			for (const auto preferredMode : PREFERRED_PRESENT_MODES)
+			{
+				if (Util::algorithm::contains(presentModes, preferredMode))
+				{
+					scCreateInfo.presentMode = preferredMode;
+					found = true;
+					break;
+				}
+			}
+
+			// Unable to find a preferred mode, just pick the first available one
+			if (!found)
+				scCreateInfo.presentMode = presentModes.at(0);
+		}
 
 		newSwapChain.m_SwapChain = m_Data.m_Device->createSwapchainKHRUnique(scCreateInfo);
 		SetDebugName(newSwapChain.m_SwapChain, "TF2Vulkan Swap Chain");

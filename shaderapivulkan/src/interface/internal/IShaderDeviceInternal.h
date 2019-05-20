@@ -62,6 +62,8 @@ namespace TF2Vulkan
 			return const_cast<IShaderAPITexture&>(std::as_const(*this).GetBackBufferDepthTexture());
 		}
 
+		virtual vk::PipelineCache GetPipelineCache() const = 0;
+
 		virtual IVulkanCommandBuffer& GetPrimaryCmdBuf() = 0;
 
 		virtual bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) = 0;
@@ -77,6 +79,7 @@ namespace TF2Vulkan
 		SET_DEBUG_NAME_FN(Image);
 		SET_DEBUG_NAME_FN(ImageView);
 		SET_DEBUG_NAME_FN(Pipeline);
+		SET_DEBUG_NAME_FN(PipelineCache);
 		SET_DEBUG_NAME_FN(PipelineLayout);
 		SET_DEBUG_NAME_FN(Queue);
 		SET_DEBUG_NAME_FN(RenderPass);

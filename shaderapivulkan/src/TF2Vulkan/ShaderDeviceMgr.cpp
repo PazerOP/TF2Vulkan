@@ -213,8 +213,12 @@ static vk::UniqueInstance CreateInstance()
 	{
 		"VK_LAYER_LUNARG_standard_validation",
 	};
-	createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
-	createInfo.enabledLayerCount = std::size(VALIDATION_LAYERS);
+
+	if (IsDebug() || CommandLine()->CheckParm("-tf2vk-validation"))
+	{
+		createInfo.ppEnabledLayerNames = VALIDATION_LAYERS;
+		createInfo.enabledLayerCount = std::size(VALIDATION_LAYERS);
+	}
 
 	constexpr const char* INSTANCE_EXTENSIONS[] =
 	{

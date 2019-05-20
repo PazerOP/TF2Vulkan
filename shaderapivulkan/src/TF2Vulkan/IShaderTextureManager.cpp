@@ -445,8 +445,7 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 
 	// Copy staging buffer into destination texture
 	{
-		//auto uniqueCmdBuffer = queue.CreateCmdBufferAndBegin();
-		auto& cmdBuffer = g_ShaderDevice.GetPrimaryCmdBuf();//*uniqueCmdBuffer;
+		auto& cmdBuffer = g_ShaderDevice.GetPrimaryCmdBuf();
 
 		auto pixScope = cmdBuffer.DebugRegionBegin(PIX_COLOR_READWRITE, "ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
 

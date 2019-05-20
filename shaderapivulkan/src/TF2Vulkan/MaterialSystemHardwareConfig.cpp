@@ -348,8 +348,8 @@ const char* MaterialSystemHardwareConfig::GetShaderDLLName() const
 
 bool MaterialSystemHardwareConfig::ReadPixelsFromFrontBuffer() const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK(); // TODO: Probably possible
-	return false;
+	LOG_FUNC();
+	return true; // Should? always be possible in vulkan
 }
 
 bool MaterialSystemHardwareConfig::PreferDynamicTextures() const

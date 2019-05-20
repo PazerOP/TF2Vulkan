@@ -464,9 +464,14 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	const bool bIsAdditive = CShader_IsFlagSet(params.matvars, MATERIAL_VAR_ADDITIVE);
 	const bool bHasFlashlight = false;
 
-	const bool bHasVertexColor = bVertexLitGeneric ? false : IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);
-	const bool bHasVertexAlpha = bVertexLitGeneric ? false : IS_FLAG_SET(MATERIAL_VAR_VERTEXALPHA);
+	const bool bHasVertexColor = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);
+	const bool bHasVertexAlpha = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXALPHA);
 	drawParams.m_SpecConsts.VERTEXCOLOR = bHasVertexColor || bHasVertexAlpha;
+
+	const bool bSeamlessBase = params[SEAMLESS_BASE]->GetBoolValue();
+	const bool bSeamlessDetail = params[SEAMLESS_DETAIL]->GetBoolValue();
+	const bool bHasEnvmap = !bHasFlashlight && params[ENVMAP]->IsTexture();
+	const bool bHasNormal = IsPC() || bVertexLitGeneric || bHasEnvmap || bHasFlashlight || bSeamlessBase || bSeamlessDetail;
 
 	const bool bSRGBWrite = !params[LINEARWRITE]->GetBoolValue();
 	drawParams.m_SpecConsts.DONT_GAMMA_CONVERT_VERTEX_COLOR = !bSRGBWrite && bHasVertexColor;
@@ -483,9 +488,13 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		SetBlendingShadowState(EvaluateBlendRequirements());
 
 		drawParams.m_Format.AddFlags(VertexFormatFlags::Position);
+		drawParams.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
 
 		if (bHasVertexAlpha || bHasVertexColor)
 			drawParams.m_Format.AddFlags(VertexFormatFlags::Color);
+
+		if (bHasNormal)
+			drawParams.m_Format.AddFlags(VertexFormatFlags::Normal);
 
 		if (params[BASETEXTURE]->IsTexture())
 			drawParams.m_Format.AddTexCoord();
@@ -516,7 +525,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 		auto& common = drawParams.m_UniformsCommon;
 		auto& modelMats = drawParams.m_ModelMatrices;
-		[[maybe_unused]] auto& custom = drawParams.m_Uniforms;
+		auto& custom = drawParams.m_Uniforms;
 		dynamic->GetWorldSpaceCameraPosition(common.m_EyePos);
 
 		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;

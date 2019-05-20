@@ -67,24 +67,41 @@ STD_HASH_DEFINITION(RenderPassKey,
 
 namespace
 {
-	struct PipelineLayoutKey
+	struct DescriptorSetLayoutKey
 	{
-		constexpr PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		DescriptorSetLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		DEFAULT_STRONG_ORDERING_OPERATOR(DescriptorSetLayoutKey);
+
+		const IShaderGroupInternal* m_VSShaderGroup;
+		const IShaderGroupInternal* m_PSShaderGroup;
+	};
+}
+
+STD_HASH_DEFINITION(DescriptorSetLayoutKey,
+	v.m_VSShaderGroup,
+	v.m_PSShaderGroup
+);
+
+namespace
+{
+	struct PipelineLayoutKey : DescriptorSetLayoutKey
+	{
+		PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineLayoutKey);
 
 		// TODO: Pipeline layout only needs to know shader groups, not specific instances
-		const IShaderInstanceInternal* m_VSShader;
+		const IShaderInstanceInternal* m_VSShaderInstance;
 		VertexFormat m_VSVertexFormat;
 
-		const IShaderInstanceInternal* m_PSShader;
+		const IShaderInstanceInternal* m_PSShaderInstance;
 	};
 }
 
 STD_HASH_DEFINITION(PipelineLayoutKey,
-	v.m_VSShader,
+	v.m_VSShaderInstance,
 	v.m_VSVertexFormat,
 
-	v.m_PSShader
+	v.m_PSShaderInstance
 );
 
 namespace
@@ -229,6 +246,8 @@ namespace
 
 	struct Sampler final
 	{
+		Sampler(const SamplerKey& key);
+
 		vk::SamplerCreateInfo m_CreateInfo;
 		vk::UniqueSampler m_Sampler;
 
@@ -238,6 +257,8 @@ namespace
 
 	struct DescriptorPool final
 	{
+		DescriptorPool(const DescriptorPoolKey& key);
+
 		std::vector<vk::DescriptorPoolSize> m_Sizes;
 
 		vk::DescriptorPoolCreateInfo m_CreateInfo;
@@ -249,6 +270,8 @@ namespace
 
 	struct DescriptorSetLayout final
 	{
+		DescriptorSetLayout(const DescriptorSetLayoutKey& key);
+
 		std::vector<vk::DescriptorSetLayoutBinding> m_Bindings;
 
 		vk::DescriptorSetLayoutCreateInfo m_CreateInfo;
@@ -260,7 +283,9 @@ namespace
 
 	struct PipelineLayout final
 	{
-		std::vector<DescriptorSetLayout> m_SetLayouts;
+		PipelineLayout(const PipelineLayoutKey& key);
+
+		std::vector<const DescriptorSetLayout*> m_SetLayouts;
 		std::vector<vk::PushConstantRange> m_PushConstantRanges;
 
 		vk::PipelineLayoutCreateInfo m_CreateInfo;
@@ -283,7 +308,7 @@ namespace
 
 	struct RenderPass final
 	{
-		RenderPass(RenderPassKey&& key) : m_Key(key) {}
+		RenderPass(const RenderPassKey& key);
 
 		std::vector<vk::AttachmentDescription> m_Attachments;
 		std::vector<vk::SubpassDependency> m_Dependencies;
@@ -300,6 +325,8 @@ namespace
 
 	struct Framebuffer final
 	{
+		Framebuffer(const FramebufferKey& key);
+
 		std::vector<vk::ImageView> m_Attachments;
 
 		vk::FramebufferCreateInfo m_CreateInfo;
@@ -321,6 +348,8 @@ namespace
 
 	struct Pipeline final
 	{
+		Pipeline(const PipelineKey& key, const PipelineLayout& layout, const RenderPass& renderPass);
+
 		std::vector<ShaderStageCreateInfo> m_ShaderStageCIs;
 
 		std::vector<vk::VertexInputAttributeDescription> m_VertexInputAttributeDescriptions;
@@ -369,6 +398,7 @@ namespace TF2Vulkan
 		const DescriptorSet& FindOrCreateDescriptorSet(const DescriptorSetKey& key);
 		const DescriptorPool& FindOrCreateDescriptorPool(const DescriptorPoolKey& key);
 		const Sampler& FindOrCreateSampler(const SamplerKey& sampler);
+		const DescriptorSetLayout& FindOrCreateDescriptorSetLayout(const DescriptorSetLayoutKey& key);
 
 		const vk::Buffer& GetDummyUniformBuffer() const { return g_ShaderDevice.GetDummyUniformBuffer(); }
 
@@ -394,6 +424,7 @@ namespace TF2Vulkan
 		std::unordered_map<FramebufferKey, Framebuffer> m_StatesToFramebuffers;
 		std::unordered_map<DescriptorPoolKey, DescriptorPool> m_StatesToDescPools;
 		std::unordered_map<DescriptorSetKey, DescriptorSet> m_StatesToDescSets;
+		std::unordered_map<DescriptorSetLayoutKey, DescriptorSetLayout> m_StatesToDescSetLayouts;
 		std::unordered_map<SamplerKey, Sampler> m_StatesToSamplers;
 
 		VulkanStateID m_ActiveState = VulkanStateID::Invalid;
@@ -408,6 +439,12 @@ static void AttachVector(const T*& destData, TSize& destSize, const std::vector<
 {
 	destData = src.data();
 	Util::SafeConvert(src.size(), destSize);
+}
+
+const DescriptorSetLayout& StateManagerVulkan::FindOrCreateDescriptorSetLayout(const DescriptorSetLayoutKey& key)
+{
+	std::lock_guard lock(m_Mutex);
+	return m_StatesToDescSetLayouts.try_emplace(key, key).first->second;
 }
 
 static ShaderStageCreateInfo CreateStageInfo(
@@ -474,62 +511,41 @@ static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupIntern
 		TryAddBinding(cbufIn.m_Binding, vk::DescriptorType::eUniformBufferDynamic, reflectionData.m_ShaderStage);
 }
 
-static DescriptorSetLayout CreateDescriptorSetLayout(const PipelineLayoutKey& key)
+DescriptorSetLayout::DescriptorSetLayout(const DescriptorSetLayoutKey& key)
 {
-	DescriptorSetLayout retVal;
-
 	// Bindings
-	CreateBindings(retVal, key.m_VSShader->GetGroup());
-	CreateBindings(retVal, key.m_PSShader->GetGroup());
+	CreateBindings(*this, *key.m_VSShaderGroup);
+	CreateBindings(*this, *key.m_PSShaderGroup);
 
 	// Descriptor set layout
 	{
-		auto& ci = retVal.m_CreateInfo;
+		auto& ci = m_CreateInfo;
+		AttachVector(ci.pBindings, ci.bindingCount, m_Bindings);
 
-		AttachVector(ci.pBindings, ci.bindingCount, retVal.m_Bindings);
-
-		retVal.m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci);
-		g_ShaderDevice.SetDebugName(retVal.m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX", Util::hash_value(key));
+		m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci);
+		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX", Util::hash_value(key));
 	}
-
-	return retVal;
 }
 
-static std::vector<DescriptorSetLayout> CreateDescriptorSetLayouts(
-	const PipelineLayoutKey& key)
+PipelineLayout::PipelineLayout(const PipelineLayoutKey& key)
 {
-	std::vector<DescriptorSetLayout> retVal;
-
-	retVal.push_back(CreateDescriptorSetLayout(key));
-
-	return retVal;
-}
-
-static PipelineLayout CreatePipelineLayout(const PipelineLayoutKey& key)
-{
-	PipelineLayout retVal;
-
 	// Descriptor set layouts
-	retVal.m_SetLayouts = CreateDescriptorSetLayouts(key);
+	m_SetLayouts.push_back(&s_SMVulkan.FindOrCreateDescriptorSetLayout(key));
 
 	// Pipeline Layout
 	{
-		auto& ci = retVal.m_CreateInfo;
+		auto& ci = m_CreateInfo;
 
 		std::vector<vk::DescriptorSetLayout> setLayouts;
-		for (auto& sl : retVal.m_SetLayouts)
-			setLayouts.push_back(sl.m_Layout.get());
+		for (auto& sl : m_SetLayouts)
+			setLayouts.push_back(sl->m_Layout.get());
 
 		AttachVector(ci.pSetLayouts, ci.setLayoutCount, setLayouts);
-		AttachVector(ci.pPushConstantRanges, ci.pushConstantRangeCount, retVal.m_PushConstantRanges);
-		retVal.m_Layout = g_ShaderDevice.GetVulkanDevice().createPipelineLayoutUnique(ci);
+		AttachVector(ci.pPushConstantRanges, ci.pushConstantRangeCount, m_PushConstantRanges);
+		m_Layout = g_ShaderDevice.GetVulkanDevice().createPipelineLayoutUnique(ci);
 
-		char buf[128];
-		sprintf_s(buf, "TF2Vulkan Pipeline Layout 0x%zX", Util::hash_value(key));
-		g_ShaderDevice.SetDebugName(retVal.m_Layout, buf);
+		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Pipeline Layout 0x%zX", Util::hash_value(key));
 	}
-
-	return retVal;
 }
 
 static constexpr IShaderAPITexture* TryFindTexture(ShaderAPITextureHandle_t handle, bool depth = false)
@@ -557,13 +573,12 @@ static IShaderAPITexture& FindTexture(ShaderAPITextureHandle_t handle, bool dept
 	return *found;
 }
 
-static RenderPass CreateRenderPass(const RenderPassKey& key)
+RenderPass::RenderPass(const RenderPassKey& key) :
+	m_Key(key)
 {
-	RenderPass retVal{ RenderPassKey(key) };
-
 	// Subpass 0
 	{
-		Subpass& sp = retVal.m_Subpasses.emplace_back();
+		Subpass& sp = m_Subpasses.emplace_back();
 
 		// Color attachments
 		{
@@ -574,7 +589,7 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 
 				auto& colorTex = FindTexture(colorTexID);
 
-				vk::AttachmentDescription& att = retVal.m_Attachments.emplace_back();
+				vk::AttachmentDescription& att = m_Attachments.emplace_back();
 				att.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
 				att.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
 				att.samples = vk::SampleCountFlagBits::e1;
@@ -587,19 +602,19 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 
 				vk::AttachmentReference& attRef = sp.m_ColorAttachments.emplace_back();
 				attRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
-				Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
+				Util::SafeConvert(m_Attachments.size() - 1, attRef.attachment);
 			}
 		}
 
 		// Depth attachments
 		if (key.m_OMDepthRT >= 0)
 		{
-			vk::AttachmentDescription& att = retVal.m_Attachments.emplace_back();
+			vk::AttachmentDescription& att = m_Attachments.emplace_back();
 
 			att.initialLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 			att.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 			att.samples = vk::SampleCountFlagBits::e1;
-			att.loadOp = vk::AttachmentLoadOp::eLoad; // TODO: Switch to eClear when we call ClearBuffers()
+			att.loadOp = vk::AttachmentLoadOp::eClear;//eLoad; // TODO: Switch to eClear when we call ClearBuffers()
 			att.storeOp = vk::AttachmentStoreOp::eStore;
 			att.stencilLoadOp = vk::AttachmentLoadOp::eLoad; // TODO: Switch to eClear when we call ClearBuffers()
 			att.stencilStoreOp = vk::AttachmentStoreOp::eStore;
@@ -608,7 +623,7 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 
 			vk::AttachmentReference& attRef = sp.m_DepthStencilAttachment;
 			attRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-			Util::SafeConvert(retVal.m_Attachments.size() - 1, attRef.attachment);
+			Util::SafeConvert(m_Attachments.size() - 1, attRef.attachment);
 
 			sp.m_CreateInfo.pDepthStencilAttachment = &sp.m_DepthStencilAttachment;
 		}
@@ -619,25 +634,20 @@ static RenderPass CreateRenderPass(const RenderPassKey& key)
 
 	// Render pass
 	{
-		auto& ci = retVal.m_CreateInfo;
+		auto& ci = m_CreateInfo;
 
-		AttachVector(ci.pAttachments, ci.attachmentCount, retVal.m_Attachments);
-		AttachVector(ci.pDependencies, ci.dependencyCount, retVal.m_Dependencies);
+		AttachVector(ci.pAttachments, ci.attachmentCount, m_Attachments);
+		AttachVector(ci.pDependencies, ci.dependencyCount, m_Dependencies);
 
 		std::vector<vk::SubpassDescription> subpassTemp;
-		for (auto& sp : retVal.m_Subpasses)
+		for (auto& sp : m_Subpasses)
 			subpassTemp.push_back(sp.m_CreateInfo);
 
 		AttachVector(ci.pSubpasses, ci.subpassCount, subpassTemp);
 
-		retVal.m_RenderPass = g_ShaderDevice.GetVulkanDevice().createRenderPassUnique(ci);
-
-		char buf[128];
-		sprintf_s(buf, "TF2Vulkan Render Pass 0x%zX", Util::hash_value(key));
-		g_ShaderDevice.SetDebugName(retVal.m_RenderPass, buf);
+		m_RenderPass = g_ShaderDevice.GetVulkanDevice().createRenderPassUnique(ci);
+		g_ShaderDevice.SetDebugName(m_RenderPass, "TF2Vulkan Render Pass 0x%zX", Util::hash_value(key));
 	}
-
-	return retVal;
 }
 
 static vk::BlendFactor ConvertBlendFactor(ShaderBlendFactor_t blendFactor)
@@ -679,27 +689,26 @@ static vk::CompareOp ConvertCompareOp(ShaderDepthFunc_t op)
 	}
 }
 
-Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const PipelineLayout& layout,
-	const RenderPass& renderPass) const
+Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
+	const RenderPass& renderPass) :
+	m_Layout(&layout),
+	m_RenderPass(&renderPass)
 {
-	Pipeline retVal;
-
-	// Preconfigured objects
-	retVal.m_Layout = &layout;
-	retVal.m_RenderPass = &renderPass;
+	assert(&key.m_VSShaderInstance->GetGroup() == key.m_VSShaderGroup);
+	assert(&key.m_PSShaderInstance->GetGroup() == key.m_PSShaderGroup);
 
 	// Shader stage create info(s)
 	{
-		auto& cis = retVal.m_ShaderStageCIs;
-		cis.emplace_back(CreateStageInfo(*key.m_VSShader, vk::ShaderStageFlagBits::eVertex));
-		cis.emplace_back(CreateStageInfo(*key.m_PSShader, vk::ShaderStageFlagBits::eFragment));
+		auto& cis = m_ShaderStageCIs;
+		cis.emplace_back(CreateStageInfo(*key.m_VSShaderInstance, vk::ShaderStageFlagBits::eVertex));
+		cis.emplace_back(CreateStageInfo(*key.m_PSShaderInstance, vk::ShaderStageFlagBits::eFragment));
 	}
 
 	// Vertex input state create info
 	{
-		auto& attrs = retVal.m_VertexInputAttributeDescriptions;
+		auto& attrs = m_VertexInputAttributeDescriptions;
 
-		const auto& vertexShaderRefl = key.m_VSShader->GetGroup().GetVulkanShader().GetReflectionData();
+		const auto& vertexShaderRefl = key.m_VSShaderGroup->GetVulkanShader().GetReflectionData();
 
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
@@ -753,20 +762,20 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 			attrs.emplace_back(VIAD(input.m_Location, 1, vk::Format::eR32G32B32A32Sfloat));
 		}
 
-		auto & binds = retVal.m_VertexInputBindingDescriptions;
+		auto & binds = m_VertexInputBindingDescriptions;
 		binds.emplace_back(vk::VertexInputBindingDescription(0, totalVertexSize));
 
 		// "Fake" binding with no real data
 		binds.emplace_back(vk::VertexInputBindingDescription(1, sizeof(float) * 4, vk::VertexInputRate::eInstance));
 
-		auto& ci = retVal.m_VertexInputStateCI;
+		auto& ci = m_VertexInputStateCI;
 		AttachVector(ci.pVertexAttributeDescriptions, ci.vertexAttributeDescriptionCount, attrs);
 		AttachVector(ci.pVertexBindingDescriptions, ci.vertexBindingDescriptionCount, binds);
 	}
 
 	// Vertex input assembly state create info
 	{
-		auto& ci = retVal.m_InputAssemblyStateCI;
+		auto& ci = m_InputAssemblyStateCI;
 		ci.topology = vk::PrimitiveTopology::eTriangleList;
 	}
 
@@ -774,10 +783,10 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 	{
 		// Viewport(s)
 		{
-			auto& ci = retVal.m_ViewportStateCI;
+			auto& ci = m_ViewportStateCI;
 			for (const auto& vpIn : key.m_Viewports)
 			{
-				auto& vpOut = retVal.m_Viewports.emplace_back();
+				auto& vpOut = m_Viewports.emplace_back();
 				Util::SafeConvert(vpIn.m_nWidth, vpOut.width);
 				Util::SafeConvert(vpIn.m_nHeight, vpOut.height);
 				Util::SafeConvert(vpIn.m_nTopLeftX, vpOut.x);
@@ -786,21 +795,21 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 				Util::SafeConvert(vpIn.m_flMaxZ, vpOut.maxDepth);
 			}
 
-			AttachVector(ci.pViewports, ci.viewportCount, retVal.m_Viewports);
+			AttachVector(ci.pViewports, ci.viewportCount, m_Viewports);
 		}
 
 		// Scissor(s)
 		{
-			retVal.m_Scissor.extent.width = retVal.m_ViewportStateCI.pViewports[0].width;
-			retVal.m_Scissor.extent.height = retVal.m_ViewportStateCI.pViewports[0].height;
-			retVal.m_ViewportStateCI.pScissors = &retVal.m_Scissor;
-			retVal.m_ViewportStateCI.scissorCount = 1;
+			m_Scissor.extent.width = m_ViewportStateCI.pViewports[0].width;
+			m_Scissor.extent.height = m_ViewportStateCI.pViewports[0].height;
+			m_ViewportStateCI.pScissors = &m_Scissor;
+			m_ViewportStateCI.scissorCount = 1;
 		}
 	}
 
 	// Rasterization state create info
 	{
-		auto& ci = retVal.m_RasterizationStateCI;
+		auto& ci = m_RasterizationStateCI;
 
 		ci.frontFace = vk::FrontFace::eClockwise; // Reversed, because we have to invert Y in our vertex shader
 		ci.lineWidth = 1; // default
@@ -823,17 +832,17 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 
 	// Multisample state create info
 	{
-		auto& ci = retVal.m_MultisampleStateCI;
+		auto& ci = m_MultisampleStateCI;
 		ci.rasterizationSamples = vk::SampleCountFlagBits::e1;
 	}
 
 	// Color blend state create info
 	{
-		auto& ci = retVal.m_ColorBlendStateCI;
+		auto& ci = m_ColorBlendStateCI;
 
 		ci.setBlendConstants({ 1, 1, 1, 1 });
 
-		auto& att = retVal.m_ColorBlendAttachmentStates.emplace_back();
+		auto& att = m_ColorBlendAttachmentStates.emplace_back();
 
 		att.blendEnable = key.m_OMAlphaBlending;
 		if (att.blendEnable)
@@ -848,46 +857,40 @@ Pipeline StateManagerVulkan::CreatePipeline(const PipelineKey& key, const Pipeli
 			vk::ColorComponentFlagBits::eB |
 			vk::ColorComponentFlagBits::eA;
 
-		AttachVector(ci.pAttachments, ci.attachmentCount, retVal.m_ColorBlendAttachmentStates);
+		AttachVector(ci.pAttachments, ci.attachmentCount, m_ColorBlendAttachmentStates);
 	}
 
 	// Depth stencil state
 	{
-		auto& ci = retVal.m_DepthStencilStateCI;
-		retVal.m_CreateInfo.pDepthStencilState = &ci;
+		auto& ci = m_DepthStencilStateCI;
+		m_CreateInfo.pDepthStencilState = &ci;
 
-		ci.depthTestEnable = key.m_DepthTest;
-		ci.depthWriteEnable = key.m_DepthWrite;
-		ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
+		ci.depthTestEnable = false;// key.m_DepthTest;
+		//ci.depthWriteEnable = key.m_DepthWrite;
+		//ci.depthCompareOp = ConvertCompareOp(key.m_DepthCompareFunc);
 	}
 
 	// Graphics pipeline
 	{
-		vk::GraphicsPipelineCreateInfo& ci = retVal.m_CreateInfo;
+		vk::GraphicsPipelineCreateInfo& ci = m_CreateInfo;
 
-		retVal.FixupPointers();
+		FixupPointers();
 
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStages;
-		for (const auto& stage : retVal.m_ShaderStageCIs)
+		for (const auto& stage : m_ShaderStageCIs)
 			shaderStages.push_back(stage.m_CreateInfo);
 
 		AttachVector(ci.pStages, ci.stageCount, shaderStages);
 
 		// ci.subpass = 0;
-		retVal.m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(nullptr, ci);
+		m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(g_ShaderDevice.GetPipelineCache(), ci);
 
-		char buf[128];
-		sprintf_s(buf, "TF2Vulkan Graphics Pipeline 0x%zX", Util::hash_value(key));
-		g_ShaderDevice.SetDebugName(retVal.m_Pipeline, buf);
+		g_ShaderDevice.SetDebugName(m_Pipeline, "TF2Vulkan Graphics Pipeline 0x%zX", Util::hash_value(key));
 	}
-
-	return retVal;
 }
 
-static Framebuffer CreateFramebuffer(const FramebufferKey& key)
+Framebuffer::Framebuffer(const FramebufferKey& key)
 {
-	Framebuffer retVal;
-
 	// Attachments
 	uint32_t width = 0;// std::numeric_limits<uint32_t>::max();
 	uint32_t height = 0;// width;
@@ -897,7 +900,7 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 	{
 		bool debugNameFirst = true;
 
-		auto& atts = retVal.m_Attachments;
+		auto& atts = m_Attachments;
 		for (auto& colorRT : key.m_OMColorRTs)
 		{
 			if (!colorRT)
@@ -925,7 +928,7 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 	// (Optional) depth attachment
 	if (!!key.m_OMDepthRT)
 	{
-		retVal.m_Attachments.push_back(key.m_OMDepthRT.m_ImageView);
+		m_Attachments.push_back(key.m_OMDepthRT.m_ImageView);
 
 		debugName += " DEPTH { ";
 		debugName += std::to_string((VkImageView)key.m_OMDepthRT.m_ImageView);
@@ -934,32 +937,25 @@ static Framebuffer CreateFramebuffer(const FramebufferKey& key)
 
 	// Framebuffer
 	{
-		auto& ci = retVal.m_CreateInfo;
+		auto& ci = m_CreateInfo;
 		ci.width = width;
 		ci.height = height;
 		ci.layers = 1;
 
-		AttachVector(ci.pAttachments, ci.attachmentCount, retVal.m_Attachments);
+		AttachVector(ci.pAttachments, ci.attachmentCount, m_Attachments);
 
 		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
 
-		retVal.m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci);
-		assert(retVal.m_Framebuffer);
-		g_ShaderDevice.SetDebugName(retVal.m_Framebuffer, debugName.c_str());
+		m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci);
+		assert(m_Framebuffer);
+		g_ShaderDevice.SetDebugName(m_Framebuffer, debugName.c_str());
 	}
-
-	return retVal;
 }
 
 const Framebuffer& StateManagerVulkan::FindOrCreateFramebuffer(const FramebufferKey& key)
 {
 	std::lock_guard lock(m_Mutex);
-
-	auto& fb = m_StatesToFramebuffers[key];
-	if (!fb)
-		fb = CreateFramebuffer(key);
-
-	return fb;
+	return m_StatesToFramebuffers.try_emplace(key, key).first->second;
 }
 
 static vk::SamplerAddressMode ConvertAddressMode(ShaderTexWrapMode_t mode)
@@ -1017,11 +1013,9 @@ static vk::SamplerMipmapMode ConvertMipmapMode(ShaderTexFilterMode_t mode)
 	}
 }
 
-static Sampler CreateSampler(const SamplerKey& key)
+Sampler::Sampler(const SamplerKey& key)
 {
-	Sampler retVal;
-
-	auto& ci = retVal.m_CreateInfo;
+	auto& ci = m_CreateInfo;
 	ci.addressModeU = ConvertAddressMode(key.m_Settings.m_WrapS);
 	ci.addressModeV = ConvertAddressMode(key.m_Settings.m_WrapT);
 	ci.addressModeW = ConvertAddressMode(key.m_Settings.m_WrapU);
@@ -1040,25 +1034,14 @@ static Sampler CreateSampler(const SamplerKey& key)
 		ci.mipmapMode = vk::SamplerMipmapMode::eNearest;
 	}
 
-	retVal.m_Sampler = g_ShaderDevice.GetVulkanDevice().createSamplerUnique(retVal.m_CreateInfo);
-	{
-		char buf[128];
-		sprintf_s(buf, "TF2Vulkan Sampler 0x%zX", Util::hash_value(key));
-		g_ShaderDevice.SetDebugName(retVal.m_Sampler, buf);
-	}
-
-	return retVal;
+	m_Sampler = g_ShaderDevice.GetVulkanDevice().createSamplerUnique(m_CreateInfo);
+	g_ShaderDevice.SetDebugName(m_Sampler, "TF2Vulkan Sampler 0x%zX", Util::hash_value(key));
 }
 
 const Sampler& StateManagerVulkan::FindOrCreateSampler(const SamplerKey& key)
 {
 	std::lock_guard lock(m_Mutex);
-
-	auto& sampler = m_StatesToSamplers[key];
-	if (!sampler)
-		sampler = CreateSampler(key);
-
-	return sampler;
+	return m_StatesToSamplers.try_emplace(key, key).first->second;
 }
 
 void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCommandBuffer& buf)
@@ -1197,7 +1180,7 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 	Util::InPlaceVector<uint32_t, 16> dynamicOffsets;
 	for (const auto& layout : layouts)
 	{
-		const auto& descSet = FindOrCreateDescriptorSet(DescriptorSetKey(layout, dynamicState));
+		const auto& descSet = FindOrCreateDescriptorSet(DescriptorSetKey(*layout, dynamicState));
 		descSets.push_back(descSet.m_DescriptorSet.get());
 
 		for (const auto& write : descSet.m_Writes)
@@ -1248,76 +1231,49 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& 
 	ApplyDescriptorSets(state, dynamicState, buf);
 }
 
-static DescriptorPool CreateDescriptorPool(const DescriptorPoolKey& key)
+DescriptorPool::DescriptorPool(const DescriptorPoolKey& key)
 {
 	LOG_FUNC();
-	DescriptorPool retVal;
 
 	constexpr auto POOL_SIZE = 8192;
 
 	// Sizes
 	for (const auto& binding : key.m_Layout->m_Bindings)
 	{
-		auto& size = retVal.m_Sizes.emplace_back();
+		auto& size = m_Sizes.emplace_back();
 		size.descriptorCount = binding.descriptorCount * POOL_SIZE;
 		size.type = binding.descriptorType;
 	}
 
 	// Descriptor pool
 	{
-		auto& ci = retVal.m_CreateInfo;
-		AttachVector(ci.pPoolSizes, ci.poolSizeCount, retVal.m_Sizes);
+		auto& ci = m_CreateInfo;
+		AttachVector(ci.pPoolSizes, ci.poolSizeCount, m_Sizes);
 
 		ci.maxSets = POOL_SIZE;
 		ci.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
-		retVal.m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci);
-		{
-			char buf[128];
-			sprintf_s(buf, "TF2Vulkan Descriptor Pool 0x%zX", Util::hash_value(key));
-			g_ShaderDevice.SetDebugName(retVal.m_DescriptorPool, buf);
-		}
+		m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci);
+		g_ShaderDevice.SetDebugName(m_DescriptorPool, "TF2Vulkan Descriptor Pool 0x%zX", Util::hash_value(key));
 	}
-
-	return retVal;
 }
 
 const DescriptorPool& StateManagerVulkan::FindOrCreateDescriptorPool(const DescriptorPoolKey& key)
 {
-	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
-
-	auto& pool = m_StatesToDescPools[key];
-	if (!pool)
-		pool = CreateDescriptorPool(key);
-
-	return pool;
+	return m_StatesToDescPools.try_emplace(key, key).first->second;
 }
 
 const RenderPass& StateManagerVulkan::FindOrCreateRenderPass(const RenderPassKey& key)
 {
-	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
-
-	if (auto found = m_StatesToRenderPasses.find(key); found != m_StatesToRenderPasses.end())
-	{
-		assert(!!found->second);
-		return found->second;
-	}
-
-	return m_StatesToRenderPasses.emplace(key, CreateRenderPass(key)).first->second;
+	return m_StatesToRenderPasses.try_emplace(key, key).first->second;
 }
 
 const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const PipelineLayoutKey& key)
 {
-	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
-
-	auto& layout = m_StatesToLayouts[key];
-	if (!layout)
-		layout = CreatePipelineLayout(key);
-
-	return layout;
+	return m_StatesToLayouts.try_emplace(key, key).first->second;
 }
 
 #include "interface/IMaterialInternal.h"
@@ -1329,18 +1285,18 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(
 	std::lock_guard lock(m_Mutex);
 
 	const PipelineKey key(staticState, dynamicState);
-	auto& pl = m_StatesToPipelines[key];
-	if (!pl)
-	{
-		pl = CreatePipeline(key,
-			FindOrCreatePipelineLayout(key),
-			FindOrCreateRenderPass(key));
 
-		Util::SafeConvert(m_IDsToPipelines.size(), pl.m_ID);
-		m_IDsToPipelines.push_back(&pl);
-	}
+	auto lowerBound = m_StatesToPipelines.lower_bound(key);
+	if (lowerBound != m_StatesToPipelines.end() && lowerBound->first == key)
+		return lowerBound->second.m_ID;
 
-	return pl.m_ID;
+	auto newEntry = m_StatesToPipelines.emplace_hint(lowerBound,
+		key, Pipeline{ key, FindOrCreatePipelineLayout(key), FindOrCreateRenderPass(key) });
+
+	Util::SafeConvert(m_IDsToPipelines.size(), newEntry->second.m_ID);
+	m_IDsToPipelines.push_back(&newEntry->second);
+
+	return newEntry->second.m_ID;
 }
 
 PipelineKey::PipelineKey(
@@ -1383,13 +1339,14 @@ PipelineKey::PipelineKey(
 	}
 }
 
-constexpr PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
+PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
 	const LogicalDynamicState& dynamicState) :
+	DescriptorSetLayoutKey(staticState, dynamicState),
 
-	m_VSShader(dynamicState.m_VSShader),
+	m_VSShaderInstance(dynamicState.m_VSShader),
 	m_VSVertexFormat(staticState.m_VSVertexFormat),
 
-	m_PSShader(dynamicState.m_PSShader)
+	m_PSShaderInstance(dynamicState.m_PSShader)
 {
 }
 
@@ -1474,5 +1431,12 @@ DescriptorSetKey::DescriptorSetKey(const DescriptorSetLayout& layout, const Logi
 	m_Layout(&layout),
 	m_UniformBuffers{ ToUBRefArray(dynamicState.m_UniformBuffers) },
 	m_BoundTextures(dynamicState.m_BoundTextures)
+{
+}
+
+DescriptorSetLayoutKey::DescriptorSetLayoutKey(const LogicalShadowState& staticState,
+	const LogicalDynamicState& dynamicState) :
+	m_VSShaderGroup(staticState.m_VSShader),
+	m_PSShaderGroup(staticState.m_PSShader)
 {
 }
