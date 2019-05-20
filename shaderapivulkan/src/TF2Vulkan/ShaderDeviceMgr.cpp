@@ -130,6 +130,13 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 			" on the command line (advanced options) to disable access to VAC-secured servers.");
 	}
 
+	// MatSystemSurface normally adds 0.5 to vgui coordinates, unless
+	// these command line parameters are present, in which case it
+	// gets the offset from the params. We aren't DX9, so we don't
+	// need the half-pixel offset.
+	CommandLine()->AppendParm("-pixel_offset_x", "0");
+	CommandLine()->AppendParm("-pixel_offset_y", "0");
+
 	return true;
 }
 
