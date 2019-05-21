@@ -3,7 +3,7 @@
 
 #include <TF2Vulkan/Util/Buffer.h>
 #include <TF2Vulkan/Util/std_utility.h>
-#include <stdshader_dx9_tf2vulkan/ShaderBlobs.h>
+#include <stdshader_vulkan/ShaderBlobs.h>
 
 #include <materialsystem/shader_vcs_version.h>
 
@@ -19,12 +19,12 @@ namespace
 {
 	struct ShaderInfo
 	{
-		constexpr ShaderInfo(ShaderBlob blob) :
+		constexpr ShaderInfo(ShaderBlobType blob) :
 			m_Blob(blob)
 		{
 		}
 
-		ShaderBlob m_Blob;
+		ShaderBlobType m_Blob;
 	};
 
 	class VulkanShaderManager final : public IVulkanShaderManager
@@ -56,14 +56,14 @@ IVulkanShaderManager& TF2Vulkan::g_ShaderManager = s_ShaderManager;
 
 static const std::unordered_map<std::string_view, ShaderInfo> s_ShaderBlobMapping =
 {
-	{ "bik_vs20", { ShaderBlob::Bik_VS } },
-	{ "bik_ps20b", { ShaderBlob::Bik_PS } },
-	{ "bufferclearobeystencil_vs", { ShaderBlob::BufferClearObeyStencil_VS } },
-	{ "bufferclearobeystencil_ps", { ShaderBlob::BufferClearObeyStencil_PS } },
-	{ "fillrate_vs", { ShaderBlob::Fillrate_VS } },
-	{ "fillrate_ps", { ShaderBlob::Fillrate_PS } },
-	{ "xlitgeneric_vs", { ShaderBlob::XLitGeneric_VS } },
-	{ "xlitgeneric_ps", { ShaderBlob::XLitGeneric_PS } },
+	{ "bik_vs20", { ShaderBlobType::Bik_VS } },
+	{ "bik_ps20b", { ShaderBlobType::Bik_PS } },
+	{ "bufferclearobeystencil_vs", { ShaderBlobType::BufferClearObeyStencil_VS } },
+	{ "bufferclearobeystencil_ps", { ShaderBlobType::BufferClearObeyStencil_PS } },
+	{ "fillrate_vs", { ShaderBlobType::Fillrate_VS } },
+	{ "fillrate_ps", { ShaderBlobType::Fillrate_PS } },
+	{ "xlitgeneric_vs", { ShaderBlobType::XLitGeneric_VS } },
+	{ "xlitgeneric_ps", { ShaderBlobType::XLitGeneric_PS } },
 };
 
 auto VulkanShaderManager::FindOrCreateShader(const CUtlSymbolDbg& id) -> const TF2Vulkan::IVulkanShader&
@@ -228,7 +228,7 @@ VulkanShaderManager::CompiledShader::CompiledShader(const CUtlSymbolDbg& name) :
 	vk::ShaderModuleCreateInfo ci;
 
 	const void* blobData;
-	if (!TF2Vulkan::GetShaderBlob(shaderInfo.m_Blob, blobData, ci.codeSize))
+	if (!g_ShaderBlobs->GetShaderBlob(shaderInfo.m_Blob, blobData, ci.codeSize))
 		throw VulkanException("Failed to get shader blob", EXCEPTION_DATA());
 
 	ci.pCode = reinterpret_cast<const uint32_t*>(blobData);

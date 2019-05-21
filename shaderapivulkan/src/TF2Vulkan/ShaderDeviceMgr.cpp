@@ -2,6 +2,7 @@
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 
+#include <stdshader_vulkan/ShaderBlobs.h>
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 
@@ -97,6 +98,9 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderDeviceMgr, IShaderDeviceMgr, SHADER_DEVI
 
 IShaderDeviceMgrInternal& TF2Vulkan::g_ShaderDeviceMgr = s_DeviceMgr;
 
+static CDllDemandLoader s_StdShaderVulkanDll("stdshader_vulkan");
+const IShaderBlobs* TF2Vulkan::g_ShaderBlobs;
+
 static ConVar mat_alphacoverage("mat_alphacoverage", "0");
 static ConVar mat_frame_sync_enable("mat_frame_sync_enable", "1");
 static ConVar r_pixelfog("r_pixelfog", "1");
@@ -126,6 +130,12 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 	{
 		Error("TF2Vulkan is likely to trigger VAC. For this reason, you MUST use -insecure"
 			" on the command line (advanced options) to disable access to VAC-secured servers.");
+	}
+
+	// Interfaces from stdshader_vulkan
+	{
+		auto stdshaderVulkanFactory = s_StdShaderVulkanDll.GetFactory();
+		Util::ConnectInterface(stdshaderVulkanFactory, SHADER_BLOBS_INTERFACE_VERSION, g_ShaderBlobs);
 	}
 
 	// MatSystemSurface normally adds 0.5 to vgui coordinates, unless

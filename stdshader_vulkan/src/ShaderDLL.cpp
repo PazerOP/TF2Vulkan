@@ -70,13 +70,13 @@ bool VulkanShaderDLL::Connect(CreateInterfaceFn factory, bool isMaterialSystem)
 	ConnectTier2Libraries(&factory, 1);
 	ConnectTier3Libraries(&factory, 1);
 
-	ConnectInterface(factory, SHADERSYSTEM_INTERFACE_VERSION, g_ShaderSystem);
-	ConnectInterface(factory, MATERIALSYSTEM_CONFIG_VERSION, g_pConfig);
-	ConnectInterface(factory, MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION, g_pHardwareConfig);
+	Util::ConnectInterface(factory, SHADERSYSTEM_INTERFACE_VERSION, g_ShaderSystem);
+	Util::ConnectInterface(factory, MATERIALSYSTEM_CONFIG_VERSION, g_pConfig);
+	Util::ConnectInterface(factory, MATERIALSYSTEM_HARDWARECONFIG_INTERFACE_VERSION, g_pHardwareConfig);
 
 	auto shaderapiFactory = Sys_GetFactory("shaderapidx9");
-	ConnectInterface(shaderapiFactory, SHADERDYNAMICNEXT_INTERFACE_VERSION, g_ShaderDynamic);
-	ConnectInterface(shaderapiFactory, SHADERNEXTFACTORY_INTERFACE_VERSION, g_ShaderFactory);
+	Util::ConnectInterface(shaderapiFactory, SHADERDYNAMICNEXT_INTERFACE_VERSION, g_ShaderDynamic);
+	Util::ConnectInterface(shaderapiFactory, SHADERNEXTFACTORY_INTERFACE_VERSION, g_ShaderFactory);
 
 	if (!CommandLine()->CheckParm("-insecure"))
 	{

@@ -1,7 +1,7 @@
 #ifndef INCLUDE_GUARD_COMMON_FXC_HLSLI
 #define INCLUDE_GUARD_COMMON_FXC_HLSLI
 
-#include "../../../stdshader_vulkan/include/stdshader_vulkan/ShaderDataShared.h"
+#include "../../../include/stdshader_vulkan/ShaderDataShared.h"
 
 #define VTX_SHADER_START_ID 1024
 #define PIX_SHADER_START_ID 2048

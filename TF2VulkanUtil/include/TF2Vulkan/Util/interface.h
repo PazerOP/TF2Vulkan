@@ -63,20 +63,23 @@ inline CreateInterfaceFn Sys_GetFactory(CSysModule* pModule)
 	return TF2Vulkan::Sys_GetFactoryCustom(pModule);
 }
 
-template<typename T>
-inline void ConnectInterface(CreateInterfaceFn factory, const char* interfaceName, T*& interfacePtr)
-{
-	if (!factory)
-	{
-		assert(factory);
-		Error("[TF2Vulkan] " __FUNCTION__ "(): Factory was null");
-	}
+#endif
 
-	if (!(interfacePtr = (T*)factory(interfaceName, nullptr)))
+namespace Util
+{
+	template<typename T>
+	inline void ConnectInterface(CreateInterfaceFn factory, const char* interfaceName, T*& interfacePtr)
 	{
-		assert(interfacePtr);
-		Error("[TF2Vulkan] " __FUNCTION__ "(): Failed to connect to %s", interfaceName);
+		if (!factory)
+		{
+			assert(factory);
+			Error("[TF2Vulkan] " __FUNCTION__ "(): Factory was null");
+		}
+
+		if (!(interfacePtr = (T*)factory(interfaceName, nullptr)))
+		{
+			assert(interfacePtr);
+			Error("[TF2Vulkan] " __FUNCTION__ "(): Failed to connect to %s", interfaceName);
+		}
 	}
 }
-
-#endif
