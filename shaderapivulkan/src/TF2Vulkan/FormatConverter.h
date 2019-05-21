@@ -33,6 +33,7 @@ namespace TF2Vulkan{ namespace FormatConverter
 			IFV_CASE(IMAGE_FORMAT_BGR888);
 			IFV_CASE(IMAGE_FORMAT_ARGB8888);
 			IFV_CASE(IMAGE_FORMAT_BGRA8888);
+			IFV_CASE(IMAGE_FORMAT_BGRX8888);
 
 		default:
 			throw VulkanException("Unexpected/unsupported imageformat", EXCEPTION_DATA());

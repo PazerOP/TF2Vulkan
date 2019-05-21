@@ -101,10 +101,15 @@ IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(Factories::ImageFact
 	LOG_FUNC_TEX_NAME(handle, dbgName);
 
 	auto dbgName = Util::string::concat("[", handle, "] ", std::move(factory.m_DebugName));
-	factory.m_DebugName = Util::string::concat("Texture: ", dbgName);
 
-	if (dbgName.find("readbacktex") != dbgName.npos)
-		__debugbreak();
+	// Print creation
+	{
+		char buf[512];
+		sprintf_s(buf, "[TF2Vulkan] CREATE TEXTURE \"%.*s\"\n", PRINTF_SV(dbgName));
+		Plat_DebugString(buf);
+	}
+
+	factory.m_DebugName = Util::string::concat("Texture: ", dbgName);
 
 	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, factory.m_CreateInfo, factory.Create() }).first->second;
 }
@@ -357,11 +362,18 @@ void IShaderAPI_TextureManager::TexImageFromVTF(ShaderAPITextureHandle_t texHand
 bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data, size_t count)
 {
 	LOG_FUNC_TEX(texHandle);
+	assert(g_ShaderDevice.IsVulkanDeviceReady());
 
-	if (!g_ShaderDevice.IsReady())
+	std::unique_ptr<IVulkanCommandBuffer> tempCmdBufStorage;
+	IVulkanCommandBuffer* cmdBuffer;
+	if (g_ShaderDevice.IsPrimaryCmdBufReady())
 	{
-		Warning(TF2VULKAN_PREFIX "Shader device not ready\n");
-		return false;
+		cmdBuffer = &g_ShaderDevice.GetPrimaryCmdBuf();
+	}
+	else
+	{
+		tempCmdBufStorage = g_ShaderDevice.GetGraphicsQueue().CreateCmdBufferAndBegin();
+		cmdBuffer = tempCmdBufStorage.get();
 	}
 
 	auto& tex = m_Textures.at(texHandle);
@@ -479,11 +491,9 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 
 	// Copy staging buffer into destination texture
 	{
-		auto& cmdBuffer = g_ShaderDevice.GetPrimaryCmdBuf();
+		auto pixScope = cmdBuffer->DebugRegionBegin(PIX_COLOR_READWRITE, "ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
 
-		auto pixScope = cmdBuffer.DebugRegionBegin(PIX_COLOR_READWRITE, "ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
-
-		cmdBuffer.TryEndRenderPass();
+		cmdBuffer->TryEndRenderPass();
 
 		const vk::PipelineStageFlags stageMask = vk::PipelineStageFlagBits::eTransfer;
 
@@ -509,14 +519,14 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 			srr.levelCount = 1;
 		}
 
-		cmdBuffer.pipelineBarrier(
+		cmdBuffer->pipelineBarrier(
 			vk::PipelineStageFlagBits::eTransfer,
 			vk::PipelineStageFlagBits::eTransfer,
 			{}, {}, {}, barriers);
 
-		cmdBuffer.copyBufferToImage(stagingBuf.GetBuffer(), tex.m_Image.GetImage(),
+		cmdBuffer->copyBufferToImage(stagingBuf.GetBuffer(), tex.m_Image.GetImage(),
 			vk::ImageLayout::eTransferDstOptimal, copyRegions);
-		cmdBuffer.AddResource(std::move(stagingBuf));
+		cmdBuffer->AddResource(std::move(stagingBuf));
 
 		for (auto& barrier : barriers)
 		{
@@ -525,11 +535,14 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 			barrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
 		}
 
-		cmdBuffer.pipelineBarrier(
+		cmdBuffer->pipelineBarrier(
 			vk::PipelineStageFlagBits::eTransfer,
 			vk::PipelineStageFlagBits::eFragmentShader,
 			{}, {}, {}, barriers);
 	}
+
+	if (tempCmdBufStorage)
+		tempCmdBufStorage->Submit();
 
 	return true;
 }

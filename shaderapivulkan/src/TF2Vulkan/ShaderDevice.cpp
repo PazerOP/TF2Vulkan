@@ -119,6 +119,7 @@ namespace
 		char* GetDisplayDeviceName() override;
 
 		void VulkanInit(VulkanInitData&& device) override;
+
 		const vk::Device& GetVulkanDevice() override;
 
 		vma::UniqueAllocator& GetVulkanAllocator() override;
@@ -142,7 +143,8 @@ namespace
 
 		vk::PipelineCache GetPipelineCache() const override { return m_Data.m_PipelineCache.get(); }
 
-		bool IsReady() const override;
+		bool IsVulkanDeviceReady() const override { return !!m_Data.m_Device; }
+		bool IsPrimaryCmdBufReady() const override;
 		IVulkanCommandBuffer& GetPrimaryCmdBuf() override;
 		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override { return m_Data.m_DynamicLoader; }
 
@@ -307,6 +309,12 @@ void ShaderDevice::Present()
 		pInfo.pImageIndices = &currentFrame;
 
 		q.presentKHR(pInfo);
+
+		if constexpr (false)
+		{
+			static uint64_t s_FrameCount = 0;
+			Warning(TF2VULKAN_PREFIX "Frame %zu\n", s_FrameCount++);
+		}
 
 		q.waitIdle();
 	}
@@ -788,14 +796,14 @@ const vk::ImageCreateInfo& ShaderDevice::BackbufferColorTexture::GetImageCreateI
 
 const IShaderAPITexture& ShaderDevice::GetBackBufferDepthTexture() const
 {
-	assert(IsReady());
+	assert(IsPrimaryCmdBufReady());
 
 	const auto& tex = m_Data.m_DepthTexture;
 	assert(tex);
 	return *tex;
 }
 
-bool ShaderDevice::IsReady() const
+bool ShaderDevice::IsPrimaryCmdBufReady() const
 {
 	// TODO: Is this a safe way to check we've been initialized?
 	return !!m_Data.m_DepthTexture;

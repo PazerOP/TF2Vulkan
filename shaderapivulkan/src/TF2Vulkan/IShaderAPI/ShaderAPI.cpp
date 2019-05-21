@@ -368,7 +368,7 @@ StateSnapshot_t ShaderAPI::TakeSnapshot()
 
 void ShaderAPI::FlushBufferedPrimitives()
 {
-	if (g_ShaderDevice.IsReady())
+	if (g_ShaderDevice.IsPrimaryCmdBufReady())
 	{
 		constexpr auto flushBufferedPrimitivesColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
 		g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(flushBufferedPrimitivesColor, "ShaderAPI::FlushBufferedPrimitives()");

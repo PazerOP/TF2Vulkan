@@ -82,4 +82,15 @@ namespace Util
 			Error("[TF2Vulkan] " __FUNCTION__ "(): Failed to connect to %s", interfaceName);
 		}
 	}
+
+	CSysModule* FindModule(const char* moduleName);
+
+	void* FindProcAddressRaw(CSysModule* module, const char* symbolName);
+
+	template<typename T>
+	inline T FindProcAddress(const char* moduleName, const char* symbolName)
+	{
+		static_assert(std::is_function_v<std::remove_pointer_t<T>> && std::is_pointer_v<T>);
+		return reinterpret_cast<T>(FindProcAddressRaw(FindModule(moduleName), symbolName));
+	}
 }

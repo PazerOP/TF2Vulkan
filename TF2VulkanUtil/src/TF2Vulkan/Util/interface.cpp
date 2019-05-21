@@ -5,6 +5,17 @@
 
 #include <Windows.h>
 
+CSysModule* Util::FindModule(const char* moduleName)
+{
+	if (!moduleName || !moduleName[0])
+	{
+		assert(false);
+		return nullptr;
+	}
+
+	return (CSysModule*)GetModuleHandleA(moduleName);
+}
+
 #ifdef CUSTOM_CREATEINTERFACE_FN
 
 InterfaceRegCustom* InterfaceRegCustom::s_pInterfaceRegs;
@@ -15,14 +26,6 @@ InterfaceRegCustom::InterfaceRegCustom(InstantiateInterfaceFn fn, const char* pN
 	m_pNext(s_pInterfaceRegs)
 {
 	s_pInterfaceRegs = this;
-}
-
-static CSysModule* FindModule(const char* moduleName)
-{
-	if (!moduleName || !moduleName[0])
-		return nullptr;
-
-	return (CSysModule*)GetModuleHandleA(moduleName);
 }
 
 CreateInterfaceFn TF2Vulkan::Sys_GetFactoryCustom(const char* moduleName)
@@ -42,3 +45,11 @@ CreateInterfaceFn TF2Vulkan::Sys_GetFactoryCustom(CSysModule* pModule)
 }
 
 #endif
+
+void* Util::FindProcAddressRaw(CSysModule* module, const char* symbolName)
+{
+	if (!module)
+		return nullptr;
+
+	return GetProcAddress((HMODULE)module, symbolName);
+}

@@ -112,6 +112,7 @@ ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 	case vk::Format::eUndefined:            return IMAGE_FORMAT_UNKNOWN;
 
 		// R
+	case vk::Format::eR8Unorm:              return IMAGE_FORMAT_I8;
 	case vk::Format::eR32Sfloat:            return IMAGE_FORMAT_R32F;
 
 		// RG
@@ -122,6 +123,7 @@ ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 
 		// RGBA
 	case vk::Format::eR8G8B8A8Unorm:        return IMAGE_FORMAT_RGBA8888;
+	case vk::Format::eR8G8B8A8Snorm:        return IMAGE_FORMAT_UVWQ8888;
 	case vk::Format::eR16G16B16A16Sfloat:   return IMAGE_FORMAT_RGBA16161616F;
 	case vk::Format::eR16G16B16A16Unorm:    return IMAGE_FORMAT_RGBA16161616;
 

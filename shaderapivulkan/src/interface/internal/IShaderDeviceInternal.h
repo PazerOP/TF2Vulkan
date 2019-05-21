@@ -64,6 +64,7 @@ namespace TF2Vulkan
 
 		virtual vk::PipelineCache GetPipelineCache() const = 0;
 
+		virtual bool IsPrimaryCmdBufReady() const = 0;
 		virtual IVulkanCommandBuffer& GetPrimaryCmdBuf() = 0;
 
 		virtual bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) = 0;
@@ -112,7 +113,7 @@ namespace TF2Vulkan
 			Util::SafeConvert(uheight, height);
 		}
 
-		virtual bool IsReady() const = 0;
+		virtual bool IsVulkanDeviceReady() const = 0;
 	};
 
 	extern IShaderDeviceInternal& g_ShaderDevice;

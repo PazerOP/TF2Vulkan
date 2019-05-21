@@ -75,7 +75,7 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 	LOG_FUNC();
 	AssertCheckHeap();
 
-	if (!g_ShaderDevice.IsReady())
+	if (!g_ShaderDevice.IsPrimaryCmdBufReady())
 	{
 		Warning(TF2VULKAN_PREFIX "Skipping mesh draw, shader device not ready yet\n");
 		return;

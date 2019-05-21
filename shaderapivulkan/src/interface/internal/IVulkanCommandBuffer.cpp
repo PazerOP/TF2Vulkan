@@ -29,7 +29,9 @@ void IVulkanCommandBuffer::beginDebugUtilsLabelEXT(const vk::DebugUtilsLabelEXT&
 {
 	assert(m_DebugScopeCount >= 0);
 	m_DebugScopeCount++;
-	return GetCmdBuffer().beginDebugUtilsLabelEXT(labelInfo, g_ShaderDeviceMgr.GetDynamicDispatch());
+	auto& dynamicDispatch = g_ShaderDeviceMgr.GetDynamicDispatch();
+	auto& cmdBuf = GetCmdBuffer();
+	return cmdBuf.beginDebugUtilsLabelEXT(labelInfo, dynamicDispatch);
 }
 
 void IVulkanCommandBuffer::endDebugUtilsLabelEXT()

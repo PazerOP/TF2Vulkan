@@ -4,3 +4,6 @@
 [submodule "spirv-cross"]
 	path = spirv-cross
 	url = https://github.com/PazerOP/SPIRV-Cross.git
+[submodule "renderdoc"]
+	path = renderdoc
+	url = https://github.com/baldurk/renderdoc.git

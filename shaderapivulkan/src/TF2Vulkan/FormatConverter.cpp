@@ -59,23 +59,20 @@ namespace
 
 	template<ImageFormat fmt> struct PixelFormatData;
 
-	template<>
-	struct PixelFormatData<IMAGE_FORMAT_RGB888> : PixelFormatBase
+	template<> struct PixelFormatData<IMAGE_FORMAT_RGB888> : PixelFormatBase
 	{
 		DECLARE_R(uint8_t, 0);
 		DECLARE_G(uint8_t, 1);
 		DECLARE_B(uint8_t, 2);
 	};
-	template<>
-	struct PixelFormatData<IMAGE_FORMAT_RGBA8888> : PixelFormatBase
+	template<> struct PixelFormatData<IMAGE_FORMAT_RGBA8888> : PixelFormatBase
 	{
 		DECLARE_R(uint8_t, 0);
 		DECLARE_G(uint8_t, 1);
 		DECLARE_B(uint8_t, 2);
 		DECLARE_A(uint8_t, 3);
 	};
-	template<>
-	struct PixelFormatData<IMAGE_FORMAT_ARGB8888> : PixelFormatBase
+	template<> struct PixelFormatData<IMAGE_FORMAT_ARGB8888> : PixelFormatBase
 	{
 		DECLARE_A(uint8_t, 0);
 		DECLARE_R(uint8_t, 1);
@@ -83,23 +80,27 @@ namespace
 		DECLARE_B(uint8_t, 3);
 	};
 
-	template<>
-	struct PixelFormatData<IMAGE_FORMAT_BGR888> : PixelFormatBase
+	template<> struct PixelFormatData<IMAGE_FORMAT_BGR888> : PixelFormatBase
 	{
 		DECLARE_B(uint8_t, 0);
 		DECLARE_G(uint8_t, 1);
 		DECLARE_R(uint8_t, 2);
 	};
-	template<>
-	struct PixelFormatData<IMAGE_FORMAT_BGRA8888> : PixelFormatBase
+	template<> struct PixelFormatData<IMAGE_FORMAT_BGRX8888> : PixelFormatBase
+	{
+		DECLARE_B(uint8_t, 0);
+		DECLARE_G(uint8_t, 1);
+		DECLARE_R(uint8_t, 2);
+		uint8_t : 8; // Unused padding
+	};
+	template<> struct PixelFormatData<IMAGE_FORMAT_BGRA8888> : PixelFormatBase
 	{
 		DECLARE_B(uint8_t, 0);
 		DECLARE_G(uint8_t, 1);
 		DECLARE_R(uint8_t, 2);
 		DECLARE_A(uint8_t, 3);
 	};
-	template<>
-	struct PixelFormatData<IMAGE_FORMAT_ABGR8888> : PixelFormatBase
+	template<> struct PixelFormatData<IMAGE_FORMAT_ABGR8888> : PixelFormatBase
 	{
 		DECLARE_A(uint8_t, 0);
 		DECLARE_B(uint8_t, 1);
