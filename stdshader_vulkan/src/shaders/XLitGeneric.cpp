@@ -105,6 +105,7 @@ inline namespace XLitGeneric
 		Wireframe,
 		DepthWrite,
 		DebugDrawEnvmapMask,
+		EyeRefract
 	};
 
 	class Shader : public ShaderNext<Shader, Params>
@@ -201,6 +202,7 @@ inline namespace XLitGeneric
 	XLITGENERIC_DERIVED(DepthWrite);
 	XLITGENERIC_DERIVED(UnlitGeneric);
 	XLITGENERIC_DERIVED(VertexLitGeneric);
+	XLITGENERIC_DERIVED(EyeRefract);
 
 	class Wireframe : public Shader
 	{

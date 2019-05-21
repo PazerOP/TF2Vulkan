@@ -20,11 +20,12 @@ namespace TF2Vulkan
 
 		virtual const vk::ImageView& FindOrCreateView();
 
-		void GetSize(uint32_t& width, uint32_t& height) const
+		template<typename T1, typename T2, typename = std::enable_if_t<std::is_integral_v<T1> && std::is_integral_v<T2>>>
+		void GetSize(T1& width, T2& height) const
 		{
 			const auto& ci = GetImageCreateInfo();
-			width = ci.extent.width;
-			height = ci.extent.height;
+			Util::SafeConvert(ci.extent.width, width);
+			Util::SafeConvert(ci.extent.height, height);
 		}
 	};
 

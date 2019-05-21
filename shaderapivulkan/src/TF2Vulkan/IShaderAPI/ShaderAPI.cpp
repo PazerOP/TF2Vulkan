@@ -73,7 +73,7 @@ namespace
 		void CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t texHandle,
 			const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
 		void CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
-			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
+			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override;
 
 		void FlushBufferedPrimitives() override;
 
@@ -104,8 +104,6 @@ namespace
 
 		void SetClipPlane(int index, const float* plane) override { NOT_IMPLEMENTED_FUNC(); }
 		void EnableClipPlane(int index, bool enable) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void SetSkinningMatrices() override { NOT_IMPLEMENTED_FUNC(); }
 
 		ImageFormat GetNearestSupportedFormat(ImageFormat fmt, bool filteringRequired) const override;
 		ImageFormat GetNearestRenderTargetFormat(ImageFormat fmt) const override;
@@ -243,10 +241,6 @@ namespace
 
 		void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) override { NOT_IMPLEMENTED_FUNC(); }
 		void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) override { NOT_IMPLEMENTED_FUNC(); }
-
-		void LockRect(void** outBits, int* outPitch, ShaderAPITextureHandle_t tex, int mipLevel,
-			int x, int y, int w, int h, bool write, bool read) override { NOT_IMPLEMENTED_FUNC(); }
-		void UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override;
 		void BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
@@ -937,4 +931,78 @@ void ShaderAPI::InvalidateDelayedShaderConstants()
 
 	//LOG_FUNC();
 	// ^^^ Commented out because InvalidateDelayedShaderConstants() gets spammed
+}
+
+void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
+	ShaderAPITextureHandle_t dstTexID, const Rect_t* srcRect, const Rect_t* dstRect)
+{
+	LOG_FUNC();
+
+	auto& srcTex = GetTexture(srcRT);
+	auto& dstTex = GetTexture(dstTexID);
+
+	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
+
+	vk::ImageBlit blit;
+	blit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+	blit.srcSubresource.baseArrayLayer = 0;
+	blit.srcSubresource.mipLevel = 0;
+	blit.srcSubresource.layerCount = 1;
+	blit.dstSubresource = blit.srcSubresource;
+	blit.srcOffsets[0].z = blit.dstOffsets[0].z = 0;
+	blit.srcOffsets[1].z = blit.dstOffsets[1].z = 1;
+
+	const auto CopyRectToOffsets = [](const IVulkanTexture & tex, const Rect_t * rect, vk::Offset3D & offs0, vk::Offset3D & offs1)
+	{
+		offs0.z = 0;
+		offs1.z = 1;
+
+		if (rect)
+		{
+			offs0.x = rect->x;
+			offs0.y = rect->y;
+			offs1.x = rect->x + rect->width;
+			offs1.y = rect->y + rect->height;
+		}
+		else
+		{
+			offs0.x = offs0.y = 0;
+			tex.GetSize(offs1.x, offs1.y);
+		}
+	};
+
+	CopyRectToOffsets(srcTex, srcRect, blit.srcOffsets[0], blit.srcOffsets[1]);
+	CopyRectToOffsets(dstTex, dstRect, blit.dstOffsets[0], blit.dstOffsets[1]);
+
+	auto barrierFactory = Factories::ImageMemoryBarrierFactory{}
+		.SetProducerStage(vk::PipelineStageFlagBits::eColorAttachmentOutput, true, true)
+		.SetConsumerStage(vk::PipelineStageFlagBits::eTransfer, true, true);
+
+	barrierFactory
+		.SetOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
+		.SetNewLayout(vk::ImageLayout::eTransferSrcOptimal)
+		.SetImage(srcTex)
+		.Submit(cmdBuf);
+
+	barrierFactory
+		.SetOldLayout(vk::ImageLayout::eUndefined)
+		.SetNewLayout(vk::ImageLayout::eTransferDstOptimal)
+		.SetImage(dstTex)
+		.Submit(cmdBuf);
+
+	cmdBuf.blitImage(srcTex.GetImage(), vk::ImageLayout::eColorAttachmentOptimal,
+		dstTex.GetImage(), vk::ImageLayout::eTransferDstOptimal,
+		blit, vk::Filter::eLinear);
+
+	barrierFactory
+		.SetProducerStage(vk::PipelineStageFlagBits::eTransfer, true, true)
+		.SetConsumerStage(vk::PipelineStageFlagBits::eAllGraphics, true, true);
+
+	barrierFactory
+		.SetOldLayout(vk::ImageLayout::eTransferSrcOptimal)
+		.SetNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
+		.SetImage(srcTex)
+		.Submit(cmdBuf);
+
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }

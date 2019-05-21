@@ -205,6 +205,12 @@ void IShaderAPI_StateManagerDynamic::UserClipTransform(const VMatrix& worldToVie
 	Util::SetDirtyVar(m_State.m_UserClipTransformOverride, worldToView, m_Dirty);
 }
 
+void IShaderAPI_StateManagerDynamic::SetSkinningMatrices()
+{
+	LOG_FUNC();
+	// Just let shaders handle all uniform buffers (for now?)
+}
+
 void IShaderAPI_StateManagerDynamic::SetShaderInstance(ShaderType type, const IShaderInstance* instance)
 {
 	assert(instance->GetGroup().GetShaderType() == type);

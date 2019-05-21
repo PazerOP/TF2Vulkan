@@ -78,6 +78,9 @@ namespace TF2Vulkan
 			const vk::DependencyFlags& dependencyFlags, const vk::ArrayProxy<const vk::MemoryBarrier>& memoryBarriers,
 			const vk::ArrayProxy<const vk::BufferMemoryBarrier>& bufferMemoryBarriers,
 			const vk::ArrayProxy<const vk::ImageMemoryBarrier>& imageMemoryBarriers);
+		void blitImage(const vk::Image& srcImg, const vk::ImageLayout& srcImgLayout,
+			const vk::Image& dstImg, const vk::ImageLayout& dstImgLayout,
+			const vk::ArrayProxy<const vk::ImageBlit>& regions, const vk::Filter& filter);
 
 #pragma endregion VkCommandBuffer Functionality
 

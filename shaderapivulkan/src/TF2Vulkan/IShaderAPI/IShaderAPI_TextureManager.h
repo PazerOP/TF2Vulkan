@@ -2,6 +2,7 @@
 
 #include "interface/internal/IShaderAPIInternal.h"
 #include "TF2Vulkan/SamplerSettings.h"
+#include "TF2Vulkan/VulkanFactories.h"
 
 #include <array>
 #include <atomic>
@@ -30,6 +31,10 @@ namespace TF2Vulkan
 
 		using IShaderAPI::CreateTexture;
 		IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI);
+		IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI,
+			const vma::AllocationCreateInfo& allocCI);
+		IShaderAPITexture& CreateTexture(Factories::ImageFactory&& factory);
+		IShaderAPITexture& CreateTexture(std::string&& dbgName, Factories::ImageFactory&& factory);
 		ShaderAPITextureHandle_t CreateTexture(int width, int height, int depth, ImageFormat dstImgFormat,
 			int mipLevelCount, int copyCount, CreateTextureFlags_t flags, const char* dbgName, const char* texGroupName) override final;
 		ShaderAPITextureHandle_t CreateDepthTexture(ImageFormat rtFormat, int width,
@@ -44,19 +49,31 @@ namespace TF2Vulkan
 		void SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex) override final;
 		void GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id) override final;
 
+		void LockRect(void** outBits, int* outPitch, ShaderAPITextureHandle_t tex, int mipLevel,
+			int x, int y, int w, int h, bool write, bool read) override final;
+		void UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel) override final;
+
 	private:
 		std::atomic<ShaderAPITextureHandle_t> m_NextTextureHandle = 1;
 
-		struct ShaderTexture : IShaderAPITexture
+		struct LockedTextureRect final
+		{
+			std::unique_ptr<std::byte[]> m_Data;
+			vk::Extent3D m_Extent{};
+			vk::Offset3D m_Offset{};
+			bool m_IsDirectMapped = false;
+
+			operator bool() const
+			{
+				assert(!(m_IsDirectMapped && m_Data));
+				return m_IsDirectMapped || m_Data;
+			}
+		};
+
+		struct ShaderTexture final : IShaderAPITexture
 		{
 			ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
 				const vk::ImageCreateInfo& ci, vma::AllocatedImage&& img);
-
-			std::string m_DebugName;
-			vk::ImageCreateInfo m_CreateInfo;
-			vma::AllocatedImage m_Image;
-			ShaderAPITextureHandle_t m_Handle;
-			std::unordered_map<vk::ImageViewCreateInfo, vk::UniqueImageView> m_ImageViews;
 
 			SamplerSettings m_SamplerSettings;
 
@@ -65,6 +82,17 @@ namespace TF2Vulkan
 			const vk::ImageCreateInfo& GetImageCreateInfo() const override { return m_CreateInfo; }
 			const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override;
 			ShaderAPITextureHandle_t GetHandle() const override { return m_Handle; }
+
+			std::string m_DebugName;
+			vma::AllocatedImage m_Image;
+			std::unordered_map<vk::ImageViewCreateInfo, vk::UniqueImageView> m_ImageViews;
+
+			static constexpr auto MAX_MIPLEVELS = 14;
+			std::array<LockedTextureRect, MAX_MIPLEVELS> m_LockedRects;
+
+		private:
+			ShaderAPITextureHandle_t m_Handle;
+			vk::ImageCreateInfo m_CreateInfo;
 		};
 		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
 

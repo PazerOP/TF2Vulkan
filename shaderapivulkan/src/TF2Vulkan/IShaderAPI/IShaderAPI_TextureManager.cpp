@@ -78,18 +78,40 @@ void IShaderAPI_TextureManager::TexMagFilter(ShaderAPITextureHandle_t texHandle,
 
 IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI)
 {
+	LOG_FUNC_MSG(dbgName);
+
+	vma::AllocationCreateInfo allocCI;
+	allocCI.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+
+	return CreateTexture(std::move(dbgName), imgCI, allocCI);
+}
+
+IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(
+	std::string&& dbgName, const vk::ImageCreateInfo& imgCI, const vma::AllocationCreateInfo& allocCI)
+{
+	return CreateTexture(std::move(Factories::ImageFactory{}
+		.SetCreateInfo(imgCI)
+		.SetAllocCreateInfo(allocCI)
+		.SetDebugName(dbgName)));
+}
+
+IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(Factories::ImageFactory&& factory)
+{
 	const auto handle = m_NextTextureHandle++;
 	LOG_FUNC_TEX_NAME(handle, dbgName);
 
-	dbgName = Util::string::concat("[", handle, "] ", std::move(dbgName));
+	auto dbgName = Util::string::concat("[", handle, "] ", std::move(factory.m_DebugName));
+	factory.m_DebugName = Util::string::concat("Texture: ", dbgName);
 
-	auto createdImg = Factories::ImageFactory{}
-		.SetCreateInfo(imgCI)
-		.SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-		.SetDebugName(Util::string::concat("Texture: ", dbgName))
-		.Create();
+	if (dbgName.find("readbacktex") != dbgName.npos)
+		__debugbreak();
 
-	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, imgCI, std::move(createdImg) }).first->second;
+	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, factory.m_CreateInfo, factory.Create() }).first->second;
+}
+
+IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(std::string&& dbgName, Factories::ImageFactory&& factory)
+{
+	return CreateTexture(std::move(factory.SetDebugName(std::move(dbgName))));
 }
 
 ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int height, int depth,
@@ -102,7 +124,8 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 	ENSURE(depth > 0);
 	ENSURE(mipLevelCount > 0);
 
-	vk::ImageCreateInfo createInfo;
+	Factories::ImageFactory factory;
+	vk::ImageCreateInfo& createInfo = factory.m_CreateInfo;
 
 	// Don't actually use 1D textures, they cause issues
 	/*if (height == 1 && depth == 1)
@@ -119,7 +142,17 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 
 	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
 	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
-	createInfo.usage = vk::ImageUsageFlagBits::eSampled;
+
+	vma::MemoryType memoryType = vma::MemoryType::eGpuOnly;
+	if (flags & TEXTURE_CREATE_SYSMEM)
+	{
+		factory.SetAllowMapping();
+	}
+	else
+	{
+		createInfo.usage |= vk::ImageUsageFlagBits::eSampled;
+		factory.SetMemoryType(vma::MemoryType::eGpuOnly);
+	}
 
 	if (flags & TEXTURE_CREATE_CUBEMAP)
 		createInfo.arrayLayers = 6;
@@ -131,7 +164,7 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 	if (flags & TEXTURE_CREATE_RENDERTARGET)
 	{
 		fmtUsage = FormatUsage::RenderTarget;
-		createInfo.usage |= vk::ImageUsageFlagBits::eColorAttachment;
+		createInfo.usage |= vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
 		targetLayout = vk::ImageLayout::eColorAttachmentOptimal;
 	}
 	else if (flags & TEXTURE_CREATE_DEPTHBUFFER)
@@ -158,7 +191,7 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 		createInfo.extent.height += (blockSize.height - hDelta) % blockSize.height;
 	}
 
-	auto& newTex = CreateTexture(dbgName, createInfo);
+	auto& newTex = CreateTexture(dbgName, std::move(factory));
 
 	if (targetLayout != vk::ImageLayout::eUndefined)
 	{
@@ -270,7 +303,8 @@ void IShaderAPI_TextureManager::TexImageFromVTF(ShaderAPITextureHandle_t texHand
 
 	auto& tex = m_Textures.at(texHandle);
 
-	const auto mipCount = std::min(Util::SafeConvert<uint32_t>(vtf->MipCount()), tex.m_CreateInfo.mipLevels);
+	const auto mipCount = std::min(Util::SafeConvert<uint32_t>(vtf->MipCount()),
+		tex.GetImageCreateInfo().mipLevels);
 	ENSURE(mipCount > 0);
 
 	auto faceCount = vtf->FaceCount();
@@ -331,7 +365,7 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 	}
 
 	auto& tex = m_Textures.at(texHandle);
-	const ImageFormat targetFormat = FormatInfo::ConvertImageFormat(tex.m_CreateInfo.format);
+	const ImageFormat targetFormat = FormatInfo::ConvertImageFormat(tex.GetImageCreateInfo().format);
 
 	auto& device = g_ShaderDevice.GetVulkanDevice();
 	auto& alloc = g_ShaderDevice.GetVulkanAllocator();
@@ -468,7 +502,7 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 			barrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
 
 			auto& srr = barrier.subresourceRange;
-			srr.aspectMask = FormatInfo::GetAspects(tex.m_CreateInfo.format);
+			srr.aspectMask = FormatInfo::GetAspects(tex.GetImageCreateInfo().format);
 			srr.baseMipLevel = slice.m_MipLevel;
 			srr.baseArrayLayer = slice.m_CubeFace;
 			srr.layerCount = 1;
@@ -534,6 +568,59 @@ void IShaderAPI_TextureManager::GetStandardTextureDimensions(int* width, int* he
 
 	if (height)
 		Util::SafeConvert(ci.extent.height, *height);
+}
+
+void IShaderAPI_TextureManager::LockRect(void** outBits, int* outPitch, ShaderAPITextureHandle_t texID,
+	int mipLevel, int x, int y, int w, int h, bool write, bool read)
+{
+	LOG_FUNC();
+
+	if (!outBits)
+		return;
+
+	auto& tex = m_Textures.at(texID);
+
+	auto& alloc = tex.m_Image.GetAllocation();
+	const auto& ci = tex.GetImageCreateInfo();
+
+	const auto [offset, stride] = FormatInfo::GetSubrectOffset(ci.format,
+		Util::SafeConvert<uint32_t>(x), Util::SafeConvert<uint32_t>(y), 0,
+		ci.extent.width, ci.extent.height, ci.extent.depth,
+		Util::SafeConvert<uint_fast8_t>(mipLevel));
+
+	if (outPitch)
+		Util::SafeConvert(stride, *outPitch);
+
+	auto& rect = tex.m_LockedRects.at(mipLevel);
+	if (auto mapped = alloc.data())
+	{
+		*outBits = alloc.data() + offset;
+		assert(!rect);
+		rect.m_IsDirectMapped = true;
+	}
+	else
+	{
+		// TODO: alternative slow path if texture is not mappable
+		NOT_IMPLEMENTED_FUNC();
+	}
+}
+
+void IShaderAPI_TextureManager::UnlockRect(ShaderAPITextureHandle_t texID, int mipLevel)
+{
+	LOG_FUNC();
+
+	auto& tex = m_Textures.at(texID);
+	auto& rect = tex.m_LockedRects.at(mipLevel);
+	assert(rect);
+
+	if (rect.m_IsDirectMapped)
+	{
+		rect.m_IsDirectMapped = false;
+	}
+	else
+	{
+		NOT_IMPLEMENTED_FUNC();
+	}
 }
 
 void IShaderAPI_TextureManager::ModifyTexture(ShaderAPITextureHandle_t tex)

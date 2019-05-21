@@ -5,6 +5,9 @@
 
 #include <mutex>
 
+#undef min
+#undef max
+
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::FormatInfo;
 
@@ -354,11 +357,6 @@ vk::Format FormatInfo::PromoteToHardware(vk::Format format, FormatUsage usage, b
 	}
 }
 
-vk::Extent2D FormatInfo::GetBlockSize(ImageFormat format)
-{
-	return GetBlockSize(ConvertImageFormat(format));
-}
-
 vk::Extent2D FormatInfo::GetBlockSize(vk::Format format)
 {
 	switch (format)
@@ -389,11 +387,6 @@ vk::Extent2D FormatInfo::GetBlockSize(vk::Format format)
 	}
 }
 
-size_t FormatInfo::GetPixelSize(ImageFormat format)
-{
-	return GetPixelSize(ConvertImageFormat(format));
-}
-
 size_t FormatInfo::GetPixelSize(vk::Format format)
 {
 	switch (format)
@@ -418,6 +411,58 @@ size_t FormatInfo::GetPixelSize(vk::Format format)
 
 	assert(!"Unknown/unsupported format");
 	return 0;
+}
+
+uint32_t FormatInfo::GetStride(vk::Format format, uint32_t width)
+{
+	return GetPixelSize(format) * width;
+}
+
+vk::Extent3D FormatInfo::GetMipResolution(uint_fast8_t mipIndex,
+	uint32_t inWidth, uint32_t inHeight, uint32_t inDepth)
+{
+	return
+	{
+		std::max<uint32_t>(inWidth >> mipIndex, 1),
+		std::max<uint32_t>(inHeight >> mipIndex, 1),
+		std::max<uint32_t>(inDepth >> mipIndex, 1),
+	};
+}
+
+size_t FormatInfo::GetSliceSize(vk::Format format, uint32_t width, uint32_t height)
+{
+	return GetStride(format, width) * height;
+}
+
+size_t FormatInfo::GetFrameSize3D(vk::Format format,
+	uint32_t width, uint32_t height, uint32_t depth,
+	uint_fast8_t mipCount, uint_fast8_t firstMip)
+{
+	size_t retVal = 0;
+
+	for (uint_fast8_t i = 0; i < mipCount; i++)
+	{
+		const auto [mipW, mipH, mipD] = GetMipResolution(firstMip + i, width, height, depth);
+		retVal += GetSliceSize(format, mipW, mipH) * mipD;
+	}
+
+	return retVal;
+}
+
+FormatInfo::SubrectOffset FormatInfo::GetSubrectOffset(vk::Format format,
+	uint32_t offsetX, uint32_t offsetY, uint32_t offsetZ,
+	uint32_t width, uint32_t height, uint32_t depth,
+	uint_fast8_t mipLevel)
+{
+	size_t offset = GetFrameSize3D(format, width, height, depth, mipLevel);
+
+	const auto [mipW, mipH, mipD] = GetMipResolution(mipLevel, width, height, depth);
+	const uint32_t pixelSize = FormatInfo::GetPixelSize(format);
+	const uint32_t mipStride = FormatInfo::GetStride(format, width);
+	const uint32_t mipSliceStride = FormatInfo::GetSliceSize(format, mipW, mipH);
+
+	offset += (mipSliceStride * offsetZ) + (mipStride * offsetY) + (pixelSize * offsetX);
+	return { offset, mipStride };
 }
 
 vk::ImageAspectFlags FormatInfo::GetAspects(const vk::Format& format)
@@ -514,11 +559,6 @@ vk::Format FormatInfo::ConvertDataFormat(DataFormat fmt, uint_fast8_t components
 
 	assert(!"Unknown/unsupported combination");
 	return vk::Format::eUndefined;
-}
-
-bool FormatInfo::IsCompressed(ImageFormat format)
-{
-	return IsCompressed(ConvertImageFormat(format));
 }
 
 bool FormatInfo::IsCompressed(vk::Format format)

@@ -547,6 +547,14 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	for (uint_fast8_t i = 0; i < vtxElemsCount; i++)
 	{
 		const auto& vtxElem = vtxElems[i];
+
+		const auto UpdateElementParams = [&](auto & sizeParam, auto*& dataPtrParam)
+		{
+			using ptrType = std::decay_t<decltype(dataPtrParam)>;
+			Util::SafeConvert(totalVtxSize, sizeParam);
+			dataPtrParam = reinterpret_cast<ptrType>(m_DataBuffer.data() + vtxElem.m_Offset);
+		};
+
 		switch (vtxElem.m_Type->m_Element)
 		{
 		default:
@@ -588,31 +596,48 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 		case VERTEX_ELEMENT_TEXCOORD4D_7:
 		{
 			const auto texCoordIdx = (vtxElem.m_Type->m_Element - VERTEX_ELEMENT_TEXCOORD1D_0) % VERTEX_MAX_TEXTURE_COORDINATES;
-			desc.m_VertexSize_TexCoord[texCoordIdx] = totalVtxSize;
-			desc.m_pTexCoord[texCoordIdx] = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
-
+			UpdateElementParams(desc.m_VertexSize_TexCoord[texCoordIdx], desc.m_pTexCoord[texCoordIdx]);
 			break;
 		}
+
+		case VERTEX_ELEMENT_BONEINDEX:
+			UpdateElementParams(desc.m_VertexSize_BoneMatrixIndex, desc.m_pBoneMatrixIndex);
+			break;
+
+		case VERTEX_ELEMENT_BONEWEIGHTS1:
+		case VERTEX_ELEMENT_BONEWEIGHTS2:
+		case VERTEX_ELEMENT_BONEWEIGHTS3:
+		case VERTEX_ELEMENT_BONEWEIGHTS4:
+			UpdateElementParams(desc.m_VertexSize_BoneWeight, desc.m_pBoneWeight);
+			break;
 
 		case VERTEX_ELEMENT_USERDATA1:
 		case VERTEX_ELEMENT_USERDATA2:
 		case VERTEX_ELEMENT_USERDATA3:
 		case VERTEX_ELEMENT_USERDATA4:
-			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_UserData);
-			desc.m_pUserData = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			UpdateElementParams(desc.m_VertexSize_UserData, desc.m_pUserData);
 			break;
 
-		case VERTEX_ELEMENT_COLOR:
-			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Color);
-			desc.m_pColor = reinterpret_cast<unsigned char*>(m_DataBuffer.data() + vtxElem.m_Offset);
-			break;
 		case VERTEX_ELEMENT_POSITION:
-			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Position);
-			desc.m_pPosition = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			UpdateElementParams(desc.m_VertexSize_Position, desc.m_pPosition);
 			break;
 		case VERTEX_ELEMENT_NORMAL:
-			Util::SafeConvert(totalVtxSize, desc.m_VertexSize_Normal);
-			desc.m_pNormal = reinterpret_cast<float*>(m_DataBuffer.data() + vtxElem.m_Offset);
+			UpdateElementParams(desc.m_VertexSize_Normal, desc.m_pNormal);
+			break;
+		case VERTEX_ELEMENT_COLOR:
+			UpdateElementParams(desc.m_VertexSize_Color, desc.m_pColor);
+			break;
+		case VERTEX_ELEMENT_SPECULAR:
+			UpdateElementParams(desc.m_VertexSize_Specular, desc.m_pSpecular);
+			break;
+		case VERTEX_ELEMENT_TANGENT_S:
+			UpdateElementParams(desc.m_VertexSize_TangentS, desc.m_pTangentS);
+			break;
+		case VERTEX_ELEMENT_TANGENT_T:
+			UpdateElementParams(desc.m_VertexSize_TangentT, desc.m_pTangentT);
+			break;
+		case VERTEX_ELEMENT_WRINKLE:
+			UpdateElementParams(desc.m_VertexSize_Wrinkle, desc.m_pWrinkle);
 			break;
 		}
 	}

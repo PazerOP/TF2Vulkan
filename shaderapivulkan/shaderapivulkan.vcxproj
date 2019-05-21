@@ -144,7 +144,6 @@
     <ClCompile Include="src\interface\internal\IShaderAPITexture.cpp" />
     <ClCompile Include="src\interface\internal\IVulkanCommandBuffer.cpp" />
     <ClCompile Include="include\TF2Vulkan\TextureData.cpp" />
-    <ClCompile Include="src\ShaderAPIVulkanDLL.cpp" />
     <ClCompile Include="src\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

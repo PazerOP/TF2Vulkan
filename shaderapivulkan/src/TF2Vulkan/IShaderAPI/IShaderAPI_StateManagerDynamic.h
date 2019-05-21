@@ -138,6 +138,8 @@ namespace TF2Vulkan
 		void EnableUserClipTransformOverride(bool enable) override final;
 		void UserClipTransform(const VMatrix& worldToView) override final;
 
+		void SetSkinningMatrices() override final;
+
 		// IShaderDynamicNext
 		void SetShaderInstance(ShaderType type, const IShaderInstance* instance) override final;
 		void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) override final;
