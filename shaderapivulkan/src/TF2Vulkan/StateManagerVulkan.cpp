@@ -1,5 +1,5 @@
 #include "interface/internal/IShaderAPIInternal.h"
-#include "IShaderTextureManager.h"
+#include "IShaderAPI/IShaderAPI_TextureManager.h"
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"

@@ -18,14 +18,18 @@ namespace TF2Vulkan
 	class VulkanGPUBuffer
 	{
 	public:
+		explicit VulkanGPUBuffer(bool isDynamic);
+
 		void GetGPUBuffer(vk::Buffer& buffer, size_t& offset) const;
 
-		virtual bool IsDynamic() const = 0;
+		bool IsDynamic() const { return m_IsDynamic; }
 
 	protected:
 		void UpdateInnerBuffer(const char* dbgName, const void* newData, size_t newSize, vk::BufferUsageFlags usage);
 
 	private:
+		bool m_IsDynamic;
+
 		std::variant<std::monostate, vma::AllocatedBuffer, BufferPoolEntry> m_Buffer;
 	};
 
@@ -55,7 +59,6 @@ namespace TF2Vulkan
 		size_t VertexDataSize() const;
 
 	private:
-		bool m_IsDynamic;
 		VertexFormat m_Format;
 
 		std::vector<std::byte> m_DataBuffer;
@@ -91,7 +94,6 @@ namespace TF2Vulkan
 		size_t IndexDataSize() const;
 
 	private:
-		bool m_IsDynamic = false;
 		std::vector<unsigned short> m_Indices;
 	};
 

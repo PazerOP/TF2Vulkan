@@ -9,7 +9,7 @@
 
 namespace TF2Vulkan
 {
-	class IShaderTextureManager : public IShaderAPIInternal
+	class IShaderAPI_TextureManager : public IShaderAPIInternal
 	{
 	public:
 		const IShaderAPITexture* TryGetTexture(ShaderAPITextureHandle_t texID) const;
@@ -87,5 +87,5 @@ namespace TF2Vulkan
 		void TexLodBias(float bias) override final;
 	};
 
-	extern IShaderTextureManager& g_TextureManager;
+	extern IShaderAPI_TextureManager& g_TextureManager;
 }

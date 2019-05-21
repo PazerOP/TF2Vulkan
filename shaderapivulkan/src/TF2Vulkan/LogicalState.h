@@ -71,6 +71,9 @@ namespace TF2Vulkan
 		std::array<float, MAX_FLOAT_RENDER_PARMS> m_RenderParamsFloat;
 
 		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
+
+		bool m_UserClipTransformOverrideEnabled = false;
+		VMatrix m_UserClipTransformOverride{};
 	};
 
 	struct LogicalShadowState final

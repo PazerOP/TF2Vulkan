@@ -122,8 +122,6 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 
 	ConVar_Register();
 
-	//auto test = factory("MatSystemSurface008", nullptr);
-
 	if (!CommandLine()->CheckParm("-insecure"))
 	{
 		Error("TF2Vulkan is likely to trigger VAC. For this reason, you MUST use -insecure"

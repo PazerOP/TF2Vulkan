@@ -98,16 +98,31 @@ inline namespace XLitGeneric
 
 	} static constexpr s_SpecConstLayout;
 
+	enum class DerivedShaderType
+	{
+		VertexLitGeneric,
+		UnlitGeneric,
+		Wireframe,
+		DepthWrite,
+		DebugDrawEnvmapMask,
+	};
+
 	class Shader : public ShaderNext<Shader, Params>
 	{
 	public:
+		explicit Shader(DerivedShaderType derivedType) : m_DerivedType(derivedType) {}
+
 		void OnInitShader(IShaderNextFactory& instanceMgr) override;
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 		void OnInitShaderInstance(IMaterialVar** params, IShaderInit* shaderInit,
 			const char* materialName) override;
 		void OnDrawElements(const OnDrawElementsParams& params) override;
 
-		virtual bool IsVertexLitGeneric() const { return false; }
+		DerivedShaderType GetDerivedType() const { return m_DerivedType; }
+
+		bool IsVertexLit() const { return GetDerivedType() == DerivedShaderType::VertexLitGeneric; }
+
+		virtual bool SupportsCompressedVertices() const { return true; }
 
 	private:
 		bool WantsSkinShader(IMaterialVar** params) const;
@@ -157,45 +172,52 @@ inline namespace XLitGeneric
 		IShaderGroup* m_PSShader = nullptr;
 		IShaderGroup* m_VSShader = nullptr;
 
-		IBufferPool* m_UBufCommon = nullptr;
+		IBufferPool* m_UniformBufPool = nullptr;
 		UniformBufferIndex m_UBufCommonIndex = UniformBufferIndex::Invalid;
-
-		IBufferPool* m_UBufModelMatrices = nullptr;
 		UniformBufferIndex m_UBufModelMatricesIndex = UniformBufferIndex::Invalid;
-
-		IBufferPool* m_UniformBuf = nullptr;
 		UniformBufferIndex m_UniformBufferIndex = UniformBufferIndex::Invalid;
+
+		DerivedShaderType m_DerivedType;
 	};
 
-	class UnlitGeneric final : public Shader
+#define XLITGENERIC_DERIVED(derivedShaderName) \
+	class derivedShaderName : public Shader \
+	{ \
+	public: \
+		derivedShaderName() : Shader(DerivedShaderType::derivedShaderName) {} \
+		const char* GetName() const override { return #derivedShaderName; } \
+	}; \
+	static const DefaultInstanceRegister<derivedShaderName> s_ ## derivedShaderName;
+
+#define SHADER_ALIAS(aliasName, baseName) \
+	class aliasName final : public baseName \
+	{ \
+	public: \
+		const char* GetName() const override { return #aliasName; } \
+	}; \
+	static const DefaultInstanceRegister<aliasName> s_ ## aliasName;
+
+	XLITGENERIC_DERIVED(DebugDrawEnvmapMask);
+	XLITGENERIC_DERIVED(DepthWrite);
+	XLITGENERIC_DERIVED(UnlitGeneric);
+	XLITGENERIC_DERIVED(VertexLitGeneric);
+
+	class Wireframe : public Shader
 	{
 	public:
-		const char* GetName() const override { return "UnlitGeneric"; }
-	};
-
-	class VertexLitGeneric final : public Shader
-	{
-	public:
-		const char* GetName() const override { return "VertexLitGeneric"; }
-
-		bool IsVertexLitGeneric() const override { return true; }
-	};
-
-	class Wireframe final : public Shader
-	{
-	public:
+		Wireframe() : Shader(DerivedShaderType::Wireframe) {}
 		const char* GetName() const override { return "Wireframe"; }
 		void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
+		void OnDrawElements(const OnDrawElementsParams& params) override;
+		bool SupportsCompressedVertices() const override { return false; }
 	};
-
-	static const DefaultInstanceRegister<UnlitGeneric> s_UnlitGeneric;
-	static const DefaultInstanceRegister<VertexLitGeneric> s_VertexLitGeneric;
 	static const DefaultInstanceRegister<Wireframe> s_Wireframe;
+
+	SHADER_ALIAS(Wireframe_DX8, Wireframe);
+	SHADER_ALIAS(Wireframe_DX9, Wireframe);
 }
 
 DEFINE_NSHADER_FALLBACK(UnlitGeneric_DX8, UnlitGeneric);
-DEFINE_NSHADER_FALLBACK(Wireframe_DX8, Wireframe);
-DEFINE_NSHADER_FALLBACK(Wireframe_DX9, Wireframe);
 DEFINE_NSHADER_FALLBACK(DebugMorphAccumulator, UnlitGeneric);
 //DEFINE_NSHADER_FALLBACK(VertexLitGeneric_DX8, VertexLitGeneric);
 
@@ -206,11 +228,23 @@ static ConVar mat_luxels("mat_luxels", "0", FCVAR_CHEAT);
 
 void Wireframe::OnInitShaderParams(IMaterialVar** params, const char* materialName)
 {
+	LOG_FUNC();
+
 	SET_FLAGS(MATERIAL_VAR_NO_DEBUG_OVERRIDE);
 	SET_FLAGS(MATERIAL_VAR_NOFOG);
 	SET_FLAGS(MATERIAL_VAR_WIREFRAME);
 
 	Shader::OnInitShaderParams(params, materialName);
+}
+
+void Wireframe::OnDrawElements(const OnDrawElementsParams& params)
+{
+	LOG_FUNC();
+
+	//if (IsSnapshotting())
+	//	__debugbreak();
+
+	Shader::OnDrawElements(params);
 }
 
 void Shader::OnInitShader(IShaderNextFactory& instanceMgr)
@@ -220,13 +254,9 @@ void Shader::OnInitShader(IShaderNextFactory& instanceMgr)
 	m_VSShader = &instanceMgr.FindOrCreateShaderGroup(ShaderType::Vertex, "xlitgeneric_vs", s_SpecConstLayout);
 	m_PSShader = &instanceMgr.FindOrCreateShaderGroup(ShaderType::Pixel, "xlitgeneric_ps", s_SpecConstLayout);
 
-	m_UBufCommon = &instanceMgr.GetUniformBufferPool();
+	m_UniformBufPool = &instanceMgr.GetUniformBufferPool();
 	m_UBufCommonIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::ShaderCommon);
-
-	m_UBufModelMatrices = &instanceMgr.GetUniformBufferPool();
 	m_UBufModelMatricesIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::VSModelMatrices);
-
-	m_UniformBuf = &instanceMgr.GetUniformBufferPool();
 	m_UniformBufferIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::ShaderCustom);
 }
 
@@ -373,7 +403,10 @@ void Shader::DrawCloakBlendedPass(DrawParams& params)
 		//SetInitialShadowState();
 
 		// Set stream format (note that this shader supports compression)
-		params.m_Format.AddFlags(VertexFormatFlags::Position | VertexFormatFlags::Normal | VertexFormatFlags::Meta_Compressed);
+		params.m_Format.AddFlags(VertexFormatFlags::Position | VertexFormatFlags::Normal);
+
+		if (SupportsCompressedVertices())
+			params.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
 
 		// Textures
 
@@ -456,7 +489,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 	DrawParams drawParams(params);
 
-	const bool bVertexLitGeneric = IsVertexLitGeneric();
+	const bool bVertexLitGeneric = IsVertexLit();
 	const bool hasDiffuseLighting = drawParams.m_SpecConsts.DIFFUSELIGHTING = bVertexLitGeneric;
 	const bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST);
 	const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
@@ -488,7 +521,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		SetBlendingShadowState(EvaluateBlendRequirements());
 
 		drawParams.m_Format.AddFlags(VertexFormatFlags::Position);
-		drawParams.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
+
+		if (SupportsCompressedVertices())
+			drawParams.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
 
 		if (bHasVertexAlpha || bHasVertexColor)
 			drawParams.m_Format.AddFlags(VertexFormatFlags::Color);
@@ -566,9 +601,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		}
 
 		// Update data and bind uniform buffers
-		params.dynamic->BindUniformBuffer(m_UniformBuf->Create(drawParams.m_Uniforms), m_UniformBufferIndex);
-		params.dynamic->BindUniformBuffer(m_UBufCommon->Create(drawParams.m_UniformsCommon), m_UBufCommonIndex);
-		params.dynamic->BindUniformBuffer(m_UBufModelMatrices->Create(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_Uniforms), m_UniformBufferIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_UniformsCommon), m_UBufCommonIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
 
 		// Set
 		params.dynamic->SetVertexShader(m_VSShader->FindOrCreateInstance(drawParams.m_SpecConsts));
@@ -657,7 +692,7 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 	// This shader can be used with hw skinning
 	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 
-	if (IsVertexLitGeneric())
+	if (IsVertexLit())
 	{
 		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
 	}

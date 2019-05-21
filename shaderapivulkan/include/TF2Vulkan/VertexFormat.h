@@ -29,6 +29,7 @@ namespace TF2Vulkan
 		Meta_VertexShader = VERTEX_FORMAT_VERTEX_SHADER,
 		Meta_UseExactFormat = VERTEX_FORMAT_USE_EXACT_FORMAT,
 		Meta_Compressed = VERTEX_FORMAT_COMPRESSED,
+		Meta_Unknown = VERTEX_FORMAT_UNKNOWN,
 	};
 
 	union VertexFormat
@@ -60,6 +61,8 @@ namespace TF2Vulkan
 		void SetTexCoordSize(uint_fast8_t index, uint_fast8_t size);
 		VertexCompressionType_t GetCompressionType() const;
 
+		constexpr bool IsUnknownFormat() const { return m_Flags == VertexFormatFlags::Meta_Unknown; }
+
 		void SetCompressionEnabled(bool enabled);
 
 		struct ElementType final
@@ -82,8 +85,8 @@ namespace TF2Vulkan
 
 		struct Element
 		{
-			const ElementType* m_Type = nullptr;
-			uint_fast8_t m_Offset = 0;
+			const ElementType* m_Type;// = nullptr;
+			uint_fast8_t m_Offset;// = 0;
 		};
 
 		[[nodiscard]] uint_fast8_t GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize = nullptr) const;

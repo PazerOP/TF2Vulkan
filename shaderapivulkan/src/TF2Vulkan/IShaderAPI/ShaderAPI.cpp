@@ -1,12 +1,12 @@
-#include "FormatInfo.h"
-#include "StateManagerDynamic.h"
-#include "SamplerSettings.h"
+#include "TF2Vulkan/FormatInfo.h"
+#include "IShaderAPI_StateManagerDynamic.h"
+#include "TF2Vulkan/SamplerSettings.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
 #include "TF2Vulkan/TextureData.h"
-#include "VulkanFactories.h"
-#include "VulkanMesh.h"
-#include "VulkanUtil.h"
+#include "TF2Vulkan/VulkanFactories.h"
+#include "TF2Vulkan/VulkanMesh.h"
+#include "TF2Vulkan/VulkanUtil.h"
 
 #include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
@@ -47,7 +47,6 @@ namespace
 
 		void SetVertexShaderStateAmbientLightCube() override;
 
-		CMeshBuilder* GetVertexModifyBuilder() override;
 		bool InEditorMode() const override;
 
 		MorphFormat_t GetBoundMorphFormat() override { NOT_IMPLEMENTED_FUNC(); }
@@ -77,11 +76,6 @@ namespace
 			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void FlushBufferedPrimitives() override;
-
-		IMesh* GetDynamicMesh(IMaterial* material, int hwSkinBoneCount, bool buffered,
-			IMesh* vertexOverride, IMesh* indexOverride) override;
-		IMesh* GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFormat, int hwSkinBoneCount,
-			bool buffered, IMesh* vertexOverride, IMesh* indexOverride) override;
 
 		bool IsTranslucent(StateSnapshot_t id) const override;
 		bool IsAlphaTested(StateSnapshot_t id) const override;
@@ -147,9 +141,6 @@ namespace
 
 		void ResetRenderState(bool fullReset) override;
 
-		int GetCurrentDynamicVBSize() override { NOT_IMPLEMENTED_FUNC(); }
-		void DestroyVertexBuffers(bool exitingLevel) override { NOT_IMPLEMENTED_FUNC(); }
-
 		void EvictManagedResources() override;
 
 		void SyncToken(const char* token) override { NOT_IMPLEMENTED_FUNC(); }
@@ -174,9 +165,6 @@ namespace
 
 		void DXSupportLevelChanged() override;
 
-		void EnableUserClipTransformOverride(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
-		void UserClipTransform(const VMatrix& worldToView) override { NOT_IMPLEMENTED_FUNC(); }
-
 		MorphFormat_t ComputeMorphFormat(int snapshots, StateSnapshot_t* ids) const override;
 
 		void HandleDeviceLost() override { NOT_IMPLEMENTED_FUNC(); }
@@ -184,17 +172,10 @@ namespace
 		void SetFastClipPlane(const float* plane) override { NOT_IMPLEMENTED_FUNC(); }
 		void EnableFastClip(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void GetMaxToRender(IMesh* mesh, bool maxUntilFlush, int* maxVerts, int* maxIndices) override { NOT_IMPLEMENTED_FUNC(); }
-
-		int GetMaxVerticesToRender(IMaterial* material) override { NOT_IMPLEMENTED_FUNC(); }
-		int GetMaxIndicesToRender() override { NOT_IMPLEMENTED_FUNC(); }
-
 		void ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void DisableAllLocalLights() override { NOT_IMPLEMENTED_FUNC(); }
 		int CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs) override { NOT_IMPLEMENTED_FUNC(); }
-
-		IMesh* GetFlexMesh() override { NOT_IMPLEMENTED_FUNC(); }
 
 		bool SupportsMSAAMode(int msaaMode) override { NOT_IMPLEMENTED_FUNC(); }
 
@@ -299,18 +280,8 @@ namespace
 
 		void CopyTextureToTexture(int something1, int something2) override { NOT_IMPLEMENTED_FUNC(); }
 
-		const ActiveMeshData& GetActiveMesh() override { return m_ActiveMesh.top(); }
-		void PushActiveMesh(const ActiveMeshData& mesh) override { m_ActiveMesh.push(mesh); }
-		void PopActiveMesh() override { m_ActiveMesh.pop(); }
-
 	private:
 		mutable std::recursive_mutex m_ShaderLock;
-
-		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
-
-		CMeshBuilder m_MeshBuilder;
-
-		std::stack<ActiveMeshData, std::vector<ActiveMeshData>> m_ActiveMesh;
 
 		bool m_IsInFrame = false;
 		ShaderAPITextureHandle_t m_L2GConvTex_SRGBWriteEnabled = INVALID_SHADERAPI_TEXTURE_HANDLE;
@@ -325,7 +296,7 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderDynamicNext, SHADERDYNAMICNE
 
 IShaderAPI_StateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
 IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
-IShaderTextureManager& TF2Vulkan::g_TextureManager = s_ShaderAPI;
+IShaderAPI_TextureManager& TF2Vulkan::g_TextureManager = s_ShaderAPI;
 
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
@@ -414,26 +385,6 @@ void ShaderAPI::SetPIXMarker(const Color& color, const char* name)
 {
 	LOG_FUNC();
 	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(color, name);
-}
-
-IMesh* ShaderAPI::GetDynamicMesh(IMaterial* material, int hwSkinBoneCount,
-	bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
-{
-	LOG_FUNC();
-	return GetDynamicMeshEx(material, material->GetVertexFormat(), hwSkinBoneCount, buffered, vertexOverride, indexOverride);
-}
-
-IMesh* ShaderAPI::GetDynamicMeshEx(IMaterial* material, VertexFormat_t vertexFormat,
-	int hwSkinBoneCount, bool buffered, IMesh* vertexOverride, IMesh* indexOverride)
-{
-	LOG_FUNC();
-
-	const VertexFormat fmt(vertexFormat);
-	assert(hwSkinBoneCount == 0);
-	assert(fmt.m_BoneWeightCount == 0);
-	assert(!(fmt.m_Flags & VertexFormatFlags::BoneIndex));
-
-	return &m_DynamicMeshes.try_emplace(fmt, fmt, true).first->second;
 }
 
 bool ShaderAPI::IsTranslucent(StateSnapshot_t id) const
@@ -677,12 +628,6 @@ bool ShaderAPI::InEditorMode() const
 void ShaderAPI::BeginPass(StateSnapshot_t snapshot)
 {
 	g_StateManagerStatic.SetState(snapshot);
-}
-
-CMeshBuilder* ShaderAPI::GetVertexModifyBuilder()
-{
-	LOG_FUNC();
-	return &m_MeshBuilder;
 }
 
 void ShaderAPI::RenderPass(int passID, int passCount)

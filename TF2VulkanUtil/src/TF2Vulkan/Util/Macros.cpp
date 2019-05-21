@@ -54,7 +54,7 @@ void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const
 
 void Util::FunctionNotImplemented(const char* fnSig, const char* file, int line)
 {
-	Warning("[TF2Vulkan] %s in %s:%i not implemented\n", fnSig, file, line);
+	Warning("[TF2Vulkan] NOT IMPLEMENTED: %s in %s:%i\n", fnSig, file, line);
 }
 
 static thread_local int s_LogFunctionCallIndentation = 0;

@@ -109,12 +109,12 @@ namespace TF2Vulkan{ namespace Shaders
 	class Fallback_ ## shaderName final : public ::TF2Vulkan::Shaders::ShaderNext<Fallback_ ## shaderName> \
 	{ \
 	public: \
-		const char* GetName() const override { return #shaderName; } \
-		const char* GetFallbackShader(IMaterialVar**) const override { return #fallbackShaderName; } \
-		void OnInitShader(IShaderNextFactory&) override {} \
+		const char* GetName() const override { LOG_FUNC(); return #shaderName; } \
+		const char* GetFallbackShader(IMaterialVar**) const override { LOG_FUNC(); return #fallbackShaderName; } \
+		void OnInitShader(IShaderNextFactory&) override { LOG_FUNC(); } \
 	protected: \
-		void OnInitShaderInstance(IMaterialVar**, IShaderInit*, const char*) override { /*throw __FUNCSIG__;*/ } \
-		void OnDrawElements(const OnDrawElementsParams& params) override { /*throw __FUNCSIG__*/ } \
+		void OnInitShaderInstance(IMaterialVar**, IShaderInit*, const char*) override { LOG_FUNC(); /*throw __FUNCSIG__;*/ } \
+		void OnDrawElements(const OnDrawElementsParams& params) override { LOG_FUNC(); /*throw __FUNCSIG__*/ } \
 	}; \
 	static const Fallback_ ## shaderName ## ::InstanceRegister s_FallbackShader_ ## shaderName;
 } }

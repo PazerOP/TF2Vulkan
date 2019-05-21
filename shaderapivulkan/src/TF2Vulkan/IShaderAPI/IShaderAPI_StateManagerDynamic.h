@@ -1,7 +1,7 @@
 #pragma once
 
-#include "LogicalState.h"
-#include "IShaderTextureManager.h"
+#include "TF2Vulkan/LogicalState.h"
+#include "IShaderAPI_MeshManager.h"
 
 #include <TF2Vulkan/IShaderDynamicNext.h>
 #include <TF2Vulkan/Util/InPlaceVector.h>
@@ -14,9 +14,9 @@
 
 namespace TF2Vulkan
 {
-	class IShaderAPI_StateManagerDynamic : public IShaderTextureManager, public IShaderDynamicNext
+	class IShaderAPI_StateManagerDynamic : public IShaderAPI_MeshManager, public IShaderDynamicNext
 	{
-		using BaseClass = IShaderTextureManager;
+		using BaseClass = IShaderAPI_TextureManager;
 
 	public:
 		IShaderAPI_StateManagerDynamic();
@@ -135,6 +135,9 @@ namespace TF2Vulkan
 		const Vector& GetToneMappingScaleLinear(void) const override final;
 		float GetLightMapScaleFactor(void) const override final { NOT_IMPLEMENTED_FUNC(); }
 
+		void EnableUserClipTransformOverride(bool enable) override final;
+		void UserClipTransform(const VMatrix& worldToView) override final;
+
 		// IShaderDynamicNext
 		void SetShaderInstance(ShaderType type, const IShaderInstance* instance) override final;
 		void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) override final;
@@ -145,7 +148,6 @@ namespace TF2Vulkan
 		const LogicalDynamicState& GetDynamicState() const { return m_State; }
 
 	private:
-
 		MaterialMatrixMode_t m_MatrixMode = {};
 		using MatrixStack = std::stack<VMatrix, std::vector<VMatrix>>;
 		std::array<MatrixStack, NUM_MATRIX_MODES> m_MatrixStacks;

@@ -1,8 +1,8 @@
-#include "IShaderTextureManager.h"
-#include "FormatInfo.h"
-#include "VulkanFactories.h"
+#include "IShaderAPI_TextureManager.h"
+#include "TF2Vulkan/FormatInfo.h"
+#include "TF2Vulkan/VulkanFactories.h"
 #include "TF2Vulkan/TextureData.h"
-#include "FormatConverter.h"
+#include "TF2Vulkan/FormatConverter.h"
 
 #include <TF2Vulkan/Util/std_string.h>
 
@@ -17,7 +17,7 @@
 
 using namespace TF2Vulkan;
 
-const IShaderAPITexture* IShaderTextureManager::TryGetTexture(ShaderAPITextureHandle_t texID) const
+const IShaderAPITexture* IShaderAPI_TextureManager::TryGetTexture(ShaderAPITextureHandle_t texID) const
 {
 	if (auto found = m_Textures.find(texID); found != m_Textures.end())
 		return &found->second;
@@ -25,7 +25,7 @@ const IShaderAPITexture* IShaderTextureManager::TryGetTexture(ShaderAPITextureHa
 	return nullptr;
 }
 
-const IShaderAPITexture& IShaderTextureManager::TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID) const
+const IShaderAPITexture& IShaderAPI_TextureManager::TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID) const
 {
 	if (auto found = TryGetTexture(texID))
 		return *found;
@@ -33,17 +33,17 @@ const IShaderAPITexture& IShaderTextureManager::TryGetTexture(ShaderAPITextureHa
 	return GetTexture(m_StdTextures.at(fallbackID));
 }
 
-IShaderAPITexture* IShaderTextureManager::TryGetTexture(ShaderAPITextureHandle_t texID)
+IShaderAPITexture* IShaderAPI_TextureManager::TryGetTexture(ShaderAPITextureHandle_t texID)
 {
 	return const_cast<IShaderAPITexture*>(std::as_const(*this).TryGetTexture(texID));
 }
 
-IShaderAPITexture& IShaderTextureManager::TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID)
+IShaderAPITexture& IShaderAPI_TextureManager::TryGetTexture(ShaderAPITextureHandle_t texID, StandardTextureId_t fallbackID)
 {
 	return const_cast<IShaderAPITexture&>(std::as_const(*this).TryGetTexture(texID, fallbackID));
 }
 
-const IShaderAPITexture& IShaderTextureManager::GetTexture(ShaderAPITextureHandle_t texID) const
+const IShaderAPITexture& IShaderAPI_TextureManager::GetTexture(ShaderAPITextureHandle_t texID) const
 {
 	auto found = TryGetTexture(texID);
 	if (!found)
@@ -52,31 +52,31 @@ const IShaderAPITexture& IShaderTextureManager::GetTexture(ShaderAPITextureHandl
 	return *found;
 }
 
-IShaderAPITexture& IShaderTextureManager::GetTexture(ShaderAPITextureHandle_t texID)
+IShaderAPITexture& IShaderAPI_TextureManager::GetTexture(ShaderAPITextureHandle_t texID)
 {
 	return const_cast<IShaderAPITexture&>(std::as_const(*this).GetTexture(texID));
 }
 
-ShaderAPITextureHandle_t IShaderTextureManager::GetStdTextureHandle(StandardTextureId_t stdTex) const
+ShaderAPITextureHandle_t IShaderAPI_TextureManager::GetStdTextureHandle(StandardTextureId_t stdTex) const
 {
 	return m_StdTextures.at(stdTex);
 }
 
-void IShaderTextureManager::TexMinFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode)
+void IShaderAPI_TextureManager::TexMinFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode)
 {
 	LOG_FUNC();
 	auto& tex = m_Textures.at(texHandle);
 	tex.m_SamplerSettings.m_MinFilter = mode;
 }
 
-void IShaderTextureManager::TexMagFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode)
+void IShaderAPI_TextureManager::TexMagFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode)
 {
 	LOG_FUNC();
 	auto& tex = m_Textures.at(texHandle);
 	tex.m_SamplerSettings.m_MagFilter = mode;
 }
 
-IShaderAPITexture& IShaderTextureManager::CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI)
+IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI)
 {
 	const auto handle = m_NextTextureHandle++;
 	LOG_FUNC_TEX_NAME(handle, dbgName);
@@ -92,7 +92,7 @@ IShaderAPITexture& IShaderTextureManager::CreateTexture(std::string&& dbgName, c
 	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, imgCI, std::move(createdImg) }).first->second;
 }
 
-ShaderAPITextureHandle_t IShaderTextureManager::CreateTexture(int width, int height, int depth,
+ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int height, int depth,
 	ImageFormat dstImgFormat, int mipLevelCount, int copyCount, CreateTextureFlags_t flags,
 	const char* dbgName, const char* texGroupName)
 {
@@ -171,7 +171,7 @@ ShaderAPITextureHandle_t IShaderTextureManager::CreateTexture(int width, int hei
 	return newTex.GetHandle();
 }
 
-void IShaderTextureManager::CreateTextures(ShaderAPITextureHandle_t * handles, int count,
+void IShaderAPI_TextureManager::CreateTextures(ShaderAPITextureHandle_t * handles, int count,
 	int width, int height, int depth, ImageFormat dstImgFormat, int mipLevelCount,
 	int copyCount, CreateTextureFlags_t flags, const char* dbgName, const char* texGroupName)
 {
@@ -184,7 +184,7 @@ void IShaderTextureManager::CreateTextures(ShaderAPITextureHandle_t * handles, i
 	}
 }
 
-void IShaderTextureManager::TexWrap(ShaderAPITextureHandle_t texHandle, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
+void IShaderAPI_TextureManager::TexWrap(ShaderAPITextureHandle_t texHandle, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
 {
 	LOG_FUNC();
 	auto& tex = m_Textures.at(texHandle);
@@ -207,7 +207,7 @@ void IShaderTextureManager::TexWrap(ShaderAPITextureHandle_t texHandle, ShaderTe
 	}
 }
 
-ShaderAPITextureHandle_t IShaderTextureManager::CreateDepthTexture(ImageFormat rtFormat, int width, int height,
+ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateDepthTexture(ImageFormat rtFormat, int width, int height,
 	const char* dbgName, bool texture)
 {
 	LOG_FUNC();
@@ -216,7 +216,7 @@ ShaderAPITextureHandle_t IShaderTextureManager::CreateDepthTexture(ImageFormat r
 
 	return CreateTexture(width, height, 1, IMAGE_FORMAT_NV_DST24, 1, 0, TEXTURE_CREATE_DEPTHBUFFER, dbgName, TEXTURE_GROUP_RENDER_TARGET);
 }
-void IShaderTextureManager::DeleteTexture(ShaderAPITextureHandle_t tex)
+void IShaderAPI_TextureManager::DeleteTexture(ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC_TEX(tex);
 
@@ -255,7 +255,7 @@ void IShaderTextureManager::DeleteTexture(ShaderAPITextureHandle_t tex)
 	m_Textures.erase(tex);
 }
 
-bool IShaderTextureManager::IsTexture(ShaderAPITextureHandle_t tex)
+bool IShaderAPI_TextureManager::IsTexture(ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC_TEX(tex);
 
@@ -264,7 +264,7 @@ bool IShaderTextureManager::IsTexture(ShaderAPITextureHandle_t tex)
 	return found;
 }
 
-void IShaderTextureManager::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int frameIndex)
+void IShaderAPI_TextureManager::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, IVTFTexture* vtf, int frameIndex)
 {
 	LOG_FUNC_TEX(texHandle);
 
@@ -320,7 +320,7 @@ void IShaderTextureManager::TexImageFromVTF(ShaderAPITextureHandle_t texHandle, 
 	UpdateTexture(texHandle, texDatas, arraySize);
 }
 
-bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data, size_t count)
+bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, const TextureData* data, size_t count)
 {
 	LOG_FUNC_TEX(texHandle);
 
@@ -500,13 +500,13 @@ bool IShaderTextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle, co
 	return true;
 }
 
-void IShaderTextureManager::SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex)
+void IShaderAPI_TextureManager::SetStandardTextureHandle(StandardTextureId_t id, ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC();
 	m_StdTextures.at(id) = tex;
 }
 
-void IShaderTextureManager::TexLodClamp(int something)
+void IShaderAPI_TextureManager::TexLodClamp(int something)
 {
 	LOG_FUNC();
 
@@ -514,7 +514,7 @@ void IShaderTextureManager::TexLodClamp(int something)
 		NOT_IMPLEMENTED_FUNC();
 }
 
-void IShaderTextureManager::TexLodBias(float bias)
+void IShaderAPI_TextureManager::TexLodBias(float bias)
 {
 	LOG_FUNC();
 
@@ -522,7 +522,7 @@ void IShaderTextureManager::TexLodBias(float bias)
 		NOT_IMPLEMENTED_FUNC();
 }
 
-void IShaderTextureManager::GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id)
+void IShaderAPI_TextureManager::GetStandardTextureDimensions(int* width, int* height, StandardTextureId_t id)
 {
 	LOG_FUNC();
 
@@ -536,13 +536,13 @@ void IShaderTextureManager::GetStandardTextureDimensions(int* width, int* height
 		Util::SafeConvert(ci.extent.height, *height);
 }
 
-void IShaderTextureManager::ModifyTexture(ShaderAPITextureHandle_t tex)
+void IShaderAPI_TextureManager::ModifyTexture(ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC();
 	m_ModifyTexture = tex;
 }
 
-void IShaderTextureManager::TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat,
+void IShaderAPI_TextureManager::TexImage2D(int level, int cubeFaceID, ImageFormat dstFormat,
 	int zOffset, int width, int height, ImageFormat srcFormat, bool srcIsTiled, void* imgData)
 {
 	LOG_FUNC();
@@ -559,7 +559,7 @@ void IShaderTextureManager::TexImage2D(int level, int cubeFaceID, ImageFormat ds
 		imgData);
 }
 
-void IShaderTextureManager::TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset,
+void IShaderAPI_TextureManager::TexSubImage2D(int level, int cubeFaceID, int xOffset, int yOffset,
 	int zOffset, int width, int height, ImageFormat srcFormat, int srcStride, bool srcIsTiled, void* imgData)
 {
 	LOG_FUNC();
@@ -584,25 +584,25 @@ void IShaderTextureManager::TexSubImage2D(int level, int cubeFaceID, int xOffset
 	UpdateTexture(m_ModifyTexture, &data, 1);
 }
 
-void IShaderTextureManager::TexImageFromVTF(IVTFTexture* vtf, int frameIndex)
+void IShaderAPI_TextureManager::TexImageFromVTF(IVTFTexture* vtf, int frameIndex)
 {
 	LOG_FUNC();
 	return TexImageFromVTF(m_ModifyTexture, vtf, frameIndex);
 }
 
-void IShaderTextureManager::TexMinFilter(ShaderTexFilterMode_t mode)
+void IShaderAPI_TextureManager::TexMinFilter(ShaderTexFilterMode_t mode)
 {
 	LOG_FUNC();
 	return TexMinFilter(m_ModifyTexture, mode);
 }
 
-void IShaderTextureManager::TexMagFilter(ShaderTexFilterMode_t mode)
+void IShaderAPI_TextureManager::TexMagFilter(ShaderTexFilterMode_t mode)
 {
 	LOG_FUNC();
 	return TexMagFilter(m_ModifyTexture, mode);
 }
 
-void IShaderTextureManager::TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
+void IShaderAPI_TextureManager::TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode)
 {
 	LOG_FUNC();
 	return TexWrap(m_ModifyTexture, coord, wrapMode);

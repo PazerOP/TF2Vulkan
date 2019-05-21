@@ -81,14 +81,12 @@
     <ClCompile Include="src\ShaderDLLVerification.cpp" />
     <ClCompile Include="src\shaders\BaseShaderNext.cpp" />
     <ClCompile Include="src\shaders\BufferClearObeyStencil.cpp" />
-    <ClCompile Include="src\shaders\CBaseShader.cpp" />
+    <ClCompile Include="src\shaders\BaseShader.cpp" />
     <ClCompile Include="src\shaders\Compositor.cpp" />
     <ClCompile Include="src\shaders\DebugDepth.cpp" />
-    <ClCompile Include="src\shaders\DebugDrawEnvmapMask.cpp" />
     <ClCompile Include="src\shaders\DebugLuxel.cpp" />
     <ClCompile Include="src\shaders\DebugNormalMap.cpp" />
     <ClCompile Include="src\shaders\DebugTangentSpace.cpp" />
-    <ClCompile Include="src\shaders\DepthWrite.cpp" />
     <ClCompile Include="src\shaders\Eyeglint.cpp" />
     <ClCompile Include="src\shaders\Fillrate.cpp" />
     <ClCompile Include="src\shaders\LightmappedGeneric.cpp" />

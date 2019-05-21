@@ -46,7 +46,7 @@ namespace Util
 
 //#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)
-#define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __LINE__) (__FUNCSIG__, __FILE__, __LINE__, msg)
+#define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __COUNTER__) (__FUNCSIG__, __FILE__, __LINE__, msg)
 #else
 #define LOG_FUNC_MSG(msg) { ASSERT_MAIN_THREAD(); }
 #endif

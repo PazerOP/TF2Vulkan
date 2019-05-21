@@ -1,9 +1,9 @@
 #include "stdafx.h"
-#include "StateManagerDynamic.h"
+#include "IShaderAPI_StateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
 #include "interface/internal/IShaderInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
-#include "shaders/VulkanShaderManager.h"
+#include "TF2Vulkan/shaders/VulkanShaderManager.h"
 
 #include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
@@ -193,8 +193,21 @@ const Vector& IShaderAPI_StateManagerDynamic::GetToneMappingScaleLinear() const
 	return m_State.m_TonemappingScale;
 }
 
+void IShaderAPI_StateManagerDynamic::EnableUserClipTransformOverride(bool enable)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_UserClipTransformOverrideEnabled, enable, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::UserClipTransform(const VMatrix& worldToView)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_UserClipTransformOverride, worldToView, m_Dirty);
+}
+
 void IShaderAPI_StateManagerDynamic::SetShaderInstance(ShaderType type, const IShaderInstance* instance)
 {
+	assert(instance->GetGroup().GetShaderType() == type);
 	switch (type)
 	{
 	case ShaderType::Pixel:

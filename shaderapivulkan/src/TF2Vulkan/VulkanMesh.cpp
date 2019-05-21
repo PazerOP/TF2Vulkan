@@ -1,4 +1,4 @@
-#include "StateManagerDynamic.h"
+#include "IShaderAPI/IShaderAPI_StateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
 #include "interface/internal/IBufferPoolInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
@@ -13,9 +13,7 @@ static std::aligned_storage_t<256> s_FallbackMeshData;
 
 static void AssertCheckHeap()
 {
-#ifdef _DEBUG
 	//assert(_CrtCheckMemory());
-#endif
 }
 
 void VulkanGPUBuffer::UpdateInnerBuffer(const char* dbgName,
@@ -344,7 +342,7 @@ int VulkanMesh::GetRoomRemaining() const
 }
 
 VulkanIndexBuffer::VulkanIndexBuffer(bool isDynamic) :
-	m_IsDynamic(isDynamic)
+	VulkanGPUBuffer(isDynamic)
 {
 }
 
@@ -360,10 +358,16 @@ MaterialIndexFormat_t VulkanIndexBuffer::IndexFormat() const
 	return MaterialIndexFormat_t();
 }
 
+bool VulkanVertexBuffer::IsDynamic() const
+{
+	LOG_FUNC();
+	return VulkanGPUBuffer::IsDynamic();
+}
+
 bool VulkanIndexBuffer::IsDynamic() const
 {
 	LOG_FUNC();
-	return m_IsDynamic;
+	return VulkanGPUBuffer::IsDynamic();
 }
 
 void VulkanIndexBuffer::BeginCastBuffer(MaterialIndexFormat_t format)
@@ -432,6 +436,11 @@ void VulkanIndexBuffer::ValidateData(int indexCount, const IndexDesc_t& desc)
 	NOT_IMPLEMENTED_FUNC();
 }
 
+VulkanGPUBuffer::VulkanGPUBuffer(bool isDynamic) :
+	m_IsDynamic(isDynamic)
+{
+}
+
 void VulkanGPUBuffer::GetGPUBuffer(vk::Buffer& buffer, size_t& offset) const
 {
 	if (auto foundBuf = std::get_if<vma::AllocatedBuffer>(&m_Buffer))
@@ -461,7 +470,7 @@ size_t VulkanIndexBuffer::IndexDataSize() const
 }
 
 VulkanVertexBuffer::VulkanVertexBuffer(const VertexFormat& format, bool isDynamic) :
-	m_IsDynamic(isDynamic),
+	VulkanGPUBuffer(isDynamic),
 	m_Format(format)
 {
 }
@@ -476,12 +485,6 @@ VertexFormat_t VulkanVertexBuffer::GetVertexFormat() const
 {
 	NOT_IMPLEMENTED_FUNC();
 	return VertexFormat_t();
-}
-
-bool VulkanVertexBuffer::IsDynamic() const
-{
-	LOG_FUNC();
-	return m_IsDynamic;
 }
 
 void VulkanVertexBuffer::BeginCastBuffer(VertexFormat_t format)
@@ -504,6 +507,8 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 {
 	LOG_FUNC();
 	AssertCheckHeap();
+
+	assert(!m_Format.IsUnknownFormat());
 
 	if (append)
 		NOT_IMPLEMENTED_FUNC();

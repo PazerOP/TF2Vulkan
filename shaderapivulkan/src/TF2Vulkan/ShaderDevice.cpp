@@ -2,7 +2,7 @@
 #include "FormatInfo.h"
 #include "interface/internal/IShaderAPIInternal.h"
 #include "interface/internal/IShaderAPITexture.h"
-#include "IShaderTextureManager.h"
+#include "IShaderAPI/IShaderAPI_TextureManager.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "VulkanCommandBufferBase.h"

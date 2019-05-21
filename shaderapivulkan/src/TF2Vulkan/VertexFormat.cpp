@@ -120,16 +120,6 @@ namespace
 }
 #endif
 
-size_t VertexFormat::GetVertexSize() const
-{
-	using VFF = VertexFormatFlags;
-	size_t size = 0;
-
-	NOT_IMPLEMENTED_FUNC();
-
-	return size;
-}
-
 VertexCompressionType_t VertexFormat::GetCompressionType() const
 {
 	if (m_Flags & VertexFormatFlags::Meta_Compressed)
@@ -146,11 +136,84 @@ void VertexFormat::SetCompressionEnabled(bool enabled)
 		m_Flags = m_Flags & ~VertexFormatFlags::Meta_Compressed;
 }
 
+template<typename TFunc>
+static void ForEachVertexElement(const VertexFormat& fmt, const TFunc& func)
+{
+	using VFF = VertexFormatFlags;
+
+	if (fmt.m_Flags & VFF::Position)
+		func(VERTEX_ELEMENT_POSITION);
+	if (fmt.m_Flags & VFF::Normal)
+		func(VERTEX_ELEMENT_NORMAL);
+	if (fmt.m_Flags & VFF::Color)
+		func(VERTEX_ELEMENT_COLOR);
+	if (fmt.m_Flags & VFF::Specular)
+		func(VERTEX_ELEMENT_SPECULAR);
+	if (fmt.m_Flags & VFF::TangentS)
+		func(VERTEX_ELEMENT_TANGENT_S);
+	if (fmt.m_Flags & VFF::TangentT)
+		func(VERTEX_ELEMENT_TANGENT_T);
+	if (fmt.m_Flags & VFF::Wrinkle)
+		func(VERTEX_ELEMENT_WRINKLE);
+	if (fmt.m_Flags & VFF::BoneIndex)
+		func(VERTEX_ELEMENT_BONEINDEX);
+
+	if (fmt.m_BoneWeightCount >= 1)
+		func(VERTEX_ELEMENT_BONEWEIGHTS1);
+	if (fmt.m_BoneWeightCount >= 2)
+		func(VERTEX_ELEMENT_BONEWEIGHTS2);
+	if (fmt.m_BoneWeightCount >= 3)
+		func(VERTEX_ELEMENT_BONEWEIGHTS3);
+	if (fmt.m_BoneWeightCount >= 4)
+		func(VERTEX_ELEMENT_BONEWEIGHTS4);
+
+	switch (fmt.m_UserDataSize)
+	{
+	default:
+		assert(!"Unknown userdata size");
+	case 0:
+		break;
+	case 1:
+		func(VERTEX_ELEMENT_USERDATA1);
+		break;
+	case 2:
+		func(VERTEX_ELEMENT_USERDATA2);
+		break;
+	case 3:
+		func(VERTEX_ELEMENT_USERDATA3);
+		break;
+	case 4:
+		func(VERTEX_ELEMENT_USERDATA4);
+		break;
+	}
+
+	for (int i = 0; i < VERTEX_MAX_TEXTURE_COORDINATES; i++)
+	{
+		auto texCoordSize = fmt.GetTexCoordSize(i);
+		if (texCoordSize > 0)
+			func(VertexElement_t(VERTEX_ELEMENT_TEXCOORD1D_0 + ((texCoordSize - 1) * VERTEX_MAX_TEXTURE_COORDINATES) + i));
+	}
+}
+
+size_t VertexFormat::GetVertexSize() const
+{
+	size_t size = 0;
+
+	const auto compression = GetCompressionType();
+	const auto& elemTypes = GetElemTypes(compression);
+
+	ForEachVertexElement(*this, [&size, &elemTypes](VertexElement_t elemType)
+		{
+			size += elemTypes[elemType].GetTotalSize();
+		});
+
+	return size;
+}
+
 uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t maxElements, size_t* totalSize) const
 {
 	assert(maxElements >= VERTEX_ELEMENT_NUMELEMENTS);
 
-	using VFF = VertexFormatFlags;
 	size_t totalSizeTemp = 0;
 	uint_fast8_t elemCount = 0;
 
@@ -188,58 +251,7 @@ uint_fast8_t VertexFormat::GetVertexElements(Element* elements, uint_fast8_t max
 		totalSizeTemp += e.m_Type->GetTotalSize();
 	};
 
-	if (m_Flags & VFF::Position)
-		StoreElement(VERTEX_ELEMENT_POSITION);
-	if (m_Flags & VFF::Normal)
-		StoreElement(VERTEX_ELEMENT_NORMAL);
-	if (m_Flags & VFF::Color)
-		StoreElement(VERTEX_ELEMENT_COLOR);
-	if (m_Flags & VFF::Specular)
-		StoreElement(VERTEX_ELEMENT_SPECULAR);
-	if (m_Flags & VFF::TangentS)
-		StoreElement(VERTEX_ELEMENT_TANGENT_S);
-	if (m_Flags & VFF::TangentT)
-		StoreElement(VERTEX_ELEMENT_TANGENT_T);
-	if (m_Flags & VFF::Wrinkle)
-		StoreElement(VERTEX_ELEMENT_WRINKLE);
-	if (m_Flags & VFF::BoneIndex)
-		StoreElement(VERTEX_ELEMENT_BONEINDEX);
-
-	if (m_BoneWeightCount >= 1)
-		StoreElement(VERTEX_ELEMENT_BONEWEIGHTS1);
-	if (m_BoneWeightCount >= 2)
-		StoreElement(VERTEX_ELEMENT_BONEWEIGHTS2);
-	if (m_BoneWeightCount >= 3)
-		StoreElement(VERTEX_ELEMENT_BONEWEIGHTS3);
-	if (m_BoneWeightCount >= 4)
-		StoreElement(VERTEX_ELEMENT_BONEWEIGHTS4);
-
-	switch (m_UserDataSize)
-	{
-	default:
-		assert(!"Unknown userdata size");
-	case 0:
-		break;
-	case 1:
-		StoreElement(VERTEX_ELEMENT_USERDATA1);
-		break;
-	case 2:
-		StoreElement(VERTEX_ELEMENT_USERDATA2);
-		break;
-	case 3:
-		StoreElement(VERTEX_ELEMENT_USERDATA3);
-		break;
-	case 4:
-		StoreElement(VERTEX_ELEMENT_USERDATA4);
-		break;
-	}
-
-	for (int i = 0; i < VERTEX_MAX_TEXTURE_COORDINATES; i++)
-	{
-		auto texCoordSize = GetTexCoordSize(i);
-		if (texCoordSize > 0)
-			StoreElement(VertexElement_t(VERTEX_ELEMENT_TEXCOORD1D_0 + ((texCoordSize - 1) * VERTEX_MAX_TEXTURE_COORDINATES) + i));
-	}
+	ForEachVertexElement(*this, StoreElement);
 
 	if (totalSize)
 		*totalSize = totalSizeTemp;
