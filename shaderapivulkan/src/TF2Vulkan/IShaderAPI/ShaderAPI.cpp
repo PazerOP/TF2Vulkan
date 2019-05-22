@@ -284,6 +284,7 @@ namespace
 }
 
 static ShaderAPI s_ShaderAPI;
+IShaderAPI* ::g_ShaderAPI = &s_ShaderAPI;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderAPI, SHADERAPI_INTERFACE_VERSION, s_ShaderAPI);
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderDynamicNext, SHADERDYNAMICNEXT_INTERFACE_VERSION, s_ShaderAPI);
 //EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderDynamicAPI, SHADERDYNAMIC_INTERFACE_VERSION, s_ShaderAPI);
@@ -368,11 +369,8 @@ StateSnapshot_t ShaderAPI::TakeSnapshot()
 
 void ShaderAPI::FlushBufferedPrimitives()
 {
-	if (g_ShaderDevice.IsPrimaryCmdBufReady())
-	{
-		constexpr auto flushBufferedPrimitivesColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
-		g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(flushBufferedPrimitivesColor, "ShaderAPI::FlushBufferedPrimitives()");
-	}
+	//if (g_ShaderDevice.IsPrimaryCmdBufReady())
+	//	TF2VULKAN_PIX_MARKER(__FUNCTION__);
 }
 
 void ShaderAPI::SetPIXMarker(const Color& color, const char* name)
@@ -503,7 +501,7 @@ bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
 	return false;
 }
 
-const vk::ImageView& ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageViewCreateInfo& viewCreateInfo)
+vk::ImageView ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageViewCreateInfo& viewCreateInfo)
 {
 	auto& imgViews = m_ImageViews;
 
@@ -608,8 +606,8 @@ void ShaderAPI::SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgb
 }
 
 ShaderAPI::ShaderTexture::ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
-	const vk::ImageCreateInfo& ci, vma::AllocatedImage&& img) :
-	m_DebugName(std::move(debugName)), m_Handle(handle), m_CreateInfo(ci), m_Image(std::move(img))
+	const Factories::ImageFactory& factory, vma::AllocatedImage&& img) :
+	m_DebugName(std::move(debugName)), m_Handle(handle), m_Factory(factory), m_Image(std::move(img))
 {
 }
 
@@ -937,6 +935,7 @@ void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
 	ShaderAPITextureHandle_t dstTexID, const Rect_t* srcRect, const Rect_t* dstRect)
 {
 	LOG_FUNC();
+	TF2VULKAN_PIX_MARKER(__FUNCTION__);
 
 	auto& srcTex = GetTexture(srcRT);
 	auto& dstTex = GetTexture(dstTexID);
@@ -978,31 +977,48 @@ void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
 		.SetProducerStage(vk::PipelineStageFlagBits::eColorAttachmentOutput, true, true)
 		.SetConsumerStage(vk::PipelineStageFlagBits::eTransfer, true, true);
 
-	barrierFactory
-		.SetOldLayout(vk::ImageLayout::eColorAttachmentOptimal)
+	barrierFactory.SetImage(srcTex)
+		.SetOldLayout(srcTex.GetDefaultLayout())
 		.SetNewLayout(vk::ImageLayout::eTransferSrcOptimal)
-		.SetImage(srcTex)
 		.Submit(cmdBuf);
 
-	barrierFactory
-		.SetOldLayout(vk::ImageLayout::eUndefined)
+	barrierFactory.SetImage(dstTex)
+		.SetOldLayout(dstTex.GetDefaultLayout())
 		.SetNewLayout(vk::ImageLayout::eTransferDstOptimal)
-		.SetImage(dstTex)
 		.Submit(cmdBuf);
 
-	cmdBuf.blitImage(srcTex.GetImage(), vk::ImageLayout::eColorAttachmentOptimal,
-		dstTex.GetImage(), vk::ImageLayout::eTransferDstOptimal,
-		blit, vk::Filter::eLinear);
+	if ((blit.srcOffsets[1] - blit.srcOffsets[0]) == (blit.dstOffsets[1] - blit.dstOffsets[0]))
+	{
+		const vk::ImageCopy copy(
+			blit.srcSubresource, blit.srcOffsets[0],
+			blit.dstSubresource, blit.dstOffsets[0],
+			ToExtent(blit.srcOffsets[1] - blit.srcOffsets[0]));
+
+		// We can just copy
+		// TODO: Ensure that formats are compatible
+		cmdBuf.copyImage(srcTex.GetImage(), vk::ImageLayout::eTransferSrcOptimal,
+			dstTex.GetImage(), vk::ImageLayout::eTransferDstOptimal,
+			copy);
+	}
+	else
+	{
+		// Need to blit
+		cmdBuf.blitImage(srcTex.GetImage(), vk::ImageLayout::eColorAttachmentOptimal,
+			dstTex.GetImage(), vk::ImageLayout::eTransferDstOptimal,
+			blit, vk::Filter::eLinear);
+	}
 
 	barrierFactory
 		.SetProducerStage(vk::PipelineStageFlagBits::eTransfer, true, true)
 		.SetConsumerStage(vk::PipelineStageFlagBits::eAllGraphics, true, true);
 
-	barrierFactory
+	barrierFactory.SetImage(srcTex)
 		.SetOldLayout(vk::ImageLayout::eTransferSrcOptimal)
-		.SetNewLayout(vk::ImageLayout::eColorAttachmentOptimal)
-		.SetImage(srcTex)
+		.SetNewLayout(srcTex.GetDefaultLayout())
 		.Submit(cmdBuf);
 
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	barrierFactory.SetImage(dstTex)
+		.SetOldLayout(vk::ImageLayout::eTransferDstOptimal)
+		.SetNewLayout(dstTex.GetDefaultLayout())
+		.Submit(cmdBuf);
 }

@@ -111,3 +111,13 @@ namespace Util{ namespace CRC32
 			ProcessValue(crc, buf[i]);
 	}
 } }
+
+inline constexpr CRC32_t operator ""_crc32(const char* str, size_t size)
+{
+	CRC32_t retVal = Util::CRC32::INIT_VALUE;
+	for (size_t i = 0; i < size; i++)
+		Util::CRC32::ProcessValue(retVal, str[i]);
+
+	Util::CRC32::Finalize(retVal);
+	return retVal;
+}

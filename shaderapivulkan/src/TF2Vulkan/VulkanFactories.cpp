@@ -4,6 +4,8 @@
 #include "VulkanFactories.h"
 #include "VulkanUtil.h"
 
+#include <TF2Vulkan/Util/platform.h>
+
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Factories;
 
@@ -138,12 +140,36 @@ ImageFactory& ImageFactory::SetAllowMapping(bool allow)
 	return *this;
 }
 
+ImageFactory& ImageFactory::SetDefaultLayout(vk::ImageLayout layout)
+{
+	m_DefaultLayout = layout;
+	return *this;
+}
+
 vma::AllocatedImage ImageFactory::Create() const
 {
 	auto created = g_ShaderDevice.GetVulkanAllocator().createImageUnique(m_CreateInfo, m_AllocInfo);
 
 	if (!m_DebugName.empty())
 		g_ShaderDevice.SetDebugName(created.GetImage(), m_DebugName.c_str());
+
+	if (m_DefaultLayout != m_CreateInfo.initialLayout)
+	{
+		auto cmdBuf = g_ShaderDevice.GetGraphicsQueue().CreateCmdBufferAndBegin();
+
+		Factories::ImageMemoryBarrierFactory{}
+			.SetImage(created.GetImage())
+			.SetAspectsFromFormat(m_CreateInfo.format)
+			.SetFullSubresourceRange(m_CreateInfo)
+			.SetOldLayout(vk::ImageLayout::eUndefined)
+			.SetNewLayout(m_DefaultLayout)
+			.SetProducerStage(vk::PipelineStageFlagBits::eBottomOfPipe)
+			.SetConsumerStage(vk::PipelineStageFlagBits::eTopOfPipe)
+			.Submit(*cmdBuf);
+
+		Plat_DebugString("%s(): Transitioning \"%s\" to %s\n", __FUNCTION__, m_DebugName.c_str(), vk::to_string(m_DefaultLayout).c_str());
+		cmdBuf->Submit();
+	}
 
 	return created;
 }
@@ -167,6 +193,8 @@ static vk::AccessFlags GetAccessFlags(vk::PipelineStageFlags stage, bool read, b
 	default:
 		assert(!"Unknown stage");
 	case PSF::eAllGraphics:
+	case PSF::eTopOfPipe:
+	case PSF::eBottomOfPipe:
 		break;
 
 	case PSF::eTransfer:
@@ -209,6 +237,34 @@ ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetNewLayout(vk::ImageLayo
 	return *this;
 }
 
+ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetAspects(vk::ImageAspectFlags aspects)
+{
+	m_Barrier.subresourceRange.aspectMask = aspects;
+	return *this;
+}
+
+ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetAspectsFromFormat(vk::Format imgFormat)
+{
+	return SetAspects(FormatInfo::GetAspects(imgFormat));
+}
+
+ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetFullSubresourceRange(uint32_t arrayLayerCount, uint32_t mipLevelCount)
+{
+	auto& srr = m_Barrier.subresourceRange;
+
+	srr.baseArrayLayer = 0;
+	srr.baseMipLevel = 0;
+	srr.layerCount = arrayLayerCount;
+	srr.levelCount = mipLevelCount;
+
+	return *this;
+}
+
+ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetFullSubresourceRange(const vk::ImageCreateInfo& ci)
+{
+	return SetFullSubresourceRange(ci.arrayLayers, ci.mipLevels);
+}
+
 ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetImage(vk::Image image)
 {
 	m_Barrier.image = image;
@@ -223,18 +279,12 @@ ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::SetImage(
 	if (setAspects || setFullSubresourceRange)
 	{
 		const auto& ci = image.GetImageCreateInfo();
-		auto& srr = m_Barrier.subresourceRange;
 
 		if (setAspects)
-			srr.aspectMask = TF2Vulkan::FormatInfo::GetAspects(ci.format);
+			SetAspectsFromFormat(ci.format);
 
 		if (setFullSubresourceRange)
-		{
-			srr.baseArrayLayer = 0;
-			srr.baseMipLevel = 0;
-			srr.layerCount = ci.arrayLayers;
-			srr.levelCount = ci.mipLevels;
-		}
+			SetFullSubresourceRange(ci.arrayLayers, ci.mipLevels);
 	}
 
 

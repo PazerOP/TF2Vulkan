@@ -163,6 +163,13 @@ void IVulkanCommandBuffer::blitImage(const vk::Image& srcImg, const vk::ImageLay
 	return GetCmdBuffer().blitImage(srcImg, srcImgLayout, dstImg, dstImgLayout, regions, filter);
 }
 
+void IVulkanCommandBuffer::copyImage(const vk::Image& srcImg, const vk::ImageLayout& srcImgLayout,
+	const vk::Image& dstImg, const vk::ImageLayout& dstImgLayout,
+	const vk::ArrayProxy<const vk::ImageCopy>& regions)
+{
+	return GetCmdBuffer().copyImage(srcImg, srcImgLayout, dstImg, dstImgLayout, regions);
+}
+
 bool IVulkanCommandBuffer::IsActive() const
 {
 	return m_IsActive;

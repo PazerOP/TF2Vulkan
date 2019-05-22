@@ -604,7 +604,8 @@ bool FormatInfo::HasHardwareSupport(vk::Format format, FormatUsage usage, bool f
 
 	if (usage == FormatUsage::ImmutableTexture ||
 		usage == FormatUsage::RenderTarget ||
-		usage == FormatUsage::DepthStencil)
+		usage == FormatUsage::DepthStencil ||
+		usage == FormatUsage::ReadBackTexture)
 	{
 		if (filtering)
 			REQUIRED_FLAGS |= Flags::eSampledImageFilterLinear;
@@ -615,6 +616,9 @@ bool FormatInfo::HasHardwareSupport(vk::Format format, FormatUsage usage, bool f
 			REQUIRED_FLAGS |= Flags::eColorAttachment;
 		else if (usage == FormatUsage::DepthStencil)
 			REQUIRED_FLAGS |= Flags::eDepthStencilAttachment;
+
+		if (usage == FormatUsage::ReadBackTexture)
+			REQUIRED_FLAGS |= Flags::eTransferDst;
 	}
 	else
 	{

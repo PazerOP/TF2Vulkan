@@ -13,6 +13,7 @@ namespace TF2Vulkan
 		ImmutableTexture,
 		RenderTarget,
 		DepthStencil,
+		ReadBackTexture,
 
 		COUNT,
 	};

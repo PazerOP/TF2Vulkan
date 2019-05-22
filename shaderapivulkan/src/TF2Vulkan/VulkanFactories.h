@@ -53,9 +53,11 @@ namespace TF2Vulkan{ namespace Factories
 		ImageFactory& AddUsageFlags(const vk::ImageUsageFlags& usage);
 		ImageFactory& SetUsage(const vk::ImageUsageFlags& usage);
 		ImageFactory& SetAllowMapping(bool allow = true);
+		ImageFactory& SetDefaultLayout(vk::ImageLayout layout);
 
 		vma::AllocatedImage Create() const;
 
+		vk::ImageLayout m_DefaultLayout = vk::ImageLayout::eUndefined;
 		vk::ImageCreateInfo m_CreateInfo;
 	};
 
@@ -84,6 +86,11 @@ namespace TF2Vulkan{ namespace Factories
 
 		ImageMemoryBarrierFactory& SetOldLayout(vk::ImageLayout oldLayout);
 		ImageMemoryBarrierFactory& SetNewLayout(vk::ImageLayout newLayout);
+
+		ImageMemoryBarrierFactory& SetAspects(vk::ImageAspectFlags aspects);
+		ImageMemoryBarrierFactory& SetAspectsFromFormat(vk::Format imgFormat);
+		ImageMemoryBarrierFactory& SetFullSubresourceRange(uint32_t arrayLayerCount, uint32_t mipLevelCount);
+		ImageMemoryBarrierFactory& SetFullSubresourceRange(const vk::ImageCreateInfo& ci);
 
 		ImageMemoryBarrierFactory& SetImage(vk::Image image);
 		ImageMemoryBarrierFactory& SetImage(const IVulkanTexture& image,

@@ -73,15 +73,16 @@ namespace TF2Vulkan
 		struct ShaderTexture final : IShaderAPITexture
 		{
 			ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
-				const vk::ImageCreateInfo& ci, vma::AllocatedImage&& img);
+				const Factories::ImageFactory& ci, vma::AllocatedImage&& img);
 
 			SamplerSettings m_SamplerSettings;
 
 			std::string_view GetDebugName() const override { return m_DebugName; }
-			const vk::Image& GetImage() const override { return m_Image.GetImage(); }
-			const vk::ImageCreateInfo& GetImageCreateInfo() const override { return m_CreateInfo; }
-			const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override;
+			vk::Image GetImage() const override { return m_Image.GetImage(); }
+			const vk::ImageCreateInfo& GetImageCreateInfo() const override { return m_Factory.m_CreateInfo; }
+			vk::ImageView FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override;
 			ShaderAPITextureHandle_t GetHandle() const override { return m_Handle; }
+			vk::ImageLayout GetDefaultLayout() const override { return m_Factory.m_DefaultLayout; }
 
 			std::string m_DebugName;
 			vma::AllocatedImage m_Image;
@@ -91,8 +92,8 @@ namespace TF2Vulkan
 			std::array<LockedTextureRect, MAX_MIPLEVELS> m_LockedRects;
 
 		private:
+			Factories::ImageFactory m_Factory;
 			ShaderAPITextureHandle_t m_Handle;
-			vk::ImageCreateInfo m_CreateInfo;
 		};
 		std::unordered_map<ShaderAPITextureHandle_t, ShaderTexture> m_Textures;
 

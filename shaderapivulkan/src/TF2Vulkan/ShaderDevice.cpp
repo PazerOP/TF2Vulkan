@@ -178,11 +178,12 @@ namespace
 		struct BackbufferColorTexture : IShaderAPITexture
 		{
 			std::string_view GetDebugName() const override { return "__rt_tf2vulkan_backbuffer"; }
-			const vk::Image& GetImage() const override;
+			vk::Image GetImage() const override;
 			const vk::ImageCreateInfo& GetImageCreateInfo() const override;
-			const vk::ImageView& FindOrCreateView() override;
-			const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override { NOT_IMPLEMENTED_FUNC(); }
+			vk::ImageView FindOrCreateView() override;
+			vk::ImageView FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) override { NOT_IMPLEMENTED_FUNC(); }
 			ShaderAPITextureHandle_t GetHandle() const override { return 0; }
+			vk::ImageLayout GetDefaultLayout() const override { return vk::ImageLayout::eColorAttachmentOptimal; }
 		};
 		BackbufferColorTexture m_BackbufferColorTexture;
 	};
@@ -763,13 +764,13 @@ void ShaderDevice::SetDebugName(uint64_t obj, vk::ObjectType type, const char* n
 	GetVulkanDevice().setDebugUtilsObjectNameEXT(info, m_Data.m_DynamicLoader);
 }
 
-const vk::Image& ShaderDevice::BackbufferColorTexture::GetImage() const
+vk::Image ShaderDevice::BackbufferColorTexture::GetImage() const
 {
 	auto& sc = s_Device.m_Data.m_SwapChain;
 	return sc.m_Images.at(sc.m_CurrentFrame).m_Image;
 }
 
-const vk::ImageView& ShaderDevice::BackbufferColorTexture::FindOrCreateView()
+vk::ImageView ShaderDevice::BackbufferColorTexture::FindOrCreateView()
 {
 	auto& sc = s_Device.m_Data.m_SwapChain;
 	return sc.m_Images.at(sc.m_CurrentFrame).m_ImageView.get();

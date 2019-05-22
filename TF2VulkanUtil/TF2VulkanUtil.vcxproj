@@ -101,6 +101,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\interface.h" />
     <ClInclude Include="include\TF2Vulkan\Util\KeyValues.h" />
     <ClInclude Include="include\TF2Vulkan\Util\MemoryPool.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\platform.h" />
     <ClInclude Include="include\TF2Vulkan\Util\SafeConvert.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ScopeFunc.h" />
     <ClInclude Include="include\TF2Vulkan\Util\shaderapi_ishaderdynamic.h" />

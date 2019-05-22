@@ -4,6 +4,7 @@
 #include "TF2Vulkan/TextureData.h"
 #include "TF2Vulkan/FormatConverter.h"
 
+#include <TF2Vulkan/Util/platform.h>
 #include <TF2Vulkan/Util/std_string.h>
 
 #define LOG_FUNC_TEX_NAME(texHandle, texName) \
@@ -103,15 +104,11 @@ IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(Factories::ImageFact
 	auto dbgName = Util::string::concat("[", handle, "] ", std::move(factory.m_DebugName));
 
 	// Print creation
-	{
-		char buf[512];
-		sprintf_s(buf, "[TF2Vulkan] CREATE TEXTURE \"%.*s\"\n", PRINTF_SV(dbgName));
-		Plat_DebugString(buf);
-	}
+	Plat_DebugString("[TF2Vulkan] CREATE TEXTURE \"%.*s\"\n", PRINTF_SV(dbgName));
 
 	factory.m_DebugName = Util::string::concat("Texture: ", dbgName);
 
-	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, factory.m_CreateInfo, factory.Create() }).first->second;
+	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, factory, factory.Create() }).first->second;
 }
 
 IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(std::string&& dbgName, Factories::ImageFactory&& factory)
@@ -148,7 +145,6 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 	createInfo.arrayLayers = 1; // No support for texture arrays in stock valve materialsystem
 	Util::SafeConvert(mipLevelCount, createInfo.mipLevels);
 
-	vma::MemoryType memoryType = vma::MemoryType::eGpuOnly;
 	if (flags & TEXTURE_CREATE_SYSMEM)
 	{
 		factory.SetAllowMapping();
@@ -165,23 +161,29 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 	FormatUsage fmtUsage;
 	assert(!(flags & TEXTURE_CREATE_RENDERTARGET) || !(flags & TEXTURE_CREATE_DEPTHBUFFER));
 
-	vk::ImageLayout targetLayout = vk::ImageLayout::eUndefined;
 	if (flags & TEXTURE_CREATE_RENDERTARGET)
 	{
 		fmtUsage = FormatUsage::RenderTarget;
 		createInfo.usage |= vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc;
-		targetLayout = vk::ImageLayout::eColorAttachmentOptimal;
+		factory.SetDefaultLayout(vk::ImageLayout::eGeneral);
 	}
 	else if (flags & TEXTURE_CREATE_DEPTHBUFFER)
 	{
 		fmtUsage = FormatUsage::DepthStencil;
 		createInfo.usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-		targetLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		factory.SetDefaultLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
+	}
+	else if (flags & TEXTURE_CREATE_SYSMEM)
+	{
+		fmtUsage = FormatUsage::ReadBackTexture;
+		createInfo.usage |= vk::ImageUsageFlagBits::eTransferDst;
+		factory.SetDefaultLayout(vk::ImageLayout::eGeneral);
 	}
 	else
 	{
 		fmtUsage = FormatUsage::ImmutableTexture;
 		createInfo.usage |= vk::ImageUsageFlagBits::eTransferDst;
+		factory.SetDefaultLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
 	createInfo.format = FormatInfo::ConvertImageFormat(FormatInfo::PromoteToHardware(dstImgFormat, fmtUsage, true));
@@ -196,17 +198,7 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 		createInfo.extent.height += (blockSize.height - hDelta) % blockSize.height;
 	}
 
-	auto& newTex = CreateTexture(dbgName, std::move(factory));
-
-	if (targetLayout != vk::ImageLayout::eUndefined)
-	{
-		assert(newTex.GetImageCreateInfo().mipLevels == 1);
-		TransitionImageLayout(newTex.GetImage(), newTex.GetImageCreateInfo().format,
-			vk::ImageLayout::eUndefined, targetLayout,
-			g_ShaderDevice.GetPrimaryCmdBuf(), 0);
-	}
-
-	return newTex.GetHandle();
+	return CreateTexture(dbgName, std::move(factory)).GetHandle();
 }
 
 void IShaderAPI_TextureManager::CreateTextures(ShaderAPITextureHandle_t * handles, int count,
@@ -491,7 +483,8 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 
 	// Copy staging buffer into destination texture
 	{
-		auto pixScope = cmdBuffer->DebugRegionBegin(PIX_COLOR_READWRITE, "ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
+		// FIXME: validation layers sometimes crash when this is enabled
+		//auto pixScope = cmdBuffer->DebugRegionBegin(PIX_COLOR_READWRITE, "ShaderAPI::UpdateTexture(%.*s)", PRINTF_SV(tex.GetDebugName()));
 
 		cmdBuffer->TryEndRenderPass();
 
@@ -587,6 +580,7 @@ void IShaderAPI_TextureManager::LockRect(void** outBits, int* outPitch, ShaderAP
 	int mipLevel, int x, int y, int w, int h, bool write, bool read)
 {
 	LOG_FUNC();
+	TF2VULKAN_PIX_MARKER(__FUNCTION__);
 
 	if (!outBits)
 		return;

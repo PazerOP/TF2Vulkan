@@ -117,6 +117,16 @@ vk::Extent3D TF2Vulkan::ToExtent3D(const vk::Extent2D& extent)
 	return vk::Extent3D{ extent.width, extent.height, 1 };
 }
 
+vk::Extent2D TF2Vulkan::ToExtent(const vk::Offset2D& offset)
+{
+	return vk::Extent2D(offset.x, offset.y);
+}
+
+vk::Extent3D TF2Vulkan::ToExtent(const vk::Offset3D& offset)
+{
+	return vk::Extent3D(offset.x, offset.y, offset.z);
+}
+
 bool TF2Vulkan::IsEqual(const vk::ClearValue& lhs, const vk::ClearValue& rhs, ClearValueType type)
 {
 	switch (type)

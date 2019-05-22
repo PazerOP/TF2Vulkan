@@ -2,13 +2,16 @@
 
 #include "interface/internal/IVulkanCommandBuffer.h"
 
+#include <TF2Vulkan/Util/color.h>
 #include <TF2Vulkan/Util/std_compare.h>
 #include <TF2Vulkan/Util/std_utility.h>
 
-#include <Color.h>
+#include <shaderapi/ishaderapi.h>
 #include <tier0/platform.h>
 
 #include <vulkan/vulkan.hpp>
+
+extern IShaderAPI* g_ShaderAPI;
 
 template<typename T1, typename T2> struct ::std::hash<vk::Flags<T1, T2>>
 {
@@ -62,6 +65,14 @@ STD_HASH_DEFINITION(vk::ImageViewCreateInfo,
 	for (size_t i = 0; i < std::size((array)); i++) \
 		varName[i] = array[i].get();
 
+#define TF2VULKAN_PIX_MARKER(fmt, ...) \
+	{ \
+		constexpr auto color = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION(); \
+		char buf[512]; \
+		sprintf_s(buf, fmt, __VA_ARGS__); \
+		g_ShaderAPI->SetPIXMarker(color.m_RawColor, buf); \
+	}
+
 namespace TF2Vulkan
 {
 	void TransitionImageLayout(const vk::Image& image, const vk::Format& format,
@@ -81,6 +92,8 @@ namespace TF2Vulkan
 
 	vk::Extent2D ToExtent2D(const vk::Extent3D& extent);
 	vk::Extent3D ToExtent3D(const vk::Extent2D& extent);
+	vk::Extent2D ToExtent(const vk::Offset2D& offset);
+	vk::Extent3D ToExtent(const vk::Offset3D& offset);
 
 	enum class ClearValueType : uint_fast8_t
 	{
@@ -123,3 +136,8 @@ inline std::strong_ordering operator<=>(const vk::Extent2D& lhs, const vk::Exten
 	return lhs.width <=> rhs.width;
 }
 #endif
+
+inline vk::Offset3D operator-(const vk::Offset3D& lhs, const vk::Offset3D& rhs)
+{
+	return vk::Offset3D{ lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, };
+}

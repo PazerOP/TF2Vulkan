@@ -3,7 +3,7 @@
 
 using namespace TF2Vulkan;
 
-const vk::ImageView& IVulkanTexture::FindOrCreateView()
+vk::ImageView IVulkanTexture::FindOrCreateView()
 {
 	const auto& imgCreateInfo = GetImageCreateInfo();
 

@@ -13,12 +13,13 @@ namespace TF2Vulkan
 
 	public:
 		virtual std::string_view GetDebugName() const = 0;
-		virtual const vk::Image& GetImage() const = 0;
+		virtual vk::Image GetImage() const = 0;
 		virtual const vk::ImageCreateInfo& GetImageCreateInfo() const = 0;
+		virtual vk::ImageLayout GetDefaultLayout() const = 0;
 
-		virtual const vk::ImageView& FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) = 0;
+		virtual vk::ImageView FindOrCreateView(const vk::ImageViewCreateInfo& createInfo) = 0;
 
-		virtual const vk::ImageView& FindOrCreateView();
+		virtual vk::ImageView FindOrCreateView();
 
 		template<typename T1, typename T2, typename = std::enable_if_t<std::is_integral_v<T1> && std::is_integral_v<T2>>>
 		void GetSize(T1& width, T2& height) const

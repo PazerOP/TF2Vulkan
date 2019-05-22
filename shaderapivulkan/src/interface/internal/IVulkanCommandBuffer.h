@@ -81,6 +81,9 @@ namespace TF2Vulkan
 		void blitImage(const vk::Image& srcImg, const vk::ImageLayout& srcImgLayout,
 			const vk::Image& dstImg, const vk::ImageLayout& dstImgLayout,
 			const vk::ArrayProxy<const vk::ImageBlit>& regions, const vk::Filter& filter);
+		void copyImage(const vk::Image& srcImg, const vk::ImageLayout& srcImgLayout,
+			const vk::Image& dstImg, const vk::ImageLayout& dstImgLayout,
+			const vk::ArrayProxy<const vk::ImageCopy>& regions);
 
 #pragma endregion VkCommandBuffer Functionality
 

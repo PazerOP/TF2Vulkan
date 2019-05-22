@@ -1133,7 +1133,7 @@ DescriptorSet::DescriptorSet(const DescriptorSetKey& key)
 				TEXTURE_BLACK);
 			imgInfo.imageView = tex.FindOrCreateView();
 			//imgInfo.sampler = FindOrCreateSampler(SamplerSettings{}).m_Sampler.get();
-			imgInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+			imgInfo.imageLayout = tex.GetDefaultLayout();
 			write.pImageInfo = &imgInfo;
 			break;
 		}
