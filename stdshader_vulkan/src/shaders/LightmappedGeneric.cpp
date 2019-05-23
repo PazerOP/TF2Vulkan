@@ -1,4 +1,5 @@
 #include "BaseShaderNext.h"
+#include "ParamGroups.h"
 
 #include <TF2Vulkan/IShaderNextFactory.h>
 #include <TF2Vulkan/Util/Macros.h>
@@ -10,7 +11,7 @@ using namespace TF2Vulkan::Shaders;
 
 inline namespace SHADER_NAME
 {
-	struct Params
+	struct Params : DetailParams, SelfillumParams, BumpmapParams, SeamlessScaleParams
 	{
 	};
 
@@ -32,6 +33,12 @@ inline namespace SHADER_NAME
 
 	static const Shader::InstanceRegister s_Shader;
 }
+
+DEFINE_NSHADER_FALLBACK(WorldTwoTextureBlend, Shader);
+DEFINE_NSHADER_FALLBACK(LightmappedReflective, Shader);
+DEFINE_NSHADER_FALLBACK(LightmappedTwoTexture, Shader);
+DEFINE_NSHADER_FALLBACK(LightmappedGeneric_Decal, Shader);
+DEFINE_NSHADER_FALLBACK(DecalBaseTimesLightmapAlphaBlendSelfIllum, Shader);
 
 void Shader::OnInitShader(IShaderNextFactory& factory)
 {

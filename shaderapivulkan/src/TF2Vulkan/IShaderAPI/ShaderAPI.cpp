@@ -102,9 +102,6 @@ namespace
 		void SetHeightClipZ(float z) override { NOT_IMPLEMENTED_FUNC(); }
 		void SetHeightClipMode(MaterialHeightClipMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetClipPlane(int index, const float* plane) override { NOT_IMPLEMENTED_FUNC(); }
-		void EnableClipPlane(int index, bool enable) override { NOT_IMPLEMENTED_FUNC(); }
-
 		ImageFormat GetNearestSupportedFormat(ImageFormat fmt, bool filteringRequired) const override;
 		ImageFormat GetNearestRenderTargetFormat(ImageFormat fmt) const override;
 
@@ -207,9 +204,6 @@ namespace
 
 		void PerformFullScreenStencilOperation() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetScissorRect(const int left, const int top, const int right, const int bottom,
-			const bool enableScissor) override { NOT_IMPLEMENTED_FUNC(); }
-
 		bool SupportsCSAAMode(int numSamples, int qualityLevel) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void InvalidateDelayedShaderConstants() override;
@@ -247,8 +241,6 @@ namespace
 
 		ITexture* GetRenderTargetEx(int renderTargetID) override;
 
-		void LoadBoneMatrix(int boneIndex, const float* m) override { NOT_IMPLEMENTED_FUNC(); }
-
 		void GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended) override { NOT_IMPLEMENTED_FUNC(); }
 
 		float GetAmbientLightCubeLuminance() override { NOT_IMPLEMENTED_FUNC(); }
@@ -276,6 +268,8 @@ namespace
 
 	private:
 		mutable std::recursive_mutex m_ShaderLock;
+
+		std::array<matrix3x4_t, 53> m_BoneMatrices;
 
 		bool m_IsInFrame = false;
 		ShaderAPITextureHandle_t m_L2GConvTex_SRGBWriteEnabled = INVALID_SHADERAPI_TEXTURE_HANDLE;

@@ -198,12 +198,15 @@ void VulkanMesh::ModifyBeginEx(bool readOnly, int firstVertex, int vertexCount, 
 
 void VulkanMesh::SetFlexMesh(IMesh* mesh, int vertexOffset)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	if (mesh || vertexOffset)
+		NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void VulkanMesh::DisableFlexMesh()
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	SetFlexMesh(nullptr, 0);
 }
 
 void VulkanMesh::MarkAsDrawn()

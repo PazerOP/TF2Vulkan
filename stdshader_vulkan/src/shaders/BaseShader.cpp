@@ -8,6 +8,7 @@
 #include "ShaderDLL.h"
 
 #include <TF2Vulkan/Util/Macros.h>
+#include <TF2Vulkan/Util/platform.h>
 #include <TF2Vulkan/Util/SafeConvert.h>
 #include <TF2Vulkan/Util/ValuePusher.h>
 
@@ -378,6 +379,31 @@ namespace
 	};
 }
 
+static constexpr std::string_view to_string(MaterialVarType_t type)
+{
+#pragma push_macro("CASE")
+#undef CASE
+#define CASE(v) case v: return #v;
+	switch (type)
+	{
+	default:
+		assert(!"Unknown MaterialVarType_t");
+		return "UNKNOWN";
+
+		CASE(MATERIAL_VAR_TYPE_FLOAT);
+		CASE(MATERIAL_VAR_TYPE_STRING);
+		CASE(MATERIAL_VAR_TYPE_VECTOR);
+		CASE(MATERIAL_VAR_TYPE_TEXTURE);
+		CASE(MATERIAL_VAR_TYPE_INT);
+		CASE(MATERIAL_VAR_TYPE_FOURCC);
+		CASE(MATERIAL_VAR_TYPE_UNDEFINED);
+		CASE(MATERIAL_VAR_TYPE_MATRIX);
+		CASE(MATERIAL_VAR_TYPE_MATERIAL);
+	}
+
+#pragma pop_macro("CASE")
+}
+
 template<LoadType type>
 static void LoadResource(IMaterialVar** params, int paramCount, IShaderInit* init,
 	const char* texGroupName, int varIndex, int additionalFlags = 0)
@@ -396,6 +422,15 @@ static void LoadResource(IMaterialVar** params, int paramCount, IShaderInit* ini
 
 	if (auto var = params[varIndex]; var && var->IsDefined())
 	{
+		if (const auto actualType = var->GetType();
+			actualType != MATERIAL_VAR_TYPE_TEXTURE && actualType != MATERIAL_VAR_TYPE_STRING)
+		{
+			const auto owning = var->GetOwningMaterial();
+			Warning("Invalid parameter value type %.*s for parameter %s in material %s (shader %s)\n",
+				PRINTF_SV(to_string(actualType)), var->GetName(), owning->GetName(), owning->GetShaderName());
+			return;
+		}
+
 		assert(var->GetType() == MATERIAL_VAR_TYPE_TEXTURE || var->GetType() == MATERIAL_VAR_TYPE_STRING);
 		if constexpr (type == LoadType::Texture)
 		{

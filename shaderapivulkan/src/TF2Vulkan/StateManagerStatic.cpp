@@ -410,12 +410,14 @@ void ShadowStateManager::SetMorphFormat(MorphFormat_t format)
 
 void ShadowStateManager::DisableFogGammaCorrection(bool disable)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FSFogGammaCorrection, !disable, m_Dirty);
 }
 
 void ShadowStateManager::EnableAlphaToCoverage(bool enable)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FSAlphaToCoverage, enable, m_Dirty);
 }
 
 void ShadowStateManager::SetShadowDepthFiltering(Sampler_t stage)

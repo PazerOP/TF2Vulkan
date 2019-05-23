@@ -1,5 +1,7 @@
 #pragma once
 
+#include <variant>
+
 namespace TF2Vulkan
 {
 	class ResourceBlob
@@ -23,21 +25,20 @@ namespace TF2Vulkan
 		void ReleaseAttachedResources();
 
 	private:
-		struct BufferNode;
-		struct ImageNode;
-		struct ImageViewNode;
-		struct AllocatedBufferNode;
-		struct AllocatedImageNode;
-		struct DescriptorSetNode;
-
 		struct IResource
 		{
 			virtual ~IResource() = default;
-			std::unique_ptr<IResource> m_Next;
 		};
 
-		void AddResource(std::unique_ptr<IResource>&& node);
+		using ResourceTypes = std::variant<
+			std::unique_ptr<IResource>,
+			vk::UniqueBuffer,
+			vk::UniqueImage,
+			vk::UniqueImageView,
+			vma::AllocatedBuffer,
+			vma::AllocatedImage,
+			vk::UniqueDescriptorSet>;
 
-		std::unique_ptr<IResource> m_FirstNode;
+		std::vector<ResourceTypes> m_Resources;
 	};
 }

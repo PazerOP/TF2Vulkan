@@ -324,13 +324,13 @@ int MaterialSystemHardwareConfig::MaxVertexShaderBlendMatrices() const
 
 int MaterialSystemHardwareConfig::MaxUserClipPlanes() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
+	LOG_FUNC();
+	return GetLimits().maxClipDistances; // TODO: Is this the same thing as user clip planes
 }
 
 bool MaterialSystemHardwareConfig::UseFastClipping() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 

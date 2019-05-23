@@ -219,6 +219,9 @@ inline namespace XLitGeneric
 	SHADER_ALIAS(Wireframe_DX9, Wireframe);
 }
 
+// FIXME: Implement Shadow shader (it can't really derive from XLitGeneric)
+DEFINE_NSHADER_FALLBACK(Shadow, UnlitGeneric);
+
 DEFINE_NSHADER_FALLBACK(UnlitGeneric_DX8, UnlitGeneric);
 DEFINE_NSHADER_FALLBACK(DebugMorphAccumulator, UnlitGeneric);
 //DEFINE_NSHADER_FALLBACK(VertexLitGeneric_DX8, VertexLitGeneric);
@@ -854,7 +857,7 @@ void Shader::InitParamsCloakBlendedPass(IMaterialVar** params) const
 
 void Shader::InitParamsWeaponSheenPass(IMaterialVar** params) const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void Shader::InitParamsEmissiveScrollBlendedPass(IMaterialVar** params) const
@@ -1045,7 +1048,7 @@ void Shader::InitShaderCloakBlendedPass(IMaterialVar** params)
 
 void Shader::InitShaderWeaponSheenPass(IMaterialVar** params)
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void Shader::InitShaderEmissiveScrollBlendedPass(IMaterialVar** params)

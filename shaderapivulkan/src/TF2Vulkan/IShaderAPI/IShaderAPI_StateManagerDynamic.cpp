@@ -505,3 +505,40 @@ void IShaderAPI_StateManagerDynamic::SetStencilWriteMask(uint32 mask)
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_StencilWriteMask, mask, m_Dirty);
 }
+
+void IShaderAPI_StateManagerDynamic::SetScissorRect(const int left, const int top,
+	const int right, const int bottom, const bool enableScissor)
+{
+	LOG_FUNC();
+
+	Util::SetDirtyVar(m_State.m_ScissorEnable, enableScissor, m_Dirty);
+	if (enableScissor)
+	{
+		Util::SetDirtyVar(m_State.m_ScissorX, left, m_Dirty);
+		Util::SetDirtyVar(m_State.m_ScissorY, top, m_Dirty);
+		Util::SetDirtyVar(m_State.m_ScissorWidth, right - left, m_Dirty);
+		Util::SetDirtyVar(m_State.m_ScissorHeight, bottom - top, m_Dirty);
+	}
+}
+
+void IShaderAPI_StateManagerDynamic::SetClipPlane(int index, const float* plane)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
+void IShaderAPI_StateManagerDynamic::EnableClipPlane(int index, bool enable)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
+void IShaderAPI_StateManagerDynamic::LoadBoneMatrix(int boneIndex, const float* m)
+{
+	LOG_FUNC();
+	return LoadBoneMatrix(Util::SafeConvert<uint32_t>(boneIndex), *reinterpret_cast<const matrix3x4_t*>(m));
+}
+
+void IShaderAPI_StateManagerDynamic::LoadBoneMatrix(uint32_t boneIndex, const matrix3x4_t& matrix)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_BoneMatrices, boneIndex, matrix, m_Dirty);
+}

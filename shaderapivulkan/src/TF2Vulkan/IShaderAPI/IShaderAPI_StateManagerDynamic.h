@@ -96,6 +96,12 @@ namespace TF2Vulkan
 		void SetStencilTestMask(uint32 mask) override final;
 		void SetStencilWriteMask(uint32 mask) override final;
 
+		void SetScissorRect(const int left, const int top, const int right, const int bottom,
+			const bool enableScissor) override final;
+
+		void SetClipPlane(int index, const float* plane) override final;
+		void EnableClipPlane(int index, bool enable) override final;
+
 		void FogStart(float start) override final { NOT_IMPLEMENTED_FUNC(); }
 		void FogEnd(float end) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetFogZ(float fogZ) override final { NOT_IMPLEMENTED_FUNC(); }
@@ -146,6 +152,9 @@ namespace TF2Vulkan
 
 		// Helpers
 		void SetOverbright(float overbright);
+
+		[[deprecated]] void LoadBoneMatrix(int boneIndex, const float* m) override final;
+		void LoadBoneMatrix(uint32_t boneIndex, const matrix3x4_t& m);
 
 		const LogicalDynamicState& GetDynamicState() const { return m_State; }
 

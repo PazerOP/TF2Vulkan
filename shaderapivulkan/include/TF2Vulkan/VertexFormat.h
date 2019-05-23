@@ -34,6 +34,7 @@ namespace TF2Vulkan
 
 	union VertexFormat
 	{
+		constexpr explicit VertexFormat(VertexFormatFlags flags) : m_BaseFmt(VertexFormat_t(flags)) {}
 		constexpr explicit VertexFormat(VertexFormat_t baseFmt = VERTEX_FORMAT_UNKNOWN) :
 			m_BaseFmt(baseFmt)
 		{

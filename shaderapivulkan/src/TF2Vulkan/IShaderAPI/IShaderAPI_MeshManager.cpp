@@ -4,6 +4,12 @@
 
 using namespace TF2Vulkan;
 
+IShaderAPI_MeshManager::IShaderAPI_MeshManager() :
+	m_FlexMesh(VertexFormat(VertexFormatFlags::Position | VertexFormatFlags::Normal | VertexFormatFlags::Wrinkle), true)
+{
+
+}
+
 int IShaderAPI_MeshManager::GetMaxVerticesToRender(IMaterial* material)
 {
 	LOG_FUNC();
@@ -30,6 +36,11 @@ int IShaderAPI_MeshManager::GetMaxIndicesToRender()
 
 	// Technically we're "unlimited" (constrained by (v)ram only)
 	return INDEX_BUFFER_SIZE;
+}
+
+IMesh* IShaderAPI_MeshManager::GetFlexMesh()
+{
+	return &m_FlexMesh;
 }
 
 int IShaderAPI_MeshManager::GetCurrentDynamicVBSize()

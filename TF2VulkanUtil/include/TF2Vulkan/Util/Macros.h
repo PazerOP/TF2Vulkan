@@ -42,7 +42,7 @@ namespace Util
 #define ALL_STATIC_TYPE_INFO(type) \
 	::Util::StaticTypeInfo{ sizeof(type), 0, alignof(type) }
 
-//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)

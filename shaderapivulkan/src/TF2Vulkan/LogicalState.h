@@ -50,6 +50,13 @@ namespace TF2Vulkan
 
 		std::array<BufferPoolEntry, 8> m_UniformBuffers = {};
 
+		// Scissor settings
+		bool m_ScissorEnable = false;
+		int m_ScissorX = -1;
+		int m_ScissorY = -1;
+		int m_ScissorWidth = -1;
+		int m_ScissorHeight = -1;
+
 		// Stencil settings
 		bool m_StencilEnable = false;
 		StencilOperation_t m_StencilFailOp = STENCILOPERATION_KEEP;
@@ -72,6 +79,8 @@ namespace TF2Vulkan
 
 		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
 
+		std::array<matrix3x4_t, 53> m_BoneMatrices{};
+
 		bool m_UserClipTransformOverrideEnabled = false;
 		VMatrix m_UserClipTransformOverride{};
 	};
@@ -88,6 +97,9 @@ namespace TF2Vulkan
 
 			bool m_SRGBRead = false;
 		};
+
+		bool m_FSAlphaToCoverage = false;
+		bool m_FSFogGammaCorrection = true;
 
 		// Vertex shader settings
 		const IShaderGroupInternal* m_VSShader = nullptr;

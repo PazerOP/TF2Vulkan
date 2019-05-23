@@ -9,12 +9,14 @@ namespace TF2Vulkan
 	class IShaderAPI_MeshManager : public IShaderAPI_TextureManager
 	{
 	public:
+		IShaderAPI_MeshManager();
+
 		void GetMaxToRender(IMesh* mesh, bool maxUntilFlush, int* maxVerts, int* maxIndices) override final { NOT_IMPLEMENTED_FUNC(); }
 
 		int GetMaxVerticesToRender(IMaterial* material) override final;
 		int GetMaxIndicesToRender() override final;
 
-		IMesh* GetFlexMesh() override final { NOT_IMPLEMENTED_FUNC(); }
+		IMesh* GetFlexMesh() override final;
 
 		int GetCurrentDynamicVBSize() override final;
 		void DestroyVertexBuffers(bool exitingLevel) override final { NOT_IMPLEMENTED_FUNC(); }
@@ -31,6 +33,7 @@ namespace TF2Vulkan
 
 	private:
 		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
+		VulkanMesh m_FlexMesh;
 
 		CMeshBuilder m_MeshBuilder;
 

@@ -269,9 +269,9 @@ void ShaderDevice::Present()
 		std::numeric_limits<uint64_t>::max(), curImg.m_ImageAvailableSemaphore.get(),
 		nullptr);
 
-#pragma warning(suppress : 4996)
+//#pragma warning(suppress : 4996)
 	auto& primaryCmdBuf = *curImg.m_PrimaryCmdBuf;
-	primaryCmdBuf.endRenderPass();
+	primaryCmdBuf.TryEndRenderPass();
 
 	// Prepare swapchain for presentation
 	TransitionImageLayout(curImg.m_Image, scData.m_SwapChainCreateInfo.imageFormat,
