@@ -34,6 +34,8 @@ namespace TF2Vulkan
 
 		struct ActiveRenderPass final
 		{
+			ActiveRenderPass(const vk::RenderPassBeginInfo& beginInfo, const vk::SubpassContents& contents);
+			std::array<vk::ClearValue, 8> m_ClearValues;
 			vk::RenderPassBeginInfo m_BeginInfo;
 			vk::SubpassContents m_Contents;
 		};

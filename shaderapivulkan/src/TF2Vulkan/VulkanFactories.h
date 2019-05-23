@@ -47,13 +47,16 @@ namespace TF2Vulkan{ namespace Factories
 
 	struct ImageFactory final : VmaObjectFactory<ImageFactory>
 	{
-		ImageFactory() = default;
+		ImageFactory();
 
 		ImageFactory& SetCreateInfo(const vk::ImageCreateInfo& createInfo);
 		ImageFactory& AddUsageFlags(const vk::ImageUsageFlags& usage);
 		ImageFactory& SetUsage(const vk::ImageUsageFlags& usage);
 		ImageFactory& SetAllowMapping(bool allow = true);
 		ImageFactory& SetDefaultLayout(vk::ImageLayout layout);
+		ImageFactory& SetFormat(vk::Format format);
+		ImageFactory& SetExtent(uint32_t width, uint32_t height, uint32_t depth = 1);
+		ImageFactory& SetExtent(const vk::Extent2D& extent);
 
 		vma::AllocatedImage Create() const;
 

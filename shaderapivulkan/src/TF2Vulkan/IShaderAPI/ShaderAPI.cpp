@@ -640,13 +640,13 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 
 bool ShaderAPI::ShouldWriteDepthToDestAlpha() const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 	return false;
 }
 
 bool ShaderAPI::IsHWMorphingEnabled() const
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 	//return true; // Always enabled for vulkan
 	return false; // Disabled (for now) to reduce complexity
 }
@@ -654,7 +654,7 @@ bool ShaderAPI::IsHWMorphingEnabled() const
 void ShaderAPI::MarkUnusedVertexFields(unsigned int flags, int texCoordCount, bool* unusedTexCoords)
 {
 	assert(flags == 0); // TODO: What flags go here?
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 }
 
 ITexture* ShaderAPI::GetRenderTargetEx(int renderTargetID)
@@ -885,7 +885,7 @@ void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
 
 void ShaderAPI::SetVertexShaderStateAmbientLightCube()
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 	// TODO: Update the vertex shader uniform buffer with the ambient light cube
 	// TODO: This probably belongs in IShaderAPI_StateManagerDynamic
 }

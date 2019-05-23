@@ -9,6 +9,7 @@
 #include <TF2Vulkan/Util/DirtyVar.h>
 
 #include <materialsystem/IShader.h>
+#include <materialsystem/imaterialvar.h>
 
 using namespace TF2Vulkan;
 
@@ -87,18 +88,20 @@ void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 {
 	LOG_FUNC();
 
-	constexpr auto bindMessageColor = TF2VULKAN_RANDOM_COLOR_FROM_LOCATION();
-	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(bindMessageColor, "Bind %s: %s", material->GetShaderName(), material->GetName());
+	TF2VULKAN_PIX_MARKER("Bind %s: %s", material->GetShaderName(), material->GetName());
 
-	auto internal = assert_cast<IMaterialInternal*>(material);
-	auto isPrecached = internal->IsPrecached();
-	auto refCount = internal->GetReferenceCount();
-	auto needsWhiteLightmap = internal->GetNeedsWhiteLightmap();
-	auto minLightmapPageID = internal->GetMinLightmapPageID();
-	auto maxLightmapPageID = internal->GetMaxLightmapPageID();
-	IShader* shader = internal->GetShader();
-	auto isPrecachedVars = internal->IsPrecachedVars();
-	auto vertexUsage = VertexFormat(internal->GetVertexUsage());
+	if constexpr (false)
+	{
+		const auto numParams = Util::SafeConvert<size_t>(assert_cast<IMaterialInternal*>(material)->GetShader()->GetNumParams());
+		const auto params = material->GetShaderParams();
+
+		char buf[32768];
+		size_t base = sprintf_s(buf, "Bind %s: %s\n", material->GetShaderName(), material->GetName());
+		for (size_t i = 0; i < numParams && base < std::size(buf); i++)
+			base += sprintf_s(buf + base, std::size(buf) - base, "\t%s: %s\n", params[i]->GetName(), params[i]->GetStringValue());
+
+		Plat_DebugString(buf);
+	}
 
 	Util::SetDirtyVar(m_State.m_BoundMaterial, material, m_Dirty);
 }
@@ -106,6 +109,8 @@ void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle)
 {
 	LOG_FUNC();
+	auto texDbgName = textureHandle ? GetTexture(textureHandle).GetDebugName() : "<NULL>";
+	TF2VULKAN_PIX_MARKER("BindTexture %.*s @ SHADER_SAMPLER%i", PRINTF_SV(texDbgName), sampler);
 	Util::SetDirtyVar(m_State.m_BoundTextures, sampler, textureHandle, m_Dirty);
 }
 
@@ -137,20 +142,20 @@ void IShaderAPI_StateManagerDynamic::SetPixelShaderFogParams(int reg)
 	LOG_FUNC();
 	float fogParams[4];
 
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 
 	SetPixelShaderConstant(reg, fogParams, 1);
 }
 
 void IShaderAPI_StateManagerDynamic::SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack)
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 	// TODO: Remove this function, we write directly into ps state via uniform buffers?
 }
 
 void IShaderAPI_StateManagerDynamic::CommitPixelShaderLighting(int pshReg)
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 }
 
 void IShaderAPI_StateManagerDynamic::GetDX9LightState(LightState_t * state) const
@@ -178,7 +183,7 @@ void IShaderAPI_StateManagerDynamic::GetWorldSpaceCameraPosition(Vector& pos) co
 
 void IShaderAPI_StateManagerDynamic::SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale)
 {
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	NOT_IMPLEMENTED_FUNC();
 }
 
 void IShaderAPI_StateManagerDynamic::SetToneMappingScaleLinear(const Vector & scale)

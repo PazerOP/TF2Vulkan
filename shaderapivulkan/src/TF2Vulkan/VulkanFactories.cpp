@@ -122,9 +122,27 @@ vma::AllocatedBuffer BufferFactory::Create() const
 	return created;
 }
 
+ImageFactory::ImageFactory()
+{
+	m_CreateInfo.arrayLayers = 1;
+	m_CreateInfo.mipLevels = 1;
+}
+
 ImageFactory& ImageFactory::SetCreateInfo(const vk::ImageCreateInfo& createInfo)
 {
 	m_CreateInfo = createInfo;
+	return *this;
+}
+
+ImageFactory& ImageFactory::AddUsageFlags(const vk::ImageUsageFlags& usage)
+{
+	m_CreateInfo.usage |= usage;
+	return *this;
+}
+
+ImageFactory& ImageFactory::SetUsage(const vk::ImageUsageFlags& usage)
+{
+	m_CreateInfo.usage = usage;
 	return *this;
 }
 
@@ -144,6 +162,25 @@ ImageFactory& ImageFactory::SetDefaultLayout(vk::ImageLayout layout)
 {
 	m_DefaultLayout = layout;
 	return *this;
+}
+
+ImageFactory& ImageFactory::SetFormat(vk::Format format)
+{
+	m_CreateInfo.format = format;
+	return *this;
+}
+
+ImageFactory& ImageFactory::SetExtent(uint32_t width, uint32_t height, uint32_t depth)
+{
+	m_CreateInfo.extent = { width, height, depth };
+	m_CreateInfo.imageType = (depth == 1) ? vk::ImageType::e2D : vk::ImageType::e3D;
+
+	return *this;
+}
+
+ImageFactory& ImageFactory::SetExtent(const vk::Extent2D& extent)
+{
+	return SetExtent(extent.width, extent.height);
 }
 
 vma::AllocatedImage ImageFactory::Create() const
@@ -167,7 +204,7 @@ vma::AllocatedImage ImageFactory::Create() const
 			.SetConsumerStage(vk::PipelineStageFlagBits::eTopOfPipe)
 			.Submit(*cmdBuf);
 
-		Plat_DebugString("%s(): Transitioning \"%s\" to %s\n", __FUNCTION__, m_DebugName.c_str(), vk::to_string(m_DefaultLayout).c_str());
+		Plat_DebugString("%s(): Initializing \"%s\" to %s\n", __FUNCTION__, m_DebugName.c_str(), vk::to_string(m_DefaultLayout).c_str());
 		cmdBuf->Submit();
 	}
 
@@ -316,6 +353,8 @@ ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::Submit(IVulkanCommandBuffe
 
 const ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::Submit(IVulkanCommandBuffer& cmdBuf) const
 {
-	cmdBuf.pipelineBarrier(m_SrcStage, m_DstStage, {}, {}, {}, m_Barrier);
+	if (m_Barrier.newLayout != m_Barrier.oldLayout)
+		cmdBuf.pipelineBarrier(m_SrcStage, m_DstStage, {}, {}, {}, m_Barrier);
+
 	return *this;
 }

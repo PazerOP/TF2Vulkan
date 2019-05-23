@@ -1227,9 +1227,9 @@ void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& 
 
 	const auto& state = *m_IDsToPipelines.at(size_t(id));
 
-	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, state.m_Pipeline.get());
-
 	ApplyRenderPass(*state.m_RenderPass, buf);
+
+	buf.bindPipeline(vk::PipelineBindPoint::eGraphics, state.m_Pipeline.get());
 
 	ApplyDescriptorSets(state, dynamicState, buf);
 }

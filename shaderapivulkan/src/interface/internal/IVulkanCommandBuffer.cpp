@@ -55,10 +55,20 @@ void IVulkanCommandBuffer::begin(const vk::CommandBufferBeginInfo& beginInfo)
 	return GetCmdBuffer().begin(beginInfo);
 }
 
+IVulkanCommandBuffer::ActiveRenderPass::ActiveRenderPass(
+	const vk::RenderPassBeginInfo& beginInfo, const vk::SubpassContents& contents) :
+	m_BeginInfo(beginInfo),
+	m_Contents(contents)
+{
+	assert(m_BeginInfo.clearValueCount <= m_ClearValues.size());
+	std::copy(m_BeginInfo.pClearValues, m_BeginInfo.pClearValues + m_BeginInfo.clearValueCount, m_ClearValues.begin());
+	m_BeginInfo.pClearValues = m_ClearValues.data();
+}
+
 void IVulkanCommandBuffer::beginRenderPass(const vk::RenderPassBeginInfo& renderPassBegin, const vk::SubpassContents& contents)
 {
 	assert(!m_ActiveRenderPass);
-	m_ActiveRenderPass.emplace(ActiveRenderPass{ renderPassBegin, contents });
+	m_ActiveRenderPass.emplace(renderPassBegin, contents);
 	return GetCmdBuffer().beginRenderPass(renderPassBegin, contents);
 }
 
@@ -245,12 +255,29 @@ bool IVulkanCommandBuffer::IsRenderPassActive(const vk::RenderPassBeginInfo& beg
 	auto& activeRP = *m_ActiveRenderPass;
 
 	// All the simple comparisons first
-	if (contents != activeRP.m_Contents ||
-		beginInfo.renderPass != activeRP.m_BeginInfo.renderPass ||
-		beginInfo.framebuffer != activeRP.m_BeginInfo.framebuffer ||
-		beginInfo.renderArea != activeRP.m_BeginInfo.renderArea ||
-		beginInfo.clearValueCount != activeRP.m_BeginInfo.clearValueCount)
+	if (contents != activeRP.m_Contents)
 	{
+		TF2VULKAN_PIX_MARKER("IsRenderPassActive() = false: contents");
+		return false;
+	}
+	if (beginInfo.renderPass != activeRP.m_BeginInfo.renderPass)
+	{
+		TF2VULKAN_PIX_MARKER("IsRenderPassActive() = false: beginInfo.renderPass");
+		return false;
+	}
+	if (beginInfo.framebuffer != activeRP.m_BeginInfo.framebuffer)
+	{
+		TF2VULKAN_PIX_MARKER("IsRenderPassActive() = false: beginInfo.framebuffer");
+		return false;
+	}
+	if (beginInfo.renderArea != activeRP.m_BeginInfo.renderArea)
+	{
+		TF2VULKAN_PIX_MARKER("IsRenderPassActive() = false: beginInfo.renderArea");
+		return false;
+	}
+	if (beginInfo.clearValueCount != activeRP.m_BeginInfo.clearValueCount)
+	{
+		TF2VULKAN_PIX_MARKER("IsRenderPassActive() = false: beginInfo.clearValueCount");
 		return false;
 	}
 
@@ -260,7 +287,10 @@ bool IVulkanCommandBuffer::IsRenderPassActive(const vk::RenderPassBeginInfo& beg
 		const auto& a = beginInfo.pClearValues[i];
 		const auto& b = activeRP.m_BeginInfo.pClearValues[i];
 		if (!IsEqual(a, b, ClearValueType::Float))
+		{
+			TF2VULKAN_PIX_MARKER("IsRenderPassActive() = false: beginInfo.pClearValues[%u]", i);
 			return false;
+		}
 	}
 
 	return true;

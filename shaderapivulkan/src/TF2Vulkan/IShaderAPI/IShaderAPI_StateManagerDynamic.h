@@ -107,7 +107,7 @@ namespace TF2Vulkan
 		void GetSceneFogColor(unsigned char* rgb) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetPixelShaderFogParams(int reg) override final;
 		MaterialFogMode_t GetCurrentFogType() const override final { NOT_IMPLEMENTED_FUNC(); }
-		int GetPixelFogCombo() override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); return 0; }
+		int GetPixelFogCombo() override final { NOT_IMPLEMENTED_FUNC(); return 0; }
 
 		void SetLight(int light, const LightDesc_t& desc) override final;
 		void SetLightingOrigin(Vector lightingOrigin) override final { NOT_IMPLEMENTED_FUNC(); }

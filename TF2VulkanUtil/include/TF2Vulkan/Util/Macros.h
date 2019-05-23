@@ -42,9 +42,9 @@ namespace Util
 #define ALL_STATIC_TYPE_INFO(type) \
 	::Util::StaticTypeInfo{ sizeof(type), 0, alignof(type) }
 
+//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 
-//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)
 #define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __COUNTER__) (__FUNCSIG__, __FILE__, __LINE__, msg)
 #else

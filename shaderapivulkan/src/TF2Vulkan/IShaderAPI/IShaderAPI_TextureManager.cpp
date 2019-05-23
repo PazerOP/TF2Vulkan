@@ -99,7 +99,7 @@ IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(
 IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(Factories::ImageFactory&& factory)
 {
 	const auto handle = m_NextTextureHandle++;
-	LOG_FUNC_TEX_NAME(handle, dbgName);
+	LOG_FUNC_TEX_NAME(handle, factory.m_DebugName);
 
 	auto dbgName = Util::string::concat("[", handle, "] ", std::move(factory.m_DebugName));
 

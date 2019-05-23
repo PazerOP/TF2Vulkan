@@ -723,18 +723,14 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 
 	// Depth buffer
 	{
-		vk::ImageCreateInfo ci;
-		ci.format = FormatInfo::PromoteToHardware(vk::Format::eD24UnormS8Uint, FormatUsage::DepthStencil, false);
-		ci.extent.width = newSwapChain.m_SwapChainCreateInfo.imageExtent.width;
-		ci.extent.height = newSwapChain.m_SwapChainCreateInfo.imageExtent.height;
-		ci.extent.depth = 1;
-		ci.arrayLayers = 1;
-		ci.imageType = vk::ImageType::e2D;
-		ci.mipLevels = 1;
-		ci.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled;
+		auto factory = Factories::ImageFactory{}
+			.SetFormat(FormatInfo::PromoteToHardware(vk::Format::eD24UnormS8Uint, FormatUsage::DepthStencil, false))
+			.SetExtent(newSwapChain.m_SwapChainCreateInfo.imageExtent)
+			.SetUsage(vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled)
+			.SetDefaultLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
 		assert(!m_Data.m_DepthTexture); // TODO
-		m_Data.m_DepthTexture = &g_TextureManager.CreateTexture("__rt_tf2vulkan_depth", ci);
+		m_Data.m_DepthTexture = &g_TextureManager.CreateTexture("__rt_tf2vulkan_depth", std::move(factory));
 		assert(m_Data.m_DepthTexture);
 	}
 
