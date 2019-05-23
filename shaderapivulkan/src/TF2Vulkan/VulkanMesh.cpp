@@ -148,7 +148,11 @@ void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
 
 void VulkanMesh::Draw(CPrimList* lists, int listCount)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+
+	// TODO: Indirect rendering
+	for (int i = 0; i < listCount; i++)
+		Draw(lists[i].m_FirstIndex, lists[i].m_NumIndices);
 }
 
 void VulkanMesh::CopyToMeshBuilder(int startVert, int vertCount, int startIndex, int indexCount, int indexOffset, CMeshBuilder& builder)
