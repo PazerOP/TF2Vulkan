@@ -48,7 +48,10 @@ namespace
 void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line)
 {
 	Warning("[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n", condition, fnSig, file, line);
-	assert(false);
+
+	if (Plat_IsInDebugSession())
+		__debugbreak();
+
 	Error("[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n", condition, fnSig, file, line);
 }
 
@@ -63,10 +66,13 @@ static constexpr const char LOG_FN_INDENT_CHARS[] =
 
 template<bool enabled>
 Util::LogFunctionCallScope<enabled>::LogFunctionCallScope(const std::string_view& fnSig,
-	const std::string_view& file, int line, const std::string_view& msg)
+	const std::string_view& file, int line, const std::string_view& msg, bool checkThread)
 {
 	LogFunctionCall(fnSig, file, line, msg);
 	s_LogFunctionCallIndentation++;
+
+	if (checkThread)
+		ASSERT_MAIN_THREAD();
 }
 template<bool enabled>
 Util::LogFunctionCallScope<enabled>::~LogFunctionCallScope()

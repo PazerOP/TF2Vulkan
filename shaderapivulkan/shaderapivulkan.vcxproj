@@ -142,6 +142,7 @@
     <ClInclude Include="src\TF2Vulkan\VulkanUtil.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\sdk2013\mp\src\public\tier0\memoverride.cpp" />
     <ClCompile Include="src\interface\internal\IShaderAPITexture.cpp" />
     <ClCompile Include="src\interface\internal\IVulkanCommandBuffer.cpp" />
     <ClCompile Include="include\TF2Vulkan\TextureData.cpp" />

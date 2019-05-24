@@ -7,9 +7,13 @@
 
 #include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
+#include <TF2Vulkan/Util/platform.h>
 
 #include <materialsystem/IShader.h>
 #include <materialsystem/imaterialvar.h>
+
+#undef min
+#undef max
 
 using namespace TF2Vulkan;
 
@@ -255,6 +259,16 @@ void IShaderAPI_StateManagerDynamic::SetDefaultState()
 	m_Dirty = true;
 }
 
+void IShaderAPI_StateManagerDynamic::LoadBoneMatrices(Shaders::VSModelMatrices& bones) const
+{
+	bones.m_Model[0] = GetMatrix(MATERIAL_MODEL).Transpose().As3x4();
+	if (m_State.m_BoneCount > 1)
+	{
+		memcpy_s(bones.m_Model.data() + 1, sizeof(bones.m_Model) - sizeof(bones.m_Model[0]),
+			m_State.m_BoneMatrices.m_Model.data() + 1, sizeof(bones.m_Model[0])* (m_State.m_BoneCount - 1));
+	}
+}
+
 int IShaderAPI_StateManagerDynamic::GetCurrentNumBones() const
 {
 	LOG_FUNC();
@@ -286,6 +300,23 @@ void IShaderAPI_StateManagerDynamic::GetMatrix(MaterialMatrixMode_t mode, VMatri
 		dst = stack.top();
 	else
 		dst.Identity();
+}
+
+static const VMatrix MAT4_IDENTITY = []
+{
+	VMatrix temp;
+	temp.Identity();
+	return temp;
+}();
+
+const VMatrix& IShaderAPI_StateManagerDynamic::GetMatrix(MaterialMatrixMode_t matrixMode) const
+{
+	auto& stack = m_MatrixStacks.at(matrixMode);
+
+	if (!stack.empty())
+		return stack.top();
+	else
+		return MAT4_IDENTITY;
 }
 
 void IShaderAPI_StateManagerDynamic::PushMatrix()
@@ -540,5 +571,18 @@ void IShaderAPI_StateManagerDynamic::LoadBoneMatrix(int boneIndex, const float* 
 void IShaderAPI_StateManagerDynamic::LoadBoneMatrix(uint32_t boneIndex, const matrix3x4_t& matrix)
 {
 	LOG_FUNC();
-	Util::SetDirtyVar(m_State.m_BoneMatrices, boneIndex, matrix, m_Dirty);
+
+	if (boneIndex >= m_State.m_BoneCount)
+	{
+		Util::SafeConvert(boneIndex + 1, m_State.m_BoneCount);
+		m_Dirty = true;
+	}
+
+	Util::SetDirtyVar(m_State.m_BoneMatrices[boneIndex], matrix, m_Dirty);
+
+	if (boneIndex == 0)
+	{
+		MatrixMode(MATERIAL_MODEL);
+		LoadMatrix(VMatrix(matrix).Transpose());
+	}
 }

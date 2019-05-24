@@ -39,6 +39,7 @@ namespace TF2Vulkan
 		void MultMatrixLocal(const VMatrix& m) { NOT_IMPLEMENTED_FUNC(); }
 		[[deprecated]] void GetMatrix(MaterialMatrixMode_t matrixMode, float* dst) override final;
 		void GetMatrix(MaterialMatrixMode_t matrixMode, VMatrix& dst) const override final;
+		const VMatrix& GetMatrix(MaterialMatrixMode_t matrixMode) const;
 		void LoadIdentity() override final;
 		void LoadCameraToWorld() override final { NOT_IMPLEMENTED_FUNC(); }
 		void Ortho(double left, double right, double bottom, double top, double zNear, double zFar) override final { NOT_IMPLEMENTED_FUNC(); }
@@ -66,6 +67,7 @@ namespace TF2Vulkan
 		void SetAnisotropicLevel(int anisoLevel) override final;
 		void SetFullScreenTextureHandle(ShaderAPITextureHandle_t tex) override final;
 		void SetDefaultState() override final;
+		void LoadBoneMatrices(Shaders::VSModelMatrices& bones) const override final;
 		int GetCurrentNumBones() const override final;
 		void SetNumBoneWeights(int boneCount) override final;
 		void Bind(IMaterial* material) override final;

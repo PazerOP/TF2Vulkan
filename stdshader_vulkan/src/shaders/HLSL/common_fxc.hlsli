@@ -68,6 +68,9 @@ static const float cOneThird = 1.0f / 3.0f;
 // These cause bad codegen with glslangValidator
 #define sampler2D "FIXME"
 
+// This just shouldn't be used anymore
+#define D3DCOLORtoUBYTE4 "FIXME"
+
 float3 mul3x3(float3 v, float3x3 m)
 {
 	return mul(v, m);

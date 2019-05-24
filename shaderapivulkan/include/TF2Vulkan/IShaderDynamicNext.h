@@ -8,6 +8,11 @@
 
 namespace TF2Vulkan
 {
+	namespace Shaders
+	{
+		struct VSModelMatrices;
+	}
+
 	class IShaderDynamicNext
 	{
 	protected:
@@ -18,10 +23,12 @@ namespace TF2Vulkan
 		virtual void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) = 0;
 
 		// From IShaderDynamicAPI
-		virtual int GetCurrentNumBones(void) const = 0;
 		virtual void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) = 0;
 		virtual void GetWorldSpaceCameraPosition(Vector& pPos) const = 0;
 		virtual void GetMatrix(MaterialMatrixMode_t matrixMode, VMatrix& dst) const = 0;
+
+		virtual int GetCurrentNumBones() const = 0;
+		virtual void LoadBoneMatrices(Shaders::VSModelMatrices& bones) const = 0;
 
 		// Helpers
 		void SetPixelShader(const IShaderInstance* instance) { SetShaderInstance(ShaderType::Pixel, instance); }

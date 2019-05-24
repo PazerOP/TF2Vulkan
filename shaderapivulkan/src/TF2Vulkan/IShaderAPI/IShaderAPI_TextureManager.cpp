@@ -18,6 +18,12 @@
 
 using namespace TF2Vulkan;
 
+IShaderAPI_TextureManager::ShaderTexture::ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
+	const Factories::ImageFactory& factory, vma::AllocatedImage&& img) :
+	m_DebugName(std::move(debugName)), m_Handle(handle), m_Factory(factory), m_Image(std::move(img))
+{
+}
+
 const IShaderAPITexture* IShaderAPI_TextureManager::TryGetTexture(ShaderAPITextureHandle_t texID) const
 {
 	if (auto found = m_Textures.find(texID); found != m_Textures.end())
@@ -108,7 +114,9 @@ IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(Factories::ImageFact
 
 	factory.m_DebugName = Util::string::concat("Texture: ", dbgName);
 
-	return m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, factory, factory.Create() }).first->second;
+	auto inserted = m_Textures.emplace(handle, ShaderTexture{ std::move(dbgName), handle, factory, factory.Create() });
+	assert(inserted.second);
+	return inserted.first->second;
 }
 
 IShaderAPITexture& IShaderAPI_TextureManager::CreateTexture(std::string&& dbgName, Factories::ImageFactory&& factory)
@@ -455,20 +463,22 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 		{
 			const TextureData& slice = data[i];
 
+			const auto realSliceFormat = FormatInfo::RemoveRuntimeFlags(slice.m_Format);
+
 			const auto srcTightlyPackedStride = Util::SafeConvert<uint32_t>(ImageLoader::GetMemRequired(
-				Util::SafeConvert<int>(slice.m_Width), Util::SafeConvert<int>(1), 1, slice.m_Format, false));
+				Util::SafeConvert<int>(slice.m_Width), Util::SafeConvert<int>(1), 1, realSliceFormat, false));
 
 			// Record this copy region
 			{
 				const auto& region = copyRegions.at(i);
-				if (slice.m_Format != targetFormat)
+				if (realSliceFormat != targetFormat)
 				{
-					assert(!FormatInfo::IsCompressed(slice.m_Format));
+					assert(!FormatInfo::IsCompressed(realSliceFormat));
 					assert(!FormatInfo::IsCompressed(targetFormat));
 					const auto targetSliceSize = region.bufferRowLength * region.bufferImageHeight * FormatInfo::GetPixelSize(targetFormat);
 
 					FormatConverter::Convert(
-						reinterpret_cast<const std::byte*>(slice.m_Data), slice.m_Format, slice.m_DataLength,
+						reinterpret_cast<const std::byte*>(slice.m_Data), realSliceFormat, slice.m_DataLength,
 						reinterpret_cast<std::byte*>(allocation.data() + region.bufferOffset), targetFormat, targetSliceSize,
 						slice.m_Width, slice.m_Height, slice.m_Stride);
 				}
@@ -628,6 +638,8 @@ void IShaderAPI_TextureManager::UnlockRect(ShaderAPITextureHandle_t texID, int m
 	{
 		NOT_IMPLEMENTED_FUNC();
 	}
+
+	ENSURE(_CrtCheckMemory());
 }
 
 void IShaderAPI_TextureManager::ModifyTexture(ShaderAPITextureHandle_t tex)

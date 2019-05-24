@@ -12,6 +12,9 @@ namespace TF2Vulkan{ namespace Shaders
 		constexpr VSModelMatrices() = default;
 		DEFAULT_WEAK_EQUALITY_OPERATOR(VSModelMatrices);
 
+		matrix3x4_t& operator[](size_t i) { return m_Model.at(i); }
+		const matrix3x4_t& operator[](size_t i) const { return m_Model.at(i); }
+
 		std::array<matrix3x4_t, 53> m_Model;
 	};
 

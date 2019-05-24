@@ -14,8 +14,8 @@ struct VS_INPUT
 	float4 vNormal          : NORMAL;
 	float3 vSpecular        : SPECULAR;
 
-	float4 vBoneWeights     : BONEWEIGHTS;
-	float4 vBoneIndices     : BONEINDICES;
+	float3 vBoneWeights     : BONEWEIGHTS;
+	uint4 vBoneIndices      : BONEINDICES;
 
 	// make these float2's and stick the [n n 0 1] in the dot math.
 	float4 vTexCoord0       : TEXCOORD0;
@@ -50,6 +50,8 @@ struct VS_OUTPUT
 
 	float3 SeamlessWeights      : COLOR0;
 	float4 fogFactorW           : COLOR1;
+
+	float3 boneWeightsOut       : TEST_BONEWEIGHTSOUT;
 };
 
 VS_OUTPUT main(const VS_INPUT v)
@@ -112,7 +114,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 	else
 	{
-		SkinPositionAndNormal(
+		o.boneWeightsOut = SkinPositionAndNormal(
 			g_bSkinning,
 			vPosition, vNormal,
 			v.vBoneWeights, v.vBoneIndices,

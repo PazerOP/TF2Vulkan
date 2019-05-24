@@ -16,17 +16,20 @@ namespace TF2Vulkan
 		virtual ~IStateManagerVulkan() = default;
 
 	public:
-		virtual VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState) = 0;
+		virtual VulkanStateID FindOrCreateState(
+			const LogicalShadowState& staticState,
+			const LogicalDynamicState& dynamicState,
+			const IMesh& mesh) = 0;
 
 		virtual void ApplyState(VulkanStateID stateID, const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf) = 0;
+			const LogicalDynamicState& dynamicState, const IMesh& mesh, IVulkanCommandBuffer& buf) = 0;
 
 		VulkanStateID ApplyState(const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
+			const LogicalDynamicState& dynamicState, const IMesh& mesh,
+			IVulkanCommandBuffer& buf)
 		{
-			const auto& stateID = FindOrCreateState(staticState, dynamicState);
-			ApplyState(stateID, staticState, dynamicState, buf);
+			const auto& stateID = FindOrCreateState(staticState, dynamicState, mesh);
+			ApplyState(stateID, staticState, dynamicState, mesh, buf);
 			return stateID;
 		}
 	};

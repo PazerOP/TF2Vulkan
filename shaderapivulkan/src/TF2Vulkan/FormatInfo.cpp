@@ -144,6 +144,18 @@ ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 	}
 }
 
+ImageFormat FormatInfo::RemoveRuntimeFlags(ImageFormat format)
+{
+	switch (format)
+	{
+	case IMAGE_FORMAT_DXT1_RUNTIME: return IMAGE_FORMAT_DXT1;
+	case IMAGE_FORMAT_DXT5_RUNTIME: return IMAGE_FORMAT_DXT5;
+
+	default:
+		return format;
+	}
+}
+
 static ImageFormat FindSupportedFormat(FormatUsage usage, bool filtering, std::initializer_list<ImageFormat> formats)
 {
 	for (auto fmt : formats)
@@ -532,6 +544,27 @@ vk::Format FormatInfo::ConvertDataFormat(DataFormat fmt, uint_fast8_t components
 	case PACK_DFMT<DataFormat::UInt, 2, 1>:          return vk::Format::eR8G8Uint;
 	case PACK_DFMT<DataFormat::UInt, 3, 1>:          return vk::Format::eR8G8B8Uint;
 	case PACK_DFMT<DataFormat::UInt, 4, 1>:          return vk::Format::eR8G8B8A8Uint;
+	case PACK_DFMT<DataFormat::UInt, 1, 2>:          return vk::Format::eR16Uint;
+	case PACK_DFMT<DataFormat::UInt, 2, 2>:          return vk::Format::eR16G16Uint;
+	case PACK_DFMT<DataFormat::UInt, 3, 2>:          return vk::Format::eR16G16B16Uint;
+	case PACK_DFMT<DataFormat::UInt, 4, 2>:          return vk::Format::eR16G16B16A16Uint;
+	case PACK_DFMT<DataFormat::UInt, 1, 4>:          return vk::Format::eR32Uint;
+	case PACK_DFMT<DataFormat::UInt, 2, 4>:          return vk::Format::eR32G32Uint;
+	case PACK_DFMT<DataFormat::UInt, 3, 4>:          return vk::Format::eR32G32B32Uint;
+	case PACK_DFMT<DataFormat::UInt, 4, 4>:          return vk::Format::eR32G32B32A32Uint;
+
+	case PACK_DFMT<DataFormat::SInt, 1, 1>:          return vk::Format::eR8Sint;
+	case PACK_DFMT<DataFormat::SInt, 2, 1>:          return vk::Format::eR8G8Sint;
+	case PACK_DFMT<DataFormat::SInt, 3, 1>:          return vk::Format::eR8G8B8Sint;
+	case PACK_DFMT<DataFormat::SInt, 4, 1>:          return vk::Format::eR8G8B8A8Sint;
+	case PACK_DFMT<DataFormat::SInt, 1, 2>:          return vk::Format::eR16Sint;
+	case PACK_DFMT<DataFormat::SInt, 2, 2>:          return vk::Format::eR16G16Sint;
+	case PACK_DFMT<DataFormat::SInt, 3, 2>:          return vk::Format::eR16G16B16Sint;
+	case PACK_DFMT<DataFormat::SInt, 4, 2>:          return vk::Format::eR16G16B16A16Sint;
+	case PACK_DFMT<DataFormat::SInt, 1, 4>:          return vk::Format::eR32Sint;
+	case PACK_DFMT<DataFormat::SInt, 2, 4>:          return vk::Format::eR32G32Sint;
+	case PACK_DFMT<DataFormat::SInt, 3, 4>:          return vk::Format::eR32G32B32Sint;
+	case PACK_DFMT<DataFormat::SInt, 4, 4>:          return vk::Format::eR32G32B32A32Sint;
 
 	case PACK_DFMT<DataFormat::UIntCastFloat, 1, 1>: return vk::Format::eR8Uscaled;
 	case PACK_DFMT<DataFormat::UIntCastFloat, 2, 1>: return vk::Format::eR8G8Uscaled;
@@ -542,12 +575,15 @@ vk::Format FormatInfo::ConvertDataFormat(DataFormat fmt, uint_fast8_t components
 	case PACK_DFMT<DataFormat::SIntCastFloat, 2, 1>: return vk::Format::eR8G8Sscaled;
 	case PACK_DFMT<DataFormat::SIntCastFloat, 3, 1>: return vk::Format::eR8G8B8Sscaled;
 	case PACK_DFMT<DataFormat::SIntCastFloat, 4, 1>: return vk::Format::eR8G8B8A8Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 1, 2>: return vk::Format::eR16Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 2, 2>: return vk::Format::eR16G16Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 3, 2>: return vk::Format::eR16G16B16Sscaled;
+	case PACK_DFMT<DataFormat::SIntCastFloat, 4, 2>: return vk::Format::eR16G16B16A16Sscaled;
 
 	case PACK_DFMT<DataFormat::SFloat, 1, 2>:        return vk::Format::eR16Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 2, 2>:        return vk::Format::eR16G16Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 3, 2>:        return vk::Format::eR16G16B16Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 4, 2>:        return vk::Format::eR16G16B16A16Sfloat;
-
 	case PACK_DFMT<DataFormat::SFloat, 1, 4>:        return vk::Format::eR32Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 2, 4>:        return vk::Format::eR32G32Sfloat;
 	case PACK_DFMT<DataFormat::SFloat, 3, 4>:        return vk::Format::eR32G32B32Sfloat;
@@ -557,6 +593,19 @@ vk::Format FormatInfo::ConvertDataFormat(DataFormat fmt, uint_fast8_t components
 	case PACK_DFMT<DataFormat::UNorm, 2, 1>:         return vk::Format::eR8G8Unorm;
 	case PACK_DFMT<DataFormat::UNorm, 3, 1>:         return vk::Format::eR8G8B8Unorm;
 	case PACK_DFMT<DataFormat::UNorm, 4, 1>:         return vk::Format::eR8G8B8A8Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 1, 2>:         return vk::Format::eR16Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 2, 2>:         return vk::Format::eR16G16Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 3, 2>:         return vk::Format::eR16G16B16Unorm;
+	case PACK_DFMT<DataFormat::UNorm, 4, 2>:         return vk::Format::eR16G16B16A16Unorm;
+
+	case PACK_DFMT<DataFormat::SNorm, 1, 1>:         return vk::Format::eR8Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 2, 1>:         return vk::Format::eR8G8Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 3, 1>:         return vk::Format::eR8G8B8Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 4, 1>:         return vk::Format::eR8G8B8A8Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 1, 2>:         return vk::Format::eR16Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 2, 2>:         return vk::Format::eR16G16Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 3, 2>:         return vk::Format::eR16G16B16Snorm;
+	case PACK_DFMT<DataFormat::SNorm, 4, 2>:         return vk::Format::eR16G16B16A16Snorm;
 	}
 
 	assert(!"Unknown/unsupported combination");
@@ -581,6 +630,14 @@ bool FormatInfo::IsCompressed(vk::Format format)
 	case vk::Format::eBc1RgbaUnormBlock:
 	case vk::Format::eBc1RgbSrgbBlock:
 	case vk::Format::eBc1RgbUnormBlock:
+	case vk::Format::eBc2UnormBlock:
+	case vk::Format::eBc2SrgbBlock:
+	case vk::Format::eBc3UnormBlock:
+	case vk::Format::eBc3SrgbBlock:
+	case vk::Format::eBc4UnormBlock:
+	case vk::Format::eBc4SnormBlock:
+	case vk::Format::eBc5UnormBlock:
+	case vk::Format::eBc5SnormBlock:
 		return true;
 	}
 }

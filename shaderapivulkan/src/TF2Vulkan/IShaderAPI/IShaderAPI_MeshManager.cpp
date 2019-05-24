@@ -5,7 +5,7 @@
 using namespace TF2Vulkan;
 
 IShaderAPI_MeshManager::IShaderAPI_MeshManager() :
-	m_FlexMesh(VertexFormat(VertexFormatFlags::Position | VertexFormatFlags::Normal | VertexFormatFlags::Wrinkle), true)
+	m_FlexMesh(VertexFormat(VertexFormatFlags(VertexFormatFlags::Position | VertexFormatFlags::Normal | VertexFormatFlags::Wrinkle)), true)
 {
 
 }

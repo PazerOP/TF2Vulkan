@@ -70,10 +70,11 @@ namespace TF2Vulkan
 			}
 		};
 
-		struct ShaderTexture final : IShaderAPITexture
+		struct ShaderTexture final : public IShaderAPITexture
 		{
 			ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
 				const Factories::ImageFactory& ci, vma::AllocatedImage&& img);
+			//~ShaderTexture();
 
 			SamplerSettings m_SamplerSettings;
 

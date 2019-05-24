@@ -13,7 +13,36 @@ static std::aligned_storage_t<256> s_FallbackMeshData;
 
 static void AssertCheckHeap()
 {
-	//assert(_CrtCheckMemory());
+	ENSURE(_CrtCheckMemory());
+}
+
+static void ValidateVertexFormat(VertexFormat meshFormat, VertexFormat materialFormat)
+{
+	if (!materialFormat.IsCompressed())
+		assert(!meshFormat.IsCompressed());
+
+	const auto CheckFlag = [&](VertexFormatFlags flag)
+	{
+		if (meshFormat.m_Flags & flag)
+		{
+			assert(materialFormat.m_Flags & flag);
+		}
+	};
+
+	CheckFlag(VertexFormatFlags::Position);
+	CheckFlag(VertexFormatFlags::Normal);
+	CheckFlag(VertexFormatFlags::Color);
+	CheckFlag(VertexFormatFlags::Specular);
+
+	CheckFlag(VertexFormatFlags::TangentS);
+	CheckFlag(VertexFormatFlags::TangentT);
+
+	CheckFlag(VertexFormatFlags::Wrinkle);
+
+	// Questionable checks
+#if false
+	CheckFlag(VertexFormatFlags::BoneIndex);
+#endif
 }
 
 void VulkanGPUBuffer::UpdateInnerBuffer(const char* dbgName,
@@ -81,12 +110,12 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		return;
 	}
 
-	assert(firstIndex == -1 || firstIndex == 0); // TODO: What about other values
 	if (firstIndex == -1)
 	{
 		// "Start at true zero"?
 		firstIndex = 0;
 	}
+	assert(firstIndex >= 0); // Catch other weird values
 
 	assert(indexCount >= 0);
 	if (indexCount == 0)
@@ -99,7 +128,7 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 
 	auto& dynState = g_StateManagerDynamic.GetDynamicState();
 	auto internalMaterial = assert_cast<IMaterialInternal*>(dynState.m_BoundMaterial);
-	internalMaterial->DrawMesh(VertexCompressionType_t::VERTEX_COMPRESSION_ON);
+	internalMaterial->DrawMesh(VertexFormat(m_VertexBuffer.GetVertexFormat()).GetCompressionType());
 }
 
 void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int indexCount)
@@ -135,8 +164,7 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 		cmdBuf.bindVertexBuffers(0, TF2Vulkan::to_array_proxy(vtxBufs), TF2Vulkan::to_array_proxy(offsets));
 	}
 
-	assert(firstIndex == 0); // TODO: What happens when we actually have offsets?
-	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(indexCount));
+	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(indexCount), 1, Util::SafeConvert<uint32_t>(firstIndex));
 }
 
 void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
@@ -204,7 +232,7 @@ void VulkanMesh::SetFlexMesh(IMesh* mesh, int vertexOffset)
 {
 	LOG_FUNC();
 	if (mesh || vertexOffset)
-		NOT_IMPLEMENTED_FUNC_NOBREAK();
+		NOT_IMPLEMENTED_FUNC_NOBREAK(); // TODO: This goes into vPosFlex and vNormalFlex
 }
 
 void VulkanMesh::DisableFlexMesh()
@@ -490,8 +518,8 @@ int VulkanVertexBuffer::VertexCount() const
 
 VertexFormat_t VulkanVertexBuffer::GetVertexFormat() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return VertexFormat_t();
+	LOG_FUNC();
+	return m_Format;
 }
 
 void VulkanVertexBuffer::BeginCastBuffer(VertexFormat_t format)
@@ -541,6 +569,8 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 
 	auto uncompressedFormat = m_Format;
 	//uncompressedFormat.SetCompressionEnabled(false);
+
+	desc.m_NumBoneWeights = uncompressedFormat.m_BoneWeightCount;
 
 	const auto vtxElemsCount = uncompressedFormat.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 

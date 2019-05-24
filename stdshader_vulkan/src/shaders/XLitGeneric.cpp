@@ -583,12 +583,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		}
 
 		// Model matrices
-		{
-			VMatrix tmp;
-			dynamic->GetMatrix(MATERIAL_MODEL, tmp);
-			//assert(tmp.IsIdentity());
-			modelMats.m_Model[0] = tmp.Transpose().As3x4();
-		}
+		dynamic->LoadBoneMatrices(modelMats);
 
 		if (bHasBaseTexture)
 		{

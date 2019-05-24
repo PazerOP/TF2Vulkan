@@ -8,10 +8,9 @@ namespace TF2Vulkan
 	// FIXME: Is it safe to assume nobody will try to cast this to ITextureInternal or something?
 	class IVulkanTexture
 	{
-	protected:
+	public:
 		virtual ~IVulkanTexture() = default;
 
-	public:
 		virtual std::string_view GetDebugName() const = 0;
 		virtual vk::Image GetImage() const = 0;
 		virtual const vk::ImageCreateInfo& GetImageCreateInfo() const = 0;
@@ -33,6 +32,8 @@ namespace TF2Vulkan
 	class IShaderAPITexture : public IVulkanTexture, public ITexture
 	{
 	public:
+		virtual ~IShaderAPITexture() = default;
+
 		virtual ShaderAPITextureHandle_t GetHandle() const = 0;
 
 		// ITexture implementation

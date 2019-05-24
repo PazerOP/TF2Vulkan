@@ -19,8 +19,6 @@ namespace
 	class ShadowStateManager final : public IStateManagerStatic
 	{
 	public:
-		void ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf);
-		void ApplyCurrentState(IVulkanCommandBuffer& buf);
 		void SetDefaultState() override final;
 
 		void DepthFunc(ShaderDepthFunc_t func) override final;
@@ -133,18 +131,6 @@ static ShadowStateManager s_SSM;
 EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShadowStateManager, IShaderShadow, SHADERSHADOW_INTERFACE_VERSION, s_SSM);
 
 IStateManagerStatic& TF2Vulkan::g_StateManagerStatic = s_SSM;
-
-void ShadowStateManager::ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf)
-{
-	LOG_FUNC();
-	g_StateManagerVulkan.ApplyState(GetState(id), g_StateManagerDynamic.GetDynamicState(), buf);
-}
-
-void ShadowStateManager::ApplyCurrentState(IVulkanCommandBuffer& buf)
-{
-	LOG_FUNC();
-	ApplyState(TakeSnapshot(), buf);
-}
 
 void ShadowStateManager::SetDefaultState()
 {
@@ -281,13 +267,11 @@ void ShadowStateManager::VertexShaderVertexFormat(uint flags,
 {
 	LOG_FUNC();
 
-	VertexFormat fmt(flags | VERTEX_USERDATA_SIZE(userDataSize));
+	VertexFormat fmt(flags);
+	fmt.SetUserDataSize(userDataSize);
 
 	for (int i = 0; i < texCoordCount; i++)
-	{
-		auto dim = texCoordDimensions ? texCoordDimensions[i] : 2;
-		fmt.m_BaseFmt |= VERTEX_TEXCOORD_SIZE(i, dim);
-	}
+		fmt.SetTexCoordSize(i, texCoordDimensions ? texCoordDimensions[i] : 2);
 
 	auto& oldFmt = m_State.m_VSVertexFormat;
 	assert(oldFmt == VERTEX_FORMAT_UNKNOWN || oldFmt == fmt); // TODO: Are we supposed to merge flags/texcoord dimensions?

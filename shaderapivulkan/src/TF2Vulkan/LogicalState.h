@@ -34,7 +34,6 @@ namespace TF2Vulkan
 
 		bool m_InFlashlightMode = false;
 		IMaterial* m_BoundMaterial = nullptr;
-		int m_BoneCount = 0;
 		ShaderAPITextureHandle_t m_FullScreenTexture = INVALID_SHADERAPI_TEXTURE_HANDLE;
 		uint_fast8_t m_AnisotropicLevel = 0;
 		Util::InPlaceVector<ShaderViewport_t, 4> m_Viewports;
@@ -79,7 +78,8 @@ namespace TF2Vulkan
 
 		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
 
-		std::array<matrix3x4_t, 53> m_BoneMatrices{};
+		uint_fast8_t m_BoneCount = 0;
+		Shaders::VSModelMatrices m_BoneMatrices;
 
 		bool m_UserClipTransformOverrideEnabled = false;
 		VMatrix m_UserClipTransformOverride{};

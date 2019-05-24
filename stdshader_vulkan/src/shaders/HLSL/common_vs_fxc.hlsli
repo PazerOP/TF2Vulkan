@@ -352,9 +352,9 @@ bool ApplyMorph(Texture2D morphTexture, SamplerState morphSampler, const float3 
 	}
 }
 
-float4 DecompressBoneWeights(const float4 weights)
+float3 DecompressBoneWeights(const uint3 weights)
 {
-	float4 result = weights;
+	float3 result = weights;
 
 	if (COMPRESSED_VERTS)
 	{
@@ -371,11 +371,9 @@ float4 DecompressBoneWeights(const float4 weights)
 }
 
 void SkinPosition(bool bSkinning, const float4 modelPos,
-	const float4 boneWeights, float4 fBoneIndices,
+	const uint3 boneWeights, const uint4 boneIndices,
 	out float3 worldPos)
 {
-	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices);
-
 	if (!bSkinning)
 	{
 		worldPos = mul4x3(modelPos, cModel[0]);
@@ -386,7 +384,7 @@ void SkinPosition(bool bSkinning, const float4 modelPos,
 		float4x3 mat2 = cModel[boneIndices[1]];
 		float4x3 mat3 = cModel[boneIndices[2]];
 
-		float3 weights = DecompressBoneWeights(boneWeights).xyz;
+		float3 weights = DecompressBoneWeights(boneWeights);
 		weights[2] = 1 - (weights[0] + weights[1]);
 
 		float4x3 blendMatrix = mat1 * weights[0] + mat2 * weights[1] + mat3 * weights[2];
@@ -394,17 +392,16 @@ void SkinPosition(bool bSkinning, const float4 modelPos,
 	}
 }
 
-void SkinPositionAndNormal(bool bSkinning, const float4 modelPos, const float3 modelNormal,
-	const float4 boneWeights, float4 fBoneIndices,
+float3 SkinPositionAndNormal(bool bSkinning, const float4 modelPos, const float3 modelNormal,
+	const uint3 boneWeights, const uint4 boneIndices,
 	out float3 worldPos, out float3 worldNormal)
 {
-	// Needed for invariance issues caused by multipass rendering
-	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices).xyz;
-
 	if (!bSkinning)
 	{
 		worldPos = mul4x3(modelPos, cModel[0]);
 		worldNormal = mul3x3(modelNormal, (float3x3)cModel[0]);
+
+		return float3(1, 0, 0);
 	}
 	else // skinning - always three bones
 	{
@@ -412,12 +409,14 @@ void SkinPositionAndNormal(bool bSkinning, const float4 modelPos, const float3 m
 		float4x3 mat2 = cModel[boneIndices[1]];
 		float4x3 mat3 = cModel[boneIndices[2]];
 
-		float3 weights = DecompressBoneWeights(boneWeights).xyz;
+		float3 weights = DecompressBoneWeights(boneWeights);
 		weights[2] = 1 - (weights[0] + weights[1]);
 
 		float4x3 blendMatrix = mat1 * weights[0] + mat2 * weights[1] + mat3 * weights[2];
 		worldPos = mul4x3(modelPos, blendMatrix);
 		worldNormal = mul3x3(modelNormal, (float3x3)blendMatrix);
+
+		return weights;
 	}
 }
 
@@ -427,12 +426,10 @@ void SkinPositionNormalAndTangentSpace(
 	bool bSkinning,
 	const float4 modelPos, const float3 modelNormal,
 	const float4 modelTangentS,
-	const float4 boneWeights, float4 fBoneIndices,
+	const uint3 boneWeights, const uint4 boneIndices,
 	out float3 worldPos, out float3 worldNormal,
 	out float3 worldTangentS, out float3 worldTangentT)
 {
-	int3 boneIndices = D3DCOLORtoUBYTE4(fBoneIndices);
-
 	if (!bSkinning)
 	{
 		worldPos = mul4x3(modelPos, cModel[0]);
@@ -445,7 +442,7 @@ void SkinPositionNormalAndTangentSpace(
 		float4x3 mat2 = cModel[boneIndices[1]];
 		float4x3 mat3 = cModel[boneIndices[2]];
 
-		float3 weights = DecompressBoneWeights(boneWeights).xyz;
+		float3 weights = DecompressBoneWeights(boneWeights);
 		weights[2] = 1 - (weights[0] + weights[1]);
 
 		float4x3 blendMatrix = mat1 * weights[0] + mat2 * weights[1] + mat3 * weights[2];

@@ -405,7 +405,8 @@ IMesh* ShaderDevice::CreateStaticMesh(VertexFormat_t format, const char* texture
 {
 	// TODO
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
-	return new VulkanMesh(VertexFormat(format), false);
+	const VertexFormat realFmt(format);
+	return new VulkanMesh(realFmt, false);
 }
 
 void ShaderDevice::DestroyStaticMesh(IMesh* mesh)

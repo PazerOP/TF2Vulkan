@@ -8,26 +8,33 @@
 
 #include <tier0/basetypes.h>
 
-#define ASSERT_MAIN_THREAD() assert(::Util::IsMainThread())
+#define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }
+
+#define ASSERT_MAIN_THREAD() ENSURE(::Util::IsMainThread())
 
 namespace Util
 {
 	template<bool enabled>
 	struct LogFunctionCallScope
 	{
-		LogFunctionCallScope(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
+		LogFunctionCallScope(const std::string_view& fnSig, const std::string_view& file, int line,
+			const std::string_view& msg, bool checkThread);
 		~LogFunctionCallScope();
-	};
-
-	template<>
-	struct LogFunctionCallScope<false>
-	{
-		LogFunctionCallScope(const char*, const char*, int, const std::string_view&) { ASSERT_MAIN_THREAD(); }
 	};
 
 	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
 	[[noreturn]] void EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line);
 	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
+
+	template<>
+	struct LogFunctionCallScope<false>
+	{
+		LogFunctionCallScope(const char*, const char*, int, const std::string_view&, bool checkThread)
+		{
+			if (checkThread)
+				ASSERT_MAIN_THREAD();
+		}
+	};
 
 	struct StaticTypeInfo final
 	{
@@ -42,18 +49,20 @@ namespace Util
 #define ALL_STATIC_TYPE_INFO(type) \
 	::Util::StaticTypeInfo{ sizeof(type), 0, alignof(type) }
 
-#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)
-#define LOG_FUNC_MSG(msg) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __COUNTER__) (__FUNCSIG__, __FILE__, __LINE__, msg)
+#define LOG_FUNC_MSG_IMPL(msg, checkThread) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __COUNTER__) (__FUNCSIG__, __FILE__, __LINE__, msg, checkThread)
 #else
-#define LOG_FUNC_MSG(msg) { ASSERT_MAIN_THREAD(); }
+#define LOG_FUNC_MSG_IMPL(msg, checkThread) { if (checkThread) { ASSERT_MAIN_THREAD(); } }
 #endif
 
-#define LOG_FUNC() LOG_FUNC_MSG(std::string_view{})
+#define LOG_FUNC_MSG_ANYTHREAD(msg) LOG_FUNC_MSG_IMPL(msg, false)
+#define LOG_FUNC_MSG(msg) LOG_FUNC_MSG_IMPL(msg, true)
 
-#define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }
+#define LOG_FUNC() LOG_FUNC_MSG(std::string_view{})
+#define LOG_FUNC_ANYTHREAD() LOG_FUNC_MSG_ANYTHREAD(std::string_view{})
 
 #define TF2VULKAN_PREFIX "[TF2Vulkan] " __FUNCSIG__ ": "
 

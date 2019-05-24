@@ -3,6 +3,7 @@
 #include "TF2Vulkan/SamplerSettings.h"
 #include "interface/internal/IShaderDeviceInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
+#include "TF2Vulkan/IStateManagerVulkan.h"
 #include "TF2Vulkan/TextureData.h"
 #include "TF2Vulkan/VulkanFactories.h"
 #include "TF2Vulkan/VulkanMesh.h"
@@ -269,8 +270,6 @@ namespace
 	private:
 		mutable std::recursive_mutex m_ShaderLock;
 
-		std::array<matrix3x4_t, 53> m_BoneMatrices;
-
 		bool m_IsInFrame = false;
 		ShaderAPITextureHandle_t m_L2GConvTex_SRGBWriteEnabled = INVALID_SHADERAPI_TEXTURE_HANDLE;
 		ShaderAPITextureHandle_t m_L2GConvTex_Identity = INVALID_SHADERAPI_TEXTURE_HANDLE;
@@ -301,7 +300,7 @@ void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil
 		rtWidth, rtHeight);
 
 	const auto curSnapshot = g_StateManagerStatic.TakeSnapshot();
-	g_StateManagerStatic.ApplyState(curSnapshot, cmdBuf);
+	NOT_IMPLEMENTED_FUNC();//g_StateManagerStatic.ApplyState(curSnapshot, cmdBuf);
 	const auto& curState = g_StateManagerStatic.GetState(curSnapshot);
 
 	Util::InPlaceVector<vk::ClearAttachment, 2> atts;
@@ -599,12 +598,6 @@ void ShaderAPI::SetLinearToGammaConversionTextures(ShaderAPITextureHandle_t srgb
 	m_L2GConvTex_Identity = identityTex;
 }
 
-ShaderAPI::ShaderTexture::ShaderTexture(std::string&& debugName, ShaderAPITextureHandle_t handle,
-	const Factories::ImageFactory& factory, vma::AllocatedImage&& img) :
-	m_DebugName(std::move(debugName)), m_Handle(handle), m_Factory(factory), m_Image(std::move(img))
-{
-}
-
 bool ShaderAPI::InEditorMode() const
 {
 	LOG_FUNC();
@@ -626,7 +619,11 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 
 	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
 
-	g_StateManagerStatic.ApplyCurrentState(cmdBuf);
+	g_StateManagerVulkan.ApplyState(
+		g_StateManagerStatic.GetState(g_StateManagerStatic.TakeSnapshot()),
+		g_StateManagerDynamic.GetDynamicState(),
+		*g_StateManagerDynamic.GetActiveMesh().m_Mesh,
+		cmdBuf);
 
 	auto& activeMesh = GetActiveMesh();
 	activeMesh.m_Mesh->DrawInternal(cmdBuf, activeMesh.m_FirstIndex, activeMesh.m_IndexCount);

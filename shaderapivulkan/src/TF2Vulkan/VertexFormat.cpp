@@ -38,8 +38,8 @@ static constexpr VertexFormat::ElementType s_ElementTypesUncompressed[VERTEX_ELE
 	{ VERTEX_ELEMENT_TANGENT_T, DataFormat::SFloat, 3, sizeof(float), "TANGENT_T" },
 	{ VERTEX_ELEMENT_WRINKLE, DataFormat::SFloat, 1, sizeof(float), "WRINKLE" },
 	{ VERTEX_ELEMENT_BONEINDEX, DataFormat::UInt, 4, sizeof(uint8_t), "BONEINDICES" },
-	{ VERTEX_ELEMENT_BONEWEIGHTS1, DataFormat::SInt, 1, sizeof(float), "BONEWEIGHTS" },
-	{ VERTEX_ELEMENT_BONEWEIGHTS2, DataFormat::SInt, 2, sizeof(float), "BONEWEIGHTS" },
+	{ VERTEX_ELEMENT_BONEWEIGHTS1, DataFormat::SFloat, 1, sizeof(float), "BONEWEIGHTS" },
+	{ VERTEX_ELEMENT_BONEWEIGHTS2, DataFormat::SFloat, 2, sizeof(float), "BONEWEIGHTS" },
 	{ VERTEX_ELEMENT_BONEWEIGHTS3, DataFormat::SFloat, 3, sizeof(float), "BONEWEIGHTS" },
 	{ VERTEX_ELEMENT_BONEWEIGHTS4, DataFormat::SFloat, 4, sizeof(float), "BONEWEIGHTS" },
 	{ VERTEX_ELEMENT_USERDATA1, DataFormat::SFloat, 1, sizeof(float), "USERDATA" },
@@ -55,21 +55,21 @@ static constexpr VertexFormat::ElementType s_ElementTypesUncompressed[VERTEX_ELE
 
 static constexpr VertexFormat::ElementType s_ElementTypesCompressed[VERTEX_ELEMENT_NUMELEMENTS] =
 {
-	{ VERTEX_ELEMENT_POSITION, DataFormat::SFloat, 3, sizeof(float), "POSITION" },
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_POSITION],
 	{ VERTEX_ELEMENT_NORMAL, DataFormat::UIntCastFloat, 4, sizeof(uint8_t), "NORMAL" },
-	{ VERTEX_ELEMENT_COLOR, DataFormat::UNorm, 4, sizeof(uint8_t), "COLOR" },
-	{ VERTEX_ELEMENT_SPECULAR, DataFormat::UNorm, 4, sizeof(uint8_t), "SPECULAR" },
-	{ VERTEX_ELEMENT_TANGENT_S, DataFormat::SFloat, 3, sizeof(float), "TANGENT_S" },
-	{ VERTEX_ELEMENT_TANGENT_T, DataFormat::SFloat, 3, sizeof(float), "TANGENT_T" },
-	{ VERTEX_ELEMENT_WRINKLE, DataFormat::SFloat, 1, sizeof(float), "WRINKLE" },
-	{ VERTEX_ELEMENT_BONEINDEX, DataFormat::UInt, 4, sizeof(uint8_t), "BONEINDICES" },
-	{ VERTEX_ELEMENT_BONEWEIGHTS1, DataFormat::SInt, 2, sizeof(int16_t), "BONEWEIGHTS" },
-	{ VERTEX_ELEMENT_BONEWEIGHTS2, DataFormat::SInt, 2, sizeof(int16_t), "BONEWEIGHTS" },
-	{ VERTEX_ELEMENT_BONEWEIGHTS3, DataFormat::SFloat, 3, sizeof(float), "BONEWEIGHTS" },
-	{ VERTEX_ELEMENT_BONEWEIGHTS4, DataFormat::SFloat, 4, sizeof(float), "BONEWEIGHTS" },
-	{ VERTEX_ELEMENT_USERDATA1, DataFormat::SFloat, 1, sizeof(float), "USERDATA" },
-	{ VERTEX_ELEMENT_USERDATA2, DataFormat::SFloat, 2, sizeof(float), "USERDATA" },
-	{ VERTEX_ELEMENT_USERDATA3, DataFormat::SFloat, 3, sizeof(float), "USERDATA" },
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_COLOR],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_SPECULAR],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_TANGENT_S],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_TANGENT_T],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_WRINKLE],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_BONEINDEX],
+	{ VERTEX_ELEMENT_BONEWEIGHTS1, DataFormat::SIntCastFloat, 2, sizeof(int16_t), "BONEWEIGHTS" },
+	{ VERTEX_ELEMENT_BONEWEIGHTS2, DataFormat::SIntCastFloat, 2, sizeof(int16_t), "BONEWEIGHTS" },
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_BONEWEIGHTS3],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_BONEWEIGHTS4],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_USERDATA1],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_USERDATA2],
+	s_ElementTypesUncompressed[VERTEX_ELEMENT_USERDATA3],
 	{ VERTEX_ELEMENT_USERDATA4, DataFormat::SFloat, 4, 0, "USERDATA" },
 
 	TEXCOORD_GROUP(1),
@@ -158,33 +158,26 @@ static void ForEachVertexElement(const VertexFormat& fmt, const TFunc& func)
 	if (fmt.m_Flags & VFF::BoneIndex)
 		func(VERTEX_ELEMENT_BONEINDEX);
 
-	if (fmt.m_BoneWeightCount >= 1)
-		func(VERTEX_ELEMENT_BONEWEIGHTS1);
-	if (fmt.m_BoneWeightCount >= 2)
-		func(VERTEX_ELEMENT_BONEWEIGHTS2);
-	if (fmt.m_BoneWeightCount >= 3)
-		func(VERTEX_ELEMENT_BONEWEIGHTS3);
-	if (fmt.m_BoneWeightCount >= 4)
-		func(VERTEX_ELEMENT_BONEWEIGHTS4);
+	switch (fmt.m_BoneWeightCount)
+	{
+	default:
+		assert(!"Invalid bone weight count");
+	case 0: break;
+	case 1: func(VERTEX_ELEMENT_BONEWEIGHTS1); break;
+	case 2: func(VERTEX_ELEMENT_BONEWEIGHTS2); break;
+	case 3: func(VERTEX_ELEMENT_BONEWEIGHTS3); break;
+	case 4: func(VERTEX_ELEMENT_BONEWEIGHTS4); break;
+	}
 
 	switch (fmt.m_UserDataSize)
 	{
 	default:
 		assert(!"Unknown userdata size");
-	case 0:
-		break;
-	case 1:
-		func(VERTEX_ELEMENT_USERDATA1);
-		break;
-	case 2:
-		func(VERTEX_ELEMENT_USERDATA2);
-		break;
-	case 3:
-		func(VERTEX_ELEMENT_USERDATA3);
-		break;
-	case 4:
-		func(VERTEX_ELEMENT_USERDATA4);
-		break;
+	case 0: break;
+	case 1: func(VERTEX_ELEMENT_USERDATA1); break;
+	case 2: func(VERTEX_ELEMENT_USERDATA2); break;
+	case 3: func(VERTEX_ELEMENT_USERDATA3); break;
+	case 4: func(VERTEX_ELEMENT_USERDATA4); break;
 	}
 
 	for (int i = 0; i < VERTEX_MAX_TEXTURE_COORDINATES; i++)

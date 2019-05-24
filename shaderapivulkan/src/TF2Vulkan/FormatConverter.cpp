@@ -341,7 +341,9 @@ void FormatConverter::Convert(
 
 	ImageFormatVisit(srcFormat, [&](const auto & srcFormatType)
 		{
-			ImageFormatVisit(dstFormat, [&](const auto & dstFormatType)
+			ImageFormatVisit(dstFormat, [&srcFormatType, &src, &srcFormat, &srcSize,
+				&dst, &dstFormat, &dstSize, &width, &height, &srcStride, &dstStride]
+				(const auto & dstFormatType)
 				{
 					ConvertImpl<srcFormatType.FORMAT, dstFormatType.FORMAT>(src, srcSize, dst, dstSize,
 						width, height, srcStride, dstStride);

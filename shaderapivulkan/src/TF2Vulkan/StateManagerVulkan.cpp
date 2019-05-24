@@ -20,6 +20,8 @@
 
 #include <stdshader_vulkan/ShaderData.h>
 
+#include <materialsystem/imesh.h>
+
 #undef min
 #undef max
 
@@ -86,7 +88,8 @@ namespace
 {
 	struct PipelineLayoutKey : DescriptorSetLayoutKey
 	{
-		PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
+			const IMesh& mesh);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineLayoutKey);
 
 		// TODO: Pipeline layout only needs to know shader groups, not specific instances
@@ -108,7 +111,8 @@ namespace
 {
 	struct PipelineKey final : RenderPassKey, PipelineLayoutKey
 	{
-		PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
+		PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
+			const IMesh& mesh);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineKey);
 
 		ShaderDepthFunc_t m_DepthCompareFunc;
@@ -390,10 +394,10 @@ namespace TF2Vulkan
 	public:
 		void ApplyState(VulkanStateID stateID,
 			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
-			IVulkanCommandBuffer& buf) override;
+			const IMesh& mesh, IVulkanCommandBuffer& buf) override;
 
 		VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState) override;
+			const LogicalDynamicState& dynamicState, const IMesh& mesh) override;
 
 		const DescriptorSet& FindOrCreateDescriptorSet(const DescriptorSetKey& key);
 		const DescriptorPool& FindOrCreateDescriptorPool(const DescriptorPoolKey& key);
@@ -709,7 +713,7 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 		auto& attrs = m_VertexInputAttributeDescriptions;
 
 		const auto& vertexShaderRefl = key.m_VSShaderGroup->GetVulkanShader().GetReflectionData();
-
+		
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
 		const auto vertexElementCount = key.m_VSVertexFormat.GetVertexElements(vertexElements, std::size(vertexElements), &totalVertexSize);
@@ -1220,7 +1224,7 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 }
 
 void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState, IVulkanCommandBuffer& buf)
+	const LogicalDynamicState& dynamicState, const IMesh& mesh, IVulkanCommandBuffer& buf)
 {
 	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
@@ -1282,12 +1286,13 @@ const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const Pipel
 #include "interface/IMaterialInternal.h"
 
 VulkanStateID StateManagerVulkan::FindOrCreateState(
-	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState)
+	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
+	const IMesh& mesh)
 {
 	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
 
-	const PipelineKey key(staticState, dynamicState);
+	const PipelineKey key(staticState, dynamicState, mesh);
 
 	auto lowerBound = m_StatesToPipelines.lower_bound(key);
 	if (lowerBound != m_StatesToPipelines.end() && lowerBound->first == key)
@@ -1302,11 +1307,11 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(
 	return newEntry->second.m_ID;
 }
 
-PipelineKey::PipelineKey(
-	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState) :
+PipelineKey::PipelineKey(const LogicalShadowState& staticState,
+	const LogicalDynamicState& dynamicState, const IMesh& mesh) :
 
 	RenderPassKey(staticState, dynamicState),
-	PipelineLayoutKey(staticState, dynamicState),
+	PipelineLayoutKey(staticState, dynamicState, mesh),
 
 	m_DepthCompareFunc(dynamicState.m_ForceDepthFuncEquals ? SHADER_DEPTHFUNC_EQUAL : staticState.m_DepthCompareFunc),
 	m_DepthTest(staticState.m_DepthTest),
@@ -1343,11 +1348,11 @@ PipelineKey::PipelineKey(
 }
 
 PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState) :
+	const LogicalDynamicState& dynamicState, const IMesh& mesh) :
 	DescriptorSetLayoutKey(staticState, dynamicState),
 
 	m_VSShaderInstance(dynamicState.m_VSShader),
-	m_VSVertexFormat(staticState.m_VSVertexFormat),
+	m_VSVertexFormat(mesh.GetVertexFormat()),
 
 	m_PSShaderInstance(dynamicState.m_PSShader)
 {

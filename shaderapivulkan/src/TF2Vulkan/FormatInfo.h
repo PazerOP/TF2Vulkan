@@ -24,6 +24,8 @@ namespace TF2Vulkan{ namespace FormatInfo
 	vk::Format ConvertImageFormat(ImageFormat format);
 	ImageFormat ConvertImageFormat(vk::Format format);
 
+	ImageFormat RemoveRuntimeFlags(ImageFormat format);
+
 	bool IsCompressed(vk::Format format);
 	bool HasHardwareSupport(vk::Format format, FormatUsage usage, bool filtering);
 	bool HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering);

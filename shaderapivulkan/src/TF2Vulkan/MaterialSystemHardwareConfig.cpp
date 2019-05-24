@@ -172,67 +172,67 @@ bool MaterialSystemHardwareConfig::HasSetDeviceGammaRamp() const
 
 bool MaterialSystemHardwareConfig::SupportsCompressedTextures() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetFeatures().textureCompressionBC;
 }
 
 VertexCompressionType_t MaterialSystemHardwareConfig::SupportsCompressedVertices() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return VertexCompressionType_t::VERTEX_COMPRESSION_ON;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsNormalMapCompression() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true; // ATI1 and ATI2 are BC4 and BC5
 }
 
 bool MaterialSystemHardwareConfig::SupportsVertexAndPixelShaders() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_1_4() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsStaticControlFlow() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_2_0() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsVertexShaders_2_0() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 int MaterialSystemHardwareConfig::MaximumAnisotropicLevel() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetLimits().maxSamplerAnisotropy;
 }
 
 int MaterialSystemHardwareConfig::MaxTextureWidth() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetLimits().maxImageDimension2D;
 }
 
 int MaterialSystemHardwareConfig::MaxTextureHeight() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetLimits().maxImageDimension2D;
 }
 
@@ -244,25 +244,25 @@ int MaterialSystemHardwareConfig::TextureMemorySize() const
 
 bool MaterialSystemHardwareConfig::SupportsOverbright() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsCubeMaps() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsMipmappedCubemaps() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsNonPow2Textures() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
@@ -288,7 +288,7 @@ int MaterialSystemHardwareConfig::MaxNumLights() const
 {
 	// TODO: Increase this? Probably pointless, most other stuff in the
 	// engine is hardcoded to 4 lights maximum
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return 4;
 }
 
@@ -312,7 +312,7 @@ int MaterialSystemHardwareConfig::MaxBlendMatrixIndices() const
 
 int MaterialSystemHardwareConfig::MaxTextureAspectRatio() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return MaxTextureWidth();
 }
 
@@ -324,7 +324,7 @@ int MaterialSystemHardwareConfig::MaxVertexShaderBlendMatrices() const
 
 int MaterialSystemHardwareConfig::MaxUserClipPlanes() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetLimits().maxClipDistances; // TODO: Is this the same thing as user clip planes
 }
 
@@ -336,19 +336,19 @@ bool MaterialSystemHardwareConfig::UseFastClipping() const
 
 int MaterialSystemHardwareConfig::GetDXSupportLevel() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetMaxDXSupportLevel();
 }
 
 const char* MaterialSystemHardwareConfig::GetShaderDLLName() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return "DEFAULT";
 }
 
 bool MaterialSystemHardwareConfig::ReadPixelsFromFrontBuffer() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true; // Should? always be possible in vulkan
 }
 
@@ -390,7 +390,7 @@ bool MaterialSystemHardwareConfig::NeedsATICentroidHack() const
 
 bool MaterialSystemHardwareConfig::SupportsColorOnSecondStream() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
@@ -408,7 +408,7 @@ bool MaterialSystemHardwareConfig::PreferReducedFillrate() const
 
 int MaterialSystemHardwareConfig::GetMaxDXSupportLevel() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	// TODO: What directx version is comparable with vulkan minimum requirements?
 
 	// NOTE: Don't say anything over 99 otherwise the material system will try
@@ -442,7 +442,7 @@ bool MaterialSystemHardwareConfig::CanDoSRGBReadFromRTs() const
 
 bool MaterialSystemHardwareConfig::SupportsGLMixedSizeTargets() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
@@ -466,31 +466,31 @@ int MaterialSystemHardwareConfig::GetMaxVertexTextureDimension() const
 
 int MaterialSystemHardwareConfig::MaxTextureDepth() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return GetLimits().maxImageDimension3D;
 }
 
 HDRType_t MaterialSystemHardwareConfig::GetHDRType() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return m_HDRType;
 }
 
 HDRType_t MaterialSystemHardwareConfig::GetHardwareHDRType() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return HDRType_t::HDR_TYPE_FLOAT;
 }
 
 bool MaterialSystemHardwareConfig::SupportsPixelShaders_2_b() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsStreamOffset() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
@@ -519,25 +519,25 @@ int MaterialSystemHardwareConfig::GetShadowFilterMode() const
 
 bool MaterialSystemHardwareConfig::NeedsShaderSRGBConversionImpl() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::UsesSRGBCorrectBlending() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::SupportsShaderModel_3_0() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::HasFastVertexTextures() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
@@ -549,7 +549,7 @@ int MaterialSystemHardwareConfig::MaxHWMorphBatchCount() const
 
 bool MaterialSystemHardwareConfig::ActuallySupportsPixelShaders_2_b() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true;  // All vulkan hardware supports this
 }
 
@@ -585,13 +585,13 @@ bool MaterialSystemHardwareConfig::SupportsFetch4() const
 
 bool MaterialSystemHardwareConfig::CanStretchRectFromTextures() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return true; // I mean, probably
 }
 
 const char* MaterialSystemHardwareConfig::GetHWSpecificShaderDLLName() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	return "stdshader_vulkan";
 }
 
@@ -607,7 +607,7 @@ const vk::PhysicalDeviceFeatures& MaterialSystemHardwareConfig::GetFeatures() co
 
 int MaterialSystemHardwareConfig::NumBooleanVertexShaderConstants() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	// Since we're really using constant buffers... "max constants" doesn't
 	// really mean anything anymore
 	return INT_MAX;
@@ -615,7 +615,7 @@ int MaterialSystemHardwareConfig::NumBooleanVertexShaderConstants() const
 
 int MaterialSystemHardwareConfig::NumIntegerVertexShaderConstants() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	// Since we're really using constant buffers... "max constants" doesn't
 	// really mean anything anymore
 	return INT_MAX;
@@ -623,7 +623,7 @@ int MaterialSystemHardwareConfig::NumIntegerVertexShaderConstants() const
 
 int MaterialSystemHardwareConfig::NumBooleanPixelShaderConstants() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	// Since we're really using constant buffers... "max constants" doesn't
 	// really mean anything anymore
 	return INT_MAX;
@@ -631,7 +631,7 @@ int MaterialSystemHardwareConfig::NumBooleanPixelShaderConstants() const
 
 int MaterialSystemHardwareConfig::NumIntegerPixelShaderConstants() const
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	// Since we're really using constant buffers... "max constants" doesn't
 	// really mean anything anymore
 	return INT_MAX;

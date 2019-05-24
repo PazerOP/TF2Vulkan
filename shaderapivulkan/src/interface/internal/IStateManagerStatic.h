@@ -13,9 +13,6 @@ namespace TF2Vulkan
 	class IStateManagerStatic : public IShaderShadowNext
 	{
 	public:
-		virtual void ApplyState(LogicalShadowStateID id, IVulkanCommandBuffer& buf) = 0;
-		virtual void ApplyCurrentState(IVulkanCommandBuffer& buf) = 0;
-
 		virtual LogicalShadowStateID TakeSnapshot() = 0;
 		virtual bool IsTranslucent(LogicalShadowStateID id) const = 0;
 		virtual bool IsAlphaTested(LogicalShadowStateID id) const = 0;

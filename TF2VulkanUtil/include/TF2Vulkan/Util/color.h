@@ -5,7 +5,7 @@
 
 #include <Color.h>
 
-#if _MSC_VER <= 1920
+#if _MSC_VER <= 1921
 // https://developercommunity.visualstudio.com/content/problem/211134/unsigned-integer-overflows-in-constexpr-functionsa.html
 #pragma warning(disable : 4307)
 #endif

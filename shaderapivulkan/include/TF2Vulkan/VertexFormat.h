@@ -60,11 +60,15 @@ namespace TF2Vulkan
 		size_t GetVertexSize() const;
 		uint_fast8_t GetTexCoordSize(uint_fast8_t index) const;
 		void SetTexCoordSize(uint_fast8_t index, uint_fast8_t size);
-		VertexCompressionType_t GetCompressionType() const;
 
 		constexpr bool IsUnknownFormat() const { return m_Flags == VertexFormatFlags::Meta_Unknown; }
 
+		bool IsCompressed() const { return GetCompressionType() != VERTEX_COMPRESSION_NONE; }
+		VertexCompressionType_t GetCompressionType() const;
 		void SetCompressionEnabled(bool enabled);
+
+		template<typename T> void SetUserDataSize(T size) { m_UserDataSize = size; assert(m_UserDataSize == size); }
+		template<typename T> void SetBoneWeightCount(T count) { m_BoneWeightCount = count; assert(m_BoneWeightCount == count); }
 
 		struct ElementType final
 		{
