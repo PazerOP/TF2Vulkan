@@ -85,6 +85,14 @@ namespace TF2Vulkan{ namespace Shaders
 		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
 		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
 
+		ThisType& Set(const T& x_, const T& y_, const T& z_)
+		{
+			x = x_;
+			y = y_;
+			z = z_;
+			return *this;
+		}
+
 		T x;
 		T y;
 		T z;

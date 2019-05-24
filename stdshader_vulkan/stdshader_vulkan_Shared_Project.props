@@ -15,7 +15,7 @@
 DEL /S %(Filename).h 2&gt;nul
 DEL /S %(Filename).spirv 2&gt;nul
 
-glslangvalidator -fhlsl_functionality1 -g --auto-map-bindings --shift-sampler-binding vert 100 --shift-texture-binding vert 200 --shift-sampler-binding frag 100 --shift-texture-binding frag 200 --invert-y -e main -V %(FullPath) -o %(Filename).spirv
+glslangvalidator -fhlsl_functionality1 --auto-map-bindings --shift-sampler-binding vert 100 --shift-texture-binding vert 200 --shift-sampler-binding frag 100 --shift-texture-binding frag 200 --invert-y -e main -V %(FullPath) -o %(Filename).spirv
 
 spirv-val %(Filename).spirv
 spirv-dis -o %(Filename).spirv_dis --offsets %(Filename).spirv

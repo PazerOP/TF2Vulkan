@@ -3,6 +3,7 @@
 #include "ShaderParamNext.h"
 #include "ParamGroups.h"
 
+#include <stdshader_vulkan/ShaderData.h>
 #include <TF2Vulkan/IShaderDynamicNext.h>
 #include <TF2Vulkan/IShaderShadowNext.h>
 
@@ -41,6 +42,8 @@ namespace TF2Vulkan{ namespace Shaders
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
 		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
 		virtual void OnInitShader(IShaderNextFactory& instanceMgr) = 0;
+
+		void LoadLights(TF2Vulkan::Shaders::ShaderDataCommon& data) const;
 
 		struct OnDrawElementsParams
 		{

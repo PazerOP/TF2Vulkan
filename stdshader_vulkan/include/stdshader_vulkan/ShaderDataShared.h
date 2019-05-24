@@ -13,12 +13,30 @@ namespace TF2Vulkan{ namespace Shaders
 #ifdef __cplusplus
 		DEFAULT_WEAK_EQUALITY_OPERATOR(LightInfo);
 #endif
-		float4 color;						// {xyz} is color	w is light type code (see comment below)
-		float4 dir;							// {xyz} is dir		w is light type code
-		float4 pos;
-		float4 spotParams;
-		float4 atten;
+		float3 color;
+		float1 bIsDirectional;
+		float3 dir;
+		float1 bIsSpot;
+		float3 pos;
+		float1 falloff;
+		float3 atten;
+		float1 stopdot1;
+		float1 stopdot2;
+		float1 OOdot;
 	};
+
+#ifdef __cplusplus
+	static_assert(offsetof(LightInfo, color) == 0);           // 0
+	static_assert(offsetof(LightInfo, bIsDirectional) == 12); // 1
+	static_assert(offsetof(LightInfo, dir) == 16);            // 2
+	static_assert(offsetof(LightInfo, bIsSpot) == 28);        // 3
+	static_assert(offsetof(LightInfo, pos) == 32);            // 4
+	static_assert(offsetof(LightInfo, falloff) == 44);        // 5
+	static_assert(offsetof(LightInfo, atten) == 48);          // 6
+	static_assert(offsetof(LightInfo, stopdot1) == 60);       // 7
+	static_assert(offsetof(LightInfo, stopdot2) == 64);       // 8
+	static_assert(offsetof(LightInfo, OOdot) == 68);          // 9
+#endif
 
 	struct PixelShaderLightInfo
 	{

@@ -154,11 +154,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	if (CUBEMAP)
 		o.worldVertToEyeVector.xyz = cEyePos - worldPos;
 
-	if (FLASHLIGHT)
-	{
-		o.color = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	}
-	else if (VERTEXCOLOR)
+	if (VERTEXCOLOR)
 	{
 		// Assume that this is unlitgeneric if you are using vertex color.
 		o.color.rgb = (DONT_GAMMA_CONVERT_VERTEX_COLOR) ? v.vColor.rgb : GammaToLinear(v.vColor.rgb);
@@ -202,6 +198,6 @@ VS_OUTPUT main(const VS_INPUT v)
 		o.color.xyz = float3(dot, dot, dot);
 	}
 
-	o.color = v.vColor.rgba;
+	//o.color = v.vColor.rgba;
 	return o;
 }

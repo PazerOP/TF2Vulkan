@@ -118,6 +118,7 @@ namespace TF2Vulkan
 		int GetPixelFogCombo() override final { NOT_IMPLEMENTED_FUNC(); return 0; }
 
 		void SetLight(int light, const LightDesc_t& desc) override final;
+		size_t GetLights(LightDesc_t* lights, size_t maxLights) const override final;
 		void SetLightingOrigin(Vector lightingOrigin) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetAmbientLight(float r, float g, float b) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetAmbientLightCube(Vector4D cube[6]) override final;

@@ -13,6 +13,8 @@ namespace TF2Vulkan
 		struct VSModelMatrices;
 	}
 
+	static constexpr size_t MAX_VS_LIGHTS = 4;
+
 	class IShaderDynamicNext
 	{
 	protected:
@@ -26,6 +28,7 @@ namespace TF2Vulkan
 		virtual void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) = 0;
 		virtual void GetWorldSpaceCameraPosition(Vector& pPos) const = 0;
 		virtual void GetMatrix(MaterialMatrixMode_t matrixMode, VMatrix& dst) const = 0;
+		[[nodiscard]] virtual size_t GetLights(LightDesc_t* lights, size_t maxLights) const = 0;
 
 		virtual int GetCurrentNumBones() const = 0;
 		virtual void LoadBoneMatrices(Shaders::VSModelMatrices& bones) const = 0;
@@ -41,6 +44,14 @@ namespace TF2Vulkan
 			if (buf)
 				BindUniformBuffer(*buf, index);
 		}
+
+		template<size_t size> size_t GetLights(LightDesc_t(&lights)[size]) const
+		{
+			static_assert(size == 4);
+			return GetLights(lights, size);
+		}
+
+	protected:
 	};
 
 #define SHADERDYNAMICNEXT_INTERFACE_VERSION "TF2Vulkan_IShaderDynamicNext001"

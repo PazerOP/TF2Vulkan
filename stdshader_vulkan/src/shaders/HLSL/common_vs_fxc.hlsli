@@ -559,16 +559,16 @@ float VertexAttenInternal(const float3 worldPos, int lightNum)
 
 	// Spot attenuation
 	float flCosTheta = dot(cLightInfo[lightNum].dir.xyz, -lightDir);
-	float flSpotAtten = (flCosTheta - cLightInfo[lightNum].spotParams.z) * cLightInfo[lightNum].spotParams.w;
+	float flSpotAtten = (flCosTheta - cLightInfo[lightNum].stopdot2) * cLightInfo[lightNum].OOdot;
 	flSpotAtten = max(0.0001f, flSpotAtten);
-	flSpotAtten = pow(flSpotAtten, cLightInfo[lightNum].spotParams.x);
+	flSpotAtten = pow(flSpotAtten, cLightInfo[lightNum].falloff);
 	flSpotAtten = saturate(flSpotAtten);
 
 	// Select between point and spot
-	float flAtten = lerp(flDistanceAtten, flDistanceAtten * flSpotAtten, cLightInfo[lightNum].dir.w);
+	float flAtten = lerp(flDistanceAtten, flDistanceAtten * flSpotAtten, cLightInfo[lightNum].bIsSpot);
 
 	// Select between above and directional (no attenuation)
-	result = lerp(flAtten, 1.0f, cLightInfo[lightNum].color.w);
+	result = lerp(flAtten, 1.0f, cLightInfo[lightNum].bIsDirectional);
 
 	return result;
 }
@@ -579,7 +579,7 @@ float CosineTermInternal(const float3 worldPos, const float3 worldNormal, int li
 	float3 lightDir = normalize(cLightInfo[lightNum].pos.xyz - worldPos);
 
 	// Select the above direction or the one in the structure, based upon light type
-	lightDir = lerp(lightDir, -cLightInfo[lightNum].dir.xyz, cLightInfo[lightNum].color.w);
+	lightDir = lerp(lightDir, -cLightInfo[lightNum].dir.xyz, cLightInfo[lightNum].bIsDirectional);
 
 	// compute N dot L
 	float NDotL = dot(worldNormal, lightDir);

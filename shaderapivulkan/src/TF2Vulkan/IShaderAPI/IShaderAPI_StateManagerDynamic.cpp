@@ -29,6 +29,25 @@ void IShaderAPI_StateManagerDynamic::SetLight(int light, const LightDesc_t& desc
 	Util::SetDirtyVar(m_State.m_Lights, light, desc, m_Dirty);
 }
 
+size_t IShaderAPI_StateManagerDynamic::GetLights(LightDesc_t* lights, size_t maxLights) const
+{
+	LOG_FUNC();
+	assert(maxLights >= m_State.m_Lights.size());
+	maxLights = std::max(maxLights, m_State.m_Lights.size());
+
+	size_t actualLights = 0;
+	for (size_t i = 0; i < maxLights; i++)
+	{
+		if (m_State.m_Lights[i].m_Type == MATERIAL_LIGHT_DISABLE)
+			continue;
+
+		lights[actualLights] = m_State.m_Lights[i];
+		actualLights++;
+	}
+
+	return actualLights;
+}
+
 void IShaderAPI_StateManagerDynamic::SetAmbientLightCube(Vector4D cube[6])
 {
 	LOG_FUNC();

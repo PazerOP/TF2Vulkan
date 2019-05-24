@@ -120,6 +120,52 @@ void BaseShaderNext::InitVecParam(int param, IMaterialVar** params, float defaul
 		params[param]->SetVecValue(defaultValX, defaultValY, defaultValZ, defaultValW);
 }
 
+void BaseShaderNext::LoadLights(ShaderDataCommon& data) const
+{
+	assert(s_pShaderAPI);
+	const auto dynamic = g_ShaderDynamic;
+	LightDesc_t currentLights[MAX_VS_LIGHTS];
+
+	Util::SafeConvert(dynamic->GetLights(currentLights), data.m_LightCount);
+
+	data.m_LightEnabled = {};
+
+	for (size_t i = 0; i < data.m_LightCount; i++)
+	{
+		const LightDesc_t& lightIn = currentLights[i];
+		LightInfo& lightOut = data.m_LightInfo[i];
+
+		data.m_LightEnabled[i] = true;
+
+		lightOut.bIsDirectional = lightIn.m_Type == MATERIAL_LIGHT_DIRECTIONAL ? 1.0f : 0.0f;
+		lightOut.bIsSpot = lightIn.m_Type == MATERIAL_LIGHT_SPOT ? 1.0f : 0.0f;
+
+		lightOut.color.Set(lightIn.m_Color.x, lightIn.m_Color.y, lightIn.m_Color.z);
+		lightOut.dir.Set(lightIn.m_Direction.x, lightIn.m_Direction.y, lightIn.m_Direction.z);
+		lightOut.pos.Set(lightIn.m_Position.x, lightIn.m_Position.y, lightIn.m_Position.z);
+
+		if (lightIn.m_Type == MATERIAL_LIGHT_SPOT)
+		{
+			lightOut.falloff = lightIn.m_Falloff;
+
+			auto& d1 = lightOut.stopdot1;
+			auto& d2 = lightOut.stopdot2;
+			d1 = cos(lightIn.m_Theta * 0.5f);
+			d2 = cos(lightIn.m_Phi * 0.5f);
+			lightOut.OOdot = (d1 > d2) ? 1.0f / (d1 - d2) : 0.0f;
+		}
+		else
+		{
+			lightOut.falloff = 0;
+			lightOut.stopdot1 = 1;
+			lightOut.stopdot2 = 1;
+			lightOut.OOdot = 1;
+		}
+
+		lightOut.atten.Set(lightIn.m_Attenuation0, lightIn.m_Attenuation1, lightIn.m_Attenuation2);
+	}
+}
+
 void BaseShaderNext::OnDrawElements(IMaterialVar** params, IShaderShadow* pShaderShadow,
 	IShaderDynamicAPI* pShaderAPI, VertexCompressionType_t vertexCompression,
 	CBasePerMaterialContextData** pContextDataPtr)
@@ -129,7 +175,7 @@ void BaseShaderNext::OnDrawElements(IMaterialVar** params, IShaderShadow* pShade
 	OnDrawElementsParams fnParams;
 	fnParams.matvars = params;
 	fnParams.shadow = assert_cast<IShaderShadowNext*>(pShaderShadow);
-	fnParams.dynamic = g_ShaderDynamic;
+	fnParams.dynamic = pShaderAPI ? g_ShaderDynamic : nullptr;
 	fnParams.compression = vertexCompression;
 	fnParams.context = pContextDataPtr;
 

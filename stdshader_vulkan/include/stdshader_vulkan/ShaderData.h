@@ -28,7 +28,7 @@ namespace TF2Vulkan{ namespace Shaders
 
 		float m_OOGamma = {}; // One over gamma
 		float m_OneThird = {};
-		int m_LightCount = {};
+		uint32_t m_LightCount = {};
 		bool4 m_LightEnabled;
 
 		Vector m_EyePos;
@@ -45,4 +45,6 @@ namespace TF2Vulkan{ namespace Shaders
 		float4 m_DiffuseModulation;
 		float4 m_EnvmapTintShadowTweaks;
 	};
+
+	static_assert(offsetof(ShaderDataCommon, m_LightInfo) == 208);
 } }
