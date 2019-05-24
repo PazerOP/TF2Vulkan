@@ -43,6 +43,7 @@
     <Import Project="..\stdshader_vulkan\stdshader_vulkan_Link.props" />
     <Import Project="shaderapivulkan_Shared_Project.props" />
     <Import Project="..\spirv-cross-project\spirv-cross_Link.props" />
+    <Import Project="..\TF2Vulkan_Debug_Solution.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -142,7 +143,14 @@
     <ClInclude Include="src\TF2Vulkan\VulkanUtil.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\sdk2013\mp\src\public\tier0\memoverride.cpp" />
+    <ClCompile Include="..\sdk2013\mp\src\public\tier0\memoverride.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="src\interface\internal\IShaderAPITexture.cpp" />
     <ClCompile Include="src\interface\internal\IVulkanCommandBuffer.cpp" />
     <ClCompile Include="include\TF2Vulkan\TextureData.cpp" />

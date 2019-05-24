@@ -120,6 +120,22 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 {
 	LOG_FUNC();
 
+	// MatSystemSurface normally adds 0.5 to vgui coordinates, unless
+	// these command line parameters are present, in which case it
+	// gets the offset from the params. We aren't DX9, so we don't
+	// need the half-pixel offset.
+	{
+		// MYSTERY: AppendParm does nothing when we are using static linking???
+		//CommandLine()->AppendParm("-pixel_offset_x", "0");
+		//CommandLine()->AppendParm("-pixel_offset_y", "0");
+
+		std::string oldCmdLine = CommandLine()->GetCmdLine();
+		oldCmdLine += " -pixel_offset_x 0 -pixel_offset_y 0";
+		CommandLine()->CreateCmdLine(oldCmdLine.c_str());
+		const char* newCmdLine = CommandLine()->GetCmdLine();
+		assert(oldCmdLine == newCmdLine);
+	}
+
 	ConnectTier1Libraries(&factory, 1);
 	ConnectTier2Libraries(&factory, 1);
 	ConnectTier3Libraries(&factory, 1);
@@ -137,13 +153,6 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 		auto stdshaderVulkanFactory = s_StdShaderVulkanDll.GetFactory();
 		Util::ConnectInterface(stdshaderVulkanFactory, SHADER_BLOBS_INTERFACE_VERSION, g_ShaderBlobs);
 	}
-
-	// MatSystemSurface normally adds 0.5 to vgui coordinates, unless
-	// these command line parameters are present, in which case it
-	// gets the offset from the params. We aren't DX9, so we don't
-	// need the half-pixel offset.
-	CommandLine()->AppendParm("-pixel_offset_x", "0");
-	CommandLine()->AppendParm("-pixel_offset_y", "0");
 
 	return true;
 }

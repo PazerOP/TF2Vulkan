@@ -8,11 +8,12 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>RAD_TELEMETRY_DISABLED;_CRT_SECURE_NO_WARNINGS;_PREFAST_;TF2VULKAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>RAD_TELEMETRY_DISABLED;_CRT_SECURE_NO_WARNINGS;_PREFAST_;TF2VULKAN;SUPPRESS_INVALID_PARAMETER_NO_INFO;VERSION_SAFE_STEAM_API_INTERFACES;CLIENT_DLL;WIN32;TF2_SDK;TF_CLIENT_DLL;GLOWS_ENABLE;NO_PCH;_X86_;MOVE_CONSTRUCTOR_SUPPORT;USES_ECON_ITEMS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatSpecificWarningsAsErrors>4473;4477;%(TreatSpecificWarningsAsErrors)</TreatSpecificWarningsAsErrors>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <AdditionalDependencies>legacy_stdio_definitions.lib;appframework.lib;mathlib.lib;tier0.lib;tier1.lib;tier2.lib;tier3.lib;vstdlib.lib;bitmap.lib;%(AdditionalDependencies)</AdditionalDependencies>
