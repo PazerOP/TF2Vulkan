@@ -47,7 +47,7 @@ static float3 DiffuseTerm(const float3 worldNormal, const float3 lightDir,
 	float3 fOut = float3(fResult, fResult, fResult);
 	if (TEXACTIVE_LIGHTWARP)
 	{
-		fOut = 2.0f * LightWarpTexture.Sample(LightWarpTextureSampler, fResult);
+		fOut = 2.0f * LightWarpTexture.Sample(LightWarpTextureSampler, fResult).rgb;
 	}
 
 	return fOut;
@@ -135,7 +135,7 @@ static float3 PixelShaderDoLighting(const float3 worldPos, const float3 worldNor
 	return linearColor;
 }
 
-float4 main(PS_INPUT i) : SV_Target
+float4 main(PS_INPUT i) : SV_TARGET
 {
 	float3 diffuseColor = (float3)1;
 	if (DIFFUSELIGHTING || VERTEXCOLOR)
@@ -146,7 +146,7 @@ float4 main(PS_INPUT i) : SV_Target
 		baseTextureColor = BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
 
 	if (NORMALMAPPING)
-		UpdateWorldNormalFromNormalMap(i.worldSpaceNormal, i.baseTexCoord.xy, i.worldSpaceTangent, i.worldSpaceBinormal);
+		UpdateWorldNormalFromNormalMap(i.worldSpaceNormal, i.baseTexCoord.xy, i.worldSpaceTangent.xyz, i.worldSpaceBinormal);
 
 	if (DIFFUSELIGHTING)
 	{

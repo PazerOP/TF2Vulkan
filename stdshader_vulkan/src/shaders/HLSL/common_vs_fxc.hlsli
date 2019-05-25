@@ -368,7 +368,7 @@ float3 DecompressBoneWeights(const uint3 weights)
 }
 
 void SkinPosition(bool bSkinning, const float4 modelPos,
-	const uint3 boneWeights, const uint4 boneIndices,
+	const uint3 boneWeights, const uint3 boneIndices,
 	out float3 worldPos)
 {
 	if (!bSkinning)
@@ -576,7 +576,7 @@ float CosineTermInternal(const float3 worldPos, const float3 worldNormal, int li
 	float3 lightDir = normalize(cLightInfo[lightNum].pos.xyz - worldPos);
 
 	// Select the above direction or the one in the structure, based upon light type
-	lightDir = lerp(lightDir, -cLightInfo[lightNum].dir.xyz, cLightInfo[lightNum].bIsDirectional);
+	lightDir = lerp(lightDir, -cLightInfo[lightNum].dir.xyz, cLightInfo[lightNum].bIsDirectional.xxx);
 
 	// compute N dot L
 	float NDotL = dot(worldNormal, lightDir);

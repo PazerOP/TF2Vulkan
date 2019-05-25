@@ -74,7 +74,7 @@ namespace TF2Vulkan
 			Struct(const spirv_cross::Compiler& comp,
 				const spirv_cross::Resource& resource);
 
-			std::string m_Name;
+			std::string m_TypeName;
 			size_t m_Size;
 			std::vector<StructMember> m_Members;
 		};
@@ -91,6 +91,7 @@ namespace TF2Vulkan
 		{
 			UniformBuffer(const spirv_cross::Compiler& comp,
 				const spirv_cross::Resource& resource);
+			std::string m_Name;
 		};
 
 		struct Sampler final : ShaderVariable, ShaderResource

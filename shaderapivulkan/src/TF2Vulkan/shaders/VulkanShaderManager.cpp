@@ -145,7 +145,7 @@ StructMember::StructMember(const spirv_cross::Compiler& comp, uint32_t parent, u
 }
 
 Struct::Struct(const spirv_cross::Compiler& comp, const spirv_cross::Resource& resource) :
-	m_Name(comp.get_name(resource.base_type_id))
+	m_TypeName(comp.get_name(resource.base_type_id))
 {
 	const auto& type = comp.get_type(resource.base_type_id);
 
@@ -162,8 +162,15 @@ ShaderResource::ShaderResource(const spirv_cross::Compiler& comp, uint32_t id) :
 
 UniformBuffer::UniformBuffer(const spirv_cross::Compiler& comp, const spirv_cross::Resource& resource) :
 	Struct(comp, resource),
-	ShaderResource(comp, resource.id)
+	ShaderResource(comp, resource.id),
+	m_Name(comp.get_name(resource.id))
 {
+	if (const auto & name = comp.get_name(resource.id); !name.empty())
+		m_Name = name;
+	else
+		m_Name = m_TypeName;
+
+	assert(!m_Name.empty());
 }
 
 Sampler::Sampler(const spirv_cross::Compiler& comp, uint32_t id) :

@@ -43,6 +43,11 @@ float3 BlendPixelFog(const float3 vShaderColor, float pixelFogFactor, const floa
 	{
 		return vShaderColor;
 	}
+	else
+	{
+		// Magic number for invalid pixel fog type
+		return float3(1.3, 0.2, 5.8);
+	}
 }
 
 float4 FinalOutput(const float4 vShaderColor, float pixelFogFactor, const int iPIXELFOGTYPE,

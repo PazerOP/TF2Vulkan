@@ -7,7 +7,7 @@ cbuffer PixelShaderCustomConstants
 	float4 g_ColorConstant;
 };
 
-float4 main() : COLOR
+float4 main() : SV_TARGET
 {
 	float4 result = (g_ColorConstant * (1.0 / 2.0));
 

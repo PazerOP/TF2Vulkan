@@ -35,9 +35,9 @@ struct VS_TO_PS_INTERSTAGE_DATA
 
 	float3 worldVertToEyeVector : TEXCOORD3;
 	float3 worldSpaceNormal     : TEXCOORD4;
-	float4 worldSpaceTangent;
-	float3 worldSpaceBinormal;
-	float4 lightAtten;
+	float4 worldSpaceTangent    : TANGENT;
+	float3 worldSpaceBinormal   : BINORMAL;
+	float4 lightAtten           : LIGHT_ATTEN;
 
 	float4 vProjPos             : TEXCOORD6;
 	float4 worldPos_ProjPosZ    : TEXCOORD7;
@@ -56,33 +56,32 @@ struct VS_TO_PS_INTERSTAGE_DATA
 #error "Either VERTEX_SHADER or PIXEL_SHADER must be defined"
 #endif
 
-static int SPEC_CONST_ID_NEXT = SPEC_CONST_ID_BASE + 1;
-[[vk::constant_id(SPEC_CONST_ID_NEXT++)]] const bool AMBIENT_LIGHT = false;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 1)]] const bool TEXACTIVE_BASETEXTURE = false;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 2)]] const bool TEXACTIVE_BUMPMAP = false;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const bool TEXACTIVE_LIGHTWARP = false;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 1)]] const bool AMBIENT_LIGHT = false;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 2)]] const bool TEXACTIVE_BASETEXTURE = false;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const bool TEXACTIVE_BUMPMAP = false;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 4)]] const bool TEXACTIVE_LIGHTWARP = false;
 
 #if false // TODO: Array-based textures
-[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const uint TEXTURE_COUNT = 1;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 4)]] const uint SAMPLER_COUNT = 1;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 5)]] const uint TEXTURE_COUNT = 1;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 6)]] const uint SAMPLER_COUNT = 1;
 
-[[vk::constant_id(SPEC_CONST_ID_BASE + 5)]] const uint TEXINDEX_BASE = 0;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 5)]] const uint SMPINDEX_BASE = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 7)]] const uint TEXINDEX_BASE = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 8)]] const uint SMPINDEX_BASE = 0;
 
 [[vk::binding(100)]] Texture2D g_Textures[TEXTURE_COUNT];
 [[vk::binding(100)]] SamplerState g_Samplers[SAMPLER_COUNT];
 #endif
 
-[[vk::binding(0)]] Texture2D BaseTexture;
-[[vk::binding(0)]] SamplerState BaseTextureSampler;
+Texture2D BaseTexture : register(t0);
+SamplerState BaseTextureSampler : register(s0);
 
-[[vk::binding(1)]] Texture2D BumpMapTexture;
-[[vk::binding(1)]] SamplerState BumpMapTextureSampler;
+Texture2D BumpMapTexture : register(t1);
+SamplerState BumpMapTextureSampler : register(s1);
 
-[[vk::binding(2)]] Texture2D morphTexture;
-[[vk::binding(2)]] SamplerState morphSampler;
+Texture2D morphTexture : register(t2);
+SamplerState morphSampler : register(s2);
 
-[[vk::binding(3)]] Texture2D LightWarpTexture;
-[[vk::binding(3)]] SamplerState LightWarpTextureSampler;
+Texture2D LightWarpTexture : register(t3);
+SamplerState LightWarpTextureSampler : register(s3);
 
 #endif // XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD

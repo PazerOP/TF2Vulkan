@@ -11,22 +11,18 @@
       <Command>copy /Y "$(TargetPath)" "C:\Program Files (x86)\Steam\steamapps\common\Team Fortress 2\bin\stdshader_vulkan.dll"</Command>
     </PostBuildEvent>
     <Link />
-    <CustomBuild>
-      <Command>pushd $(ProjectDir)src\shaders\Generated\
-DEL /S %(Filename).h 2&gt;nul
-DEL /S %(Filename).spirv 2&gt;nul
-
-glslangvalidator -fhlsl_functionality1 --auto-map-bindings --shift-sampler-binding vert 100 --shift-texture-binding vert 200 --shift-sampler-binding frag 100 --shift-texture-binding frag 200 --invert-y -e main -V %(FullPath) -o %(Filename).spirv
-
-spirv-val %(Filename).spirv
-spirv-dis -o %(Filename).spirv_dis --offsets %(Filename).spirv
-xxd -i %(Filename).spirv %(Filename).h
+    <CustomBuild />
+    <CustomBuildStep>
+      <Command>pushd $(ProjectDir)src\shaders\HLSL\
+C:\Windows\Sysnative\wsl.exe make
 popd</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
       <Message>Compiling shaders...</Message>
-      <Outputs>$(ProjectDir)src\shaders\Generated\%(Filename).h;%(Outputs)</Outputs>
-      <BuildInParallel>true</BuildInParallel>
-      <OutputItemType>ClInclude</OutputItemType>
-    </CustomBuild>
+      <Outputs>$(ProjectDir)src\shaders\Generated\marker.tlog;%(Outputs)</Outputs>
+      <Inputs>$(TargetFileName);%(Inputs)</Inputs>
+      <TreatOutputAsContent>false</TreatOutputAsContent>
+    </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

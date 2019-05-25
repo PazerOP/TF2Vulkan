@@ -173,6 +173,10 @@ VS_OUTPUT main(const VS_INPUT v)
 	if (SEPARATE_DETAIL_UVS)
 		o.detailTexCoord.xy = v.vTexCoord1.xy;
 
+#ifdef INVERT_Y
+	o.projPos.y = 1 - o.projPos.y;
+#endif
+
 	//o.color = v.vColor.rgba;
 	return o;
 }

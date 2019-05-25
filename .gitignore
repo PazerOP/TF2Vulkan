@@ -341,3 +341,4 @@ healthchecksdb
 stdshader_dx9_tf2vulkan/src/Generated/
 *.vcxproj.filters
 stdshader_vulkan/src/shaders/Generated/
+*.tlog
