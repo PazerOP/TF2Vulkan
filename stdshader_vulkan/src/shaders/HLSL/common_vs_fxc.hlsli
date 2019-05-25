@@ -22,9 +22,6 @@
 	float4x3 cModel[53];
 };
 
-static const float cOverbright = 2.0f;
-static const float cOOOverbright = 1.0f / cOverbright;
-
 #define g_nLightCount       g_nLightCountRegister.x
 
 #define cFogEndOverFogRange cFogParams.endOverRange
@@ -629,6 +626,18 @@ float3 DoLighting(const float3 worldPos, const float3 worldNormal,
 	}
 
 	return linearColor;
+}
+
+// This routine uses booleans to do early-outs and is meant to be called by routines OUTSIDE of this file
+float GetVertexAttenForLight(const float3 worldPos, uint lightNum)
+{
+	float result = 0.0f;
+	if (g_bLightEnabled[lightNum])
+	{
+		result = VertexAttenInternal(worldPos, lightNum);
+	}
+
+	return result;
 }
 
 #endif // INCLUDE_GUARD_COMMON_VS_FXC_HLSLI

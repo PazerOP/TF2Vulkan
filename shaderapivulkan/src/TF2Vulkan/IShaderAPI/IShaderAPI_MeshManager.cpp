@@ -62,10 +62,8 @@ IMesh* IShaderAPI_MeshManager::GetDynamicMeshEx(IMaterial* material, VertexForma
 {
 	LOG_FUNC();
 
-	const VertexFormat fmt(vertexFormat);
-	assert(hwSkinBoneCount == 0);
-	assert(fmt.m_BoneWeightCount == 0);
-	assert(!(fmt.m_Flags & VertexFormatFlags::BoneIndex));
+	VertexFormat fmt(vertexFormat);
+	fmt.SetBoneWeightCount(hwSkinBoneCount);
 
 	return &m_DynamicMeshes.try_emplace(fmt, fmt, true).first->second;
 }

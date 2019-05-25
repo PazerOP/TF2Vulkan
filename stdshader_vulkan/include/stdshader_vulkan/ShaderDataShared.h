@@ -41,6 +41,7 @@ namespace TF2Vulkan{ namespace Shaders
 	static_assert(offsetof(LightInfo, OOdot) == 68);          // 9
 #endif
 
+#if false
 	struct PixelShaderLightInfo
 	{
 #ifdef __cplusplus
@@ -49,6 +50,7 @@ namespace TF2Vulkan{ namespace Shaders
 		float4 color;
 		float4 pos;
 	};
+#endif
 
 	struct AmbientLightCube
 	{

@@ -43,6 +43,7 @@ namespace TF2Vulkan
 
 			std::string m_Name;
 			VariableType m_Type;
+			uint_fast8_t m_ComponentCount; // vector size (1/2/3/4 elements)
 		};
 
 		struct SpecializationConstant final : ShaderVariable

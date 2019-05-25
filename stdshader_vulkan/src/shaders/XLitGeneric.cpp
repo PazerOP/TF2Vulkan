@@ -85,7 +85,9 @@ inline namespace XLitGeneric
 		bool32 DYNAMIC_LIGHT;
 
 		bool32 TEXACTIVE_BASETEXTURE;
+
 		bool32 TEXACTIVE_BUMPMAP;
+		bool32 NORMALMAPPING;
 	};
 
 	struct SpecConstLayout final : BaseSpecConstLayout<SpecConstLayout, SpecConstBuf>
@@ -99,7 +101,9 @@ inline namespace XLitGeneric
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DYNAMIC_LIGHT);
 
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, TEXACTIVE_BASETEXTURE);
+
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, TEXACTIVE_BUMPMAP);
+		SPEC_CONST_BUF_ENTRY(SpecConstBuf, NORMALMAPPING);
 
 	} static constexpr s_SpecConstLayout;
 
@@ -488,9 +492,10 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	const bool hasDiffuseLighting = drawParams.m_SpecConsts.DIFFUSELIGHTING = bVertexLitGeneric;
 	const bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST);
 	const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
-	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsTexture());
 	const bool bIsAdditive = CShader_IsFlagSet(params.matvars, MATERIAL_VAR_ADDITIVE);
 	const bool bHasFlashlight = false;
+	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (/*g_pConfig->UseBumpmapping() && */params[BUMPMAP]->IsTexture());
+	drawParams.m_SpecConsts.NORMALMAPPING = bHasBump;
 
 	const bool bHasVertexColor = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);
 	const bool bHasVertexAlpha = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXALPHA);

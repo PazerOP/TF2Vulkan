@@ -21,8 +21,46 @@
 	float g_fVertexAlpha;
 };
 
+struct VS_TO_PS_INTERSTAGE_DATA
+{
+#ifdef VERTEX_SHADER
+	float4 projPos              : SV_Position;
+#endif
+
+	float4 color                : COLOR0;
+	float fog : FOG;
+
+	float3 baseTexCoord         : TEXCOORD0;
+	float3 detailTexCoord       : TEXCOORD1;
+
+	float3 worldVertToEyeVector : TEXCOORD3;
+	float3 worldSpaceNormal     : TEXCOORD4;
+	float4 worldSpaceTangent;
+	float3 worldSpaceBinormal;
+	float4 lightAtten;
+
+	float4 vProjPos             : TEXCOORD6;
+	float4 worldPos_ProjPosZ    : TEXCOORD7;
+
+	float3 SeamlessWeights      : TEXCOORD8;
+	float4 fogFactorW           : TEXCOORD9;
+
+	float3 boneWeightsOut       : TEST_BONEWEIGHTSOUT;
+};
+
+#ifdef VERTEX_SHADER
+#define VS_OUTPUT VS_TO_PS_INTERSTAGE_DATA
+#elif defined(PIXEL_SHADER) || defined(FRAGMENT_SHADER)
+#define PS_INPUT VS_TO_PS_INTERSTAGE_DATA
+#else
+#error "Either VERTEX_SHADER or PIXEL_SHADER must be defined"
+#endif
+
+static int SPEC_CONST_ID_NEXT = SPEC_CONST_ID_BASE + 1;
+[[vk::constant_id(SPEC_CONST_ID_NEXT++)]] const bool AMBIENT_LIGHT = false;
 [[vk::constant_id(SPEC_CONST_ID_BASE + 1)]] const bool TEXACTIVE_BASETEXTURE = false;
 [[vk::constant_id(SPEC_CONST_ID_BASE + 2)]] const bool TEXACTIVE_BUMPMAP = false;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const bool TEXACTIVE_LIGHTWARP = false;
 
 #if false // TODO: Array-based textures
 [[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const uint TEXTURE_COUNT = 1;
@@ -43,5 +81,8 @@
 
 [[vk::binding(2)]] Texture2D morphTexture;
 [[vk::binding(2)]] SamplerState morphSampler;
+
+[[vk::binding(3)]] Texture2D LightWarpTexture;
+[[vk::binding(3)]] SamplerState LightWarpTextureSampler;
 
 #endif // XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD

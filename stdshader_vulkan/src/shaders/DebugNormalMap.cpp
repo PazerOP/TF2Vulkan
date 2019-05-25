@@ -53,14 +53,18 @@ void Shader::OnInitShader(IShaderNextFactory& mgr)
 
 void Shader::OnInitShaderParams(IMaterialVar** params, const char* materialName)
 {
-	LOG_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 
+#if false
 	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
+#endif
 }
 
 void Shader::OnDrawElements(const OnDrawElementsParams& params)
 {
-	LOG_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+
+#if false
 
 	auto& shadow = params.shadow;
 	auto& dynamic = params.dynamic;
@@ -86,4 +90,5 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	}
 
 	Draw();
+#endif
 }

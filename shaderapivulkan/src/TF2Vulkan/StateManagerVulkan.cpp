@@ -10,6 +10,7 @@
 #include "interface/internal/IShaderInternal.h"
 #include "shaders/VulkanShaderManager.h"
 #include "VulkanFactories.h"
+#include "TF2Vulkan/FormatInfo.h"
 
 #include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/Color.h>
@@ -693,6 +694,35 @@ static vk::CompareOp ConvertCompareOp(ShaderDepthFunc_t op)
 	}
 }
 
+static vk::Format ConvertVertexFormat(const ShaderReflection::VertexAttribute& var)
+{
+	DataFormat componentType;
+	uint_fast8_t componentSize;
+
+	switch (var.m_Type)
+	{
+	default:
+		assert(!"Unknown/unexpected vertex attribute type");
+	case ShaderReflection::VariableType::Float:
+		componentType = DataFormat::SFloat;
+		componentSize = 4;
+		break;
+
+	case ShaderReflection::VariableType::Int:
+		componentType = DataFormat::SInt;
+		componentSize = 4;
+		break;
+
+	case ShaderReflection::VariableType::UInt:
+	case ShaderReflection::VariableType::Boolean:
+		componentType = DataFormat::UInt;
+		componentSize = 4;
+		break;
+	}
+
+	return FormatInfo::ConvertDataFormat(componentType, var.m_ComponentCount, componentSize);
+}
+
 Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 	const RenderPass& renderPass) :
 	m_Layout(&layout),
@@ -763,7 +793,8 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 				continue;
 
 			// Otherwise, insert an empty one
-			attrs.emplace_back(VIAD(input.m_Location, 1, vk::Format::eR32G32B32A32Sfloat));
+			//attrs.emplace_back(VIAD(input.m_Location, 1, vk::Format::eR32G32B32A32Sfloat));
+			attrs.emplace_back(VIAD(input.m_Location, 1, ConvertVertexFormat(input)));
 		}
 
 		auto & binds = m_VertexInputBindingDescriptions;

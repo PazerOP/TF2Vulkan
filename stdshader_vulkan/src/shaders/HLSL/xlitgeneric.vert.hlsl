@@ -1,4 +1,6 @@
 #include "common_vs_fxc.hlsli"
+
+#define VERTEX_SHADER
 #include "xlitgeneric.common.hlsli"
 
 #define SEAMLESS_SCALE (cSeamlessScale.x)
@@ -31,27 +33,6 @@ struct VS_INPUT
 	float3 vPosFlex         : POSITION1;
 	float3 vNormalFlex      : NORMAL1;
 	int vVertexID           : SV_VertexID;
-};
-
-struct VS_OUTPUT
-{
-	float4 projPos              : SV_Position;
-	float4 color                : COLOR0;
-	float fog                   : FOG;
-
-	float3 baseTexCoord         : TEXCOORD0;
-	float3 detailTexCoord       : TEXCOORD1;
-
-	float3 worldVertToEyeVector : TEXCOORD3;
-	float3 vWorldNormal         : TEXCOORD4;
-
-	float4 vProjPos             : TEXCOORD6;
-	float4 worldPos_ProjPosZ    : TEXCOORD7;
-
-	float3 SeamlessWeights      : TEXCOORD8;
-	float4 fogFactorW           : TEXCOORD9;
-
-	float3 boneWeightsOut       : TEST_BONEWEIGHTSOUT;
 };
 
 VS_OUTPUT main(const VS_INPUT v)
@@ -103,13 +84,16 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 
 	// Perform skinning
-	float3 worldNormal, worldPos, worldTangentS, worldTangentT;
+	float3 worldPos, worldTangentS, worldTangentT;
 
 	if (NORMALMAPPING)
 	{
 		SkinPositionNormalAndTangentSpace(g_bSkinning, vPosition, vNormal, vTangent,
 			v.vBoneWeights, v.vBoneIndices, worldPos,
-			worldNormal, worldTangentS, worldTangentT);
+			o.worldSpaceNormal, worldTangentS, worldTangentT);
+
+		worldTangentS = normalize(worldTangentS);
+		worldTangentT = normalize(worldTangentT);
 	}
 	else
 	{
@@ -117,26 +101,20 @@ VS_OUTPUT main(const VS_INPUT v)
 			g_bSkinning,
 			vPosition, vNormal,
 			v.vBoneWeights, v.vBoneIndices,
-			worldPos, worldNormal);
+			worldPos, o.worldSpaceNormal);
 	}
+
+	if (NORMALMAPPING || !VERTEXCOLOR)
+		o.worldSpaceNormal = normalize(o.worldSpaceNormal);
+
+	if (MORPHING && DECAL)
+		worldPos += o.worldSpaceNormal * 0.05f * v.vTexCoord2.z;
 
 	if (NORMALMAPPING)
 	{
-		worldNormal = normalize(worldNormal);
-		worldTangentS = normalize(worldTangentS);
-		worldTangentT = normalize(worldTangentT);
+		o.worldSpaceTangent = float4(worldTangentS, vTangent.w);
+		o.worldSpaceBinormal = worldTangentT;
 	}
-	else if (!VERTEXCOLOR)
-	{
-		worldNormal = normalize(worldNormal);
-	}
-
-	if (MORPHING && DECAL)
-		worldPos += worldNormal * 0.05f * v.vTexCoord2.z;
-
-	o.vWorldNormal = worldNormal;
-	//if (NORMALMAPPING)
-	//	o.vWorldTangent = float4(worldTangentS.xyz, vTangent.w);
 
 	// Transform into projection space
 	float4 vProjPos = mul(float4(worldPos, 1), cViewProj);
@@ -162,7 +140,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	else
 	{
 		//o.color = float4(worldPos, 1);
-		o.color = float4(DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT), 1);
+		o.color = float4(DoLighting(worldPos, o.worldSpaceNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT), 1);
 	}
 
 	if (SEAMLESS_BASE)
@@ -187,6 +165,10 @@ VS_OUTPUT main(const VS_INPUT v)
 		o.detailTexCoord.x = dot(v.vTexCoord0, cDetailTexCoordTransform[0]);
 		o.detailTexCoord.y = dot(v.vTexCoord0, cDetailTexCoordTransform[1]);
 	}
+
+	// Light attenuation
+	for (uint i = 0; i < NUM_LIGHTS; i++)
+		o.lightAtten[i] = GetVertexAttenForLight(worldPos, i);
 
 	if (SEPARATE_DETAIL_UVS)
 		o.detailTexCoord.xy = v.vTexCoord1.xy;

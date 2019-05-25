@@ -33,6 +33,8 @@ static const int BINDING_CBUF_SHADERCOMMON = 0;
 static const int BINDING_CBUF_SHADERCUSTOM = 1;
 static const int BINDING_CBUF_VSMODELMATRICES = 2;
 
+static const float cOverbright = 2.0f;
+static const float cOOOverbright = 1.0f / cOverbright;
 static const float cOneThird = 1.0f / 3.0f;
 
 [[vk::binding(BINDING_CBUF_SHADERCOMMON)]] cbuffer ShaderCommonConstants
@@ -42,7 +44,7 @@ static const float cOneThird = 1.0f / 3.0f;
 	float4x4 cViewProj;
 
 	float cOOGamma;
-	int g_nLightCountRegister;
+	uint g_nLightCountRegister;
 	bool4 g_bLightEnabled;
 
 	float3 cEyePos;
@@ -62,10 +64,17 @@ static const float cOneThird = 1.0f / 3.0f;
 	float4 cFlashlightScreenScale;
 };
 
+#define NUM_LIGHTS g_nLightCountRegister
+
 #define g_FogType DOWATERFOG
 
 // These cause bad codegen with glslangValidator
+#define tex1D "FIXME"
+#define tex2D "FIXME"
+#define tex3D "FIXME"
+#define sampler1D "FIXME"
 #define sampler2D "FIXME"
+#define sampler3D "FIXME"
 
 // This just shouldn't be used anymore
 #define D3DCOLORtoUBYTE4 "FIXME"
@@ -102,6 +111,34 @@ float3 GammaToLinear(const float3 gamma)
 float4 GammaToLinear(const float4 gamma)
 {
 	return float4(pow(gamma.xyz, 2.2f), gamma.w);
+}
+
+float3 Vec3WorldToTangent(float3 iWorldVector, float3 iWorldNormal, float3 iWorldTangent, float3 iWorldBinormal)
+{
+	float3 vTangentVector;
+	vTangentVector.x = dot(iWorldVector.xyz, iWorldTangent.xyz);
+	vTangentVector.y = dot(iWorldVector.xyz, iWorldBinormal.xyz);
+	vTangentVector.z = dot(iWorldVector.xyz, iWorldNormal.xyz);
+	return vTangentVector.xyz; // Return without normalizing
+}
+
+float3 Vec3WorldToTangentNormalized(float3 iWorldVector, float3 iWorldNormal, float3 iWorldTangent, float3 iWorldBinormal)
+{
+	return normalize(Vec3WorldToTangent(iWorldVector, iWorldNormal, iWorldTangent, iWorldBinormal));
+}
+
+float3 Vec3TangentToWorld(float3 iTangentVector, float3 iWorldNormal, float3 iWorldTangent, float3 iWorldBinormal)
+{
+	float3 vWorldVector;
+	vWorldVector.xyz = iTangentVector.x * iWorldTangent.xyz;
+	vWorldVector.xyz += iTangentVector.y * iWorldBinormal.xyz;
+	vWorldVector.xyz += iTangentVector.z * iWorldNormal.xyz;
+	return vWorldVector.xyz; // Return without normalizing
+}
+
+float3 Vec3TangentToWorldNormalized(float3 iTangentVector, float3 iWorldNormal, float3 iWorldTangent, float3 iWorldBinormal)
+{
+	return normalize(Vec3TangentToWorld(iTangentVector, iWorldNormal, iWorldTangent, iWorldBinormal));
 }
 
 #endif // INCLUDE_GUARD_COMMON_FXC_HLSLI

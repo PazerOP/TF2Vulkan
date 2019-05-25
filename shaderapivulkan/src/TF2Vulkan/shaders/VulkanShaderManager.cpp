@@ -115,6 +115,7 @@ ShaderVariable::ShaderVariable(const spirv_cross::Compiler& comp, uint32_t id) :
 	const auto& type = comp.expression_type(id);
 	//assert(!type.pointer);
 	m_Type = ConvertVariableType(type.basetype);
+	m_ComponentCount = type.vecsize;
 }
 
 ShaderVariable::ShaderVariable(std::string&& name) :
