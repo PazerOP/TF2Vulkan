@@ -2,9 +2,9 @@
 #include "ShaderParamNext.h"
 
 #include <stdshader_vulkan/ShaderData.h>
-#include <TF2Vulkan/IShaderNextFactory.h>
-#include <TF2Vulkan/Util/Macros.h>
-#include <TF2Vulkan/Util/SafeConvert.h>
+#include "TF2Vulkan/IShaderNextFactory.h"
+#include "TF2Vulkan/Util/Macros.h"
+#include "TF2Vulkan/Util/SafeConvert.h"
 
 #include <stdexcept>
 
@@ -152,7 +152,7 @@ void BaseShaderNext::LoadLights(ShaderDataCommon& data) const
 			auto& d2 = lightOut.stopdot2;
 			d1 = cos(lightIn.m_Theta * 0.5f);
 			d2 = cos(lightIn.m_Phi * 0.5f);
-			lightOut.OOdot = (d1 > d2) ? 1.0f / (d1 - d2) : 0.0f;
+			lightOut.OOdot = (d1 > d2) ? float(1.0f / (d1 - d2)) : 0.0f;
 		}
 		else
 		{

@@ -27,7 +27,6 @@ namespace TF2Vulkan{ namespace Shaders
 		VMatrix m_ViewProj;
 
 		float m_OOGamma = {}; // One over gamma
-		float m_OneThird = {};
 		uint32_t m_LightCount = {};
 		bool4 m_LightEnabled;
 

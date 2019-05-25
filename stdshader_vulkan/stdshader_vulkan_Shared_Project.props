@@ -4,6 +4,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <IncludePath>$(SolutionDir)shaderapivulkan\include;$(IncludePath)</IncludePath>
+    <CustomBuildBeforeTargets>ClCompile</CustomBuildBeforeTargets>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <PostBuildEvent>
@@ -24,6 +25,7 @@ popd</Command>
       <Message>Compiling shaders...</Message>
       <Outputs>$(ProjectDir)src\shaders\Generated\%(Filename).h;%(Outputs)</Outputs>
       <BuildInParallel>true</BuildInParallel>
+      <OutputItemType>ClInclude</OutputItemType>
     </CustomBuild>
   </ItemDefinitionGroup>
   <ItemGroup />

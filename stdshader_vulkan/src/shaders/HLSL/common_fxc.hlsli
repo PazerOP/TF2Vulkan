@@ -21,7 +21,6 @@
 [[vk::constant_id(12)]] const bool STATIC_LIGHT_LIGHTMAP = false;
 [[vk::constant_id(13)]] const int DOWATERFOG = 0;
 [[vk::constant_id(14)]] const bool SKINNING = false;
-[[vk::constant_id(15)]] const bool LIGHTING_PREVIEW = false;
 [[vk::constant_id(16)]] const bool MORPHING = false;
 [[vk::constant_id(17)]] const bool NORMALMAPPING = false;
 

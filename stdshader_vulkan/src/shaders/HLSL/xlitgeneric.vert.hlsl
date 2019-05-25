@@ -36,7 +36,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
 	float4 projPos              : SV_Position;
-	float4 color                : TEXCOORD2;
+	float4 color                : COLOR0;
 	float fog                   : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;
@@ -48,8 +48,8 @@ struct VS_OUTPUT
 	float4 vProjPos             : TEXCOORD6;
 	float4 worldPos_ProjPosZ    : TEXCOORD7;
 
-	float3 SeamlessWeights      : COLOR0;
-	float4 fogFactorW           : COLOR1;
+	float3 SeamlessWeights      : TEXCOORD8;
+	float4 fogFactorW           : TEXCOORD9;
 
 	float3 boneWeightsOut       : TEST_BONEWEIGHTSOUT;
 };
@@ -65,7 +65,6 @@ VS_OUTPUT main(const VS_INPUT v)
 		FLASHLIGHT ||
 		SEAMLESS_BASE ||
 		SEAMLESS_DETAIL ||
-		LIGHTING_PREVIEW ||
 		g_bDecalOffset ||
 		CUBEMAP)
 	{
@@ -162,7 +161,8 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 	else
 	{
-		o.color.xyz = DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT);
+		//o.color = float4(worldPos, 1);
+		o.color = float4(DoLighting(worldPos, worldNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT), 1);
 	}
 
 	if (SEAMLESS_BASE)
@@ -190,13 +190,6 @@ VS_OUTPUT main(const VS_INPUT v)
 
 	if (SEPARATE_DETAIL_UVS)
 		o.detailTexCoord.xy = v.vTexCoord1.xy;
-
-	if (LIGHTING_PREVIEW)
-	{
-		// FIXME: Did the author really mean to truncate to a float?
-		float dot = (0.5 + 0.5 * worldNormal * float3(0.7071, 0.7071, 0)).x;
-		o.color.xyz = float3(dot, dot, dot);
-	}
 
 	//o.color = v.vColor.rgba;
 	return o;

@@ -25,112 +25,197 @@ namespace TF2Vulkan{ namespace Shaders
 		uint32_t m_Data = 0;
 	};
 
-	template<typename T, int size> struct vector;
 	template<typename T, int sizeX, int sizeY> struct matrix;
+	template<typename T, size_t size> struct vector;
 
 	namespace detail
 	{
-		template<typename T, int size> static constexpr auto GetVectorSize(const vector<T, size>&) { return size; }
+		static constexpr bool IsVector(const void*) { return false; }
+		template<typename T, size_t size> static constexpr bool IsVector(const vector<T, size>*) { return true; }
+		template<typename T> static constexpr bool is_vector_v = IsVector((T*)nullptr);
+		template<typename T> static constexpr bool is_vector_or_scalar_v = is_vector_v<T> || std::is_arithmetic_v<T>;
+
+		template<typename TLhs, typename TRhs> static constexpr bool is_valid_vec_op =
+			is_vector_or_scalar_v<TLhs> && is_vector_or_scalar_v<TRhs> && !(std::is_arithmetic_v<TLhs> && std::is_arithmetic_v<TRhs>);
+
 		template<typename T, int sizeY, int sizeX> static constexpr auto GetMatrixSizeX(const matrix<T, sizeX, sizeY>&) { return sizeX; }
 		template<typename T, int sizeY, int sizeX> static constexpr auto GetMatrixSizeY(const matrix<T, sizeX, sizeY>&) { return sizeY; }
+
+		template<typename T, size_t elements> struct vector_storage;
+
+		template<typename T> struct alignas(sizeof(T)) vector_storage<T, 1>
+		{
+			T x;
+		};
+		template<typename T> struct alignas(sizeof(T) * 2) vector_storage<T, 2>
+		{
+			T x;
+			T y;
+		};
+		template<typename T> struct vector_storage<T, 3>
+		{
+			T x;
+			T y;
+			T z;
+		};
+		template<typename T> struct alignas(sizeof(T) * 4) vector_storage<T, 4>
+		{
+			T x;
+			T y;
+			T z;
+			T w;
+		};
 	}
 
-	template<typename T>
-	struct alignas(sizeof(T)) vector<T, 1>
+	template<typename T, size_t size> struct vector : detail::vector_storage<T, size>
 	{
-		using ThisType = vector<T, 1>;
+	private:
+		using BaseType = detail::vector_storage<T, size>;
+
+		template<typename TArg, typename... TInit>
+		static constexpr BaseType InitBaseType(const TArg& arg1, const TInit&... args)
+		{
+			constexpr bool BROADCAST = sizeof...(TInit) == 0 && size > 1;
+			constexpr bool DIRECT_INIT = (size - 1) == sizeof...(TInit);
+			static_assert(BROADCAST || DIRECT_INIT);
+
+			if constexpr (DIRECT_INIT)
+				return BaseType{ T(arg1), T(args)... };
+			else if (BROADCAST)
+			{
+				BaseType retVal;
+
+				retVal.x = (T)arg1;
+
+				if constexpr (size >= 2)
+					retVal.y = (T)arg1;
+				if constexpr (size >= 3)
+					retVal.z = (T)arg1;
+				if constexpr (size >= 4)
+					retVal.w = (T)arg1;
+
+				return retVal;
+			}
+		}
+
+	public:
+		static_assert(size >= 1 && size <= 4);
+
+		using ThisType = vector<T, size>;
 		constexpr vector() = default;
-		vector(const ThisType&) = default;
-		constexpr vector(const T& val) : x(val) {}
-		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
-		static constexpr size_t ELEM_COUNT = 1;
+		constexpr vector(const ThisType&) noexcept = default;
+		constexpr vector(ThisType&&) noexcept = default;
+		constexpr ThisType& operator=(const ThisType&) noexcept = default;
+		constexpr ThisType& operator=(ThisType&&) noexcept = default;
 
-		operator T& () { return x; }
-		operator const T& () const { return x; }
-		ThisType& operator=(const ThisType&) = default;
-		ThisType& operator=(ThisType&&) noexcept = default;
-		ThisType& operator=(const T& rhs) noexcept { x = rhs; return *this; }
+		template<typename TX, typename... TOthers, typename = std::enable_if_t<sizeof...(TOthers) == size - 1>>
+		constexpr vector(const TX& x_, const TOthers&... others) : BaseType(InitBaseType(x_, others...)) {}
+		template<typename TAll>
+		explicit constexpr vector(const TAll& all) : BaseType(InitBaseType(all)) {}
 
-		T x;
-	};
-	template<typename T>
-	struct alignas(sizeof(T) * 2) vector<T, 2>
-	{
-		constexpr vector() = default;
-		using ThisType = vector<T, 2>;
-		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
-		static constexpr size_t ELEM_COUNT = 2;
+		template<typename TOther>
+		constexpr vector(const vector<TOther, size>& other) : vector()
+		{
+			BaseType::x = other.x;
+			if constexpr (size >= 2)
+				BaseType::y = other.y;
+			if constexpr (size >= 3)
+				BaseType::z = other.z;
+			if constexpr (size >= 4)
+				BaseType::w = other.w;
+		}
 
-		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
-		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
+		static constexpr size_t ELEM_COUNT = size;
 
-		T x;
-		T y;
-	};
-	template<typename T>
-	struct vector<T, 3>
-	{
-		constexpr vector() = default;
-		using ThisType = vector<T, 3>;
-		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
-		static constexpr size_t ELEM_COUNT = 3;
+		T& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&(BaseType::x) + i); }
+		const T& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&(BaseType::x) + i); }
+
+		template<typename OtherT>
+		constexpr ThisType& operator=(const vector<OtherT, size>& other) noexcept
+		{
+			BaseType::x = other.x;
+
+			if constexpr (size >= 2)
+				BaseType::y = other.y;
+			if constexpr (size >= 3)
+				BaseType::z = other.z;
+			if constexpr (size >= 4)
+				BaseType::w = other.w;
+
+			return *this;
+		}
+
+		template<typename = std::enable_if_t<size == 1>>
+		ThisType& operator=(const T& other)
+		{
+			BaseType::x = other;
+			return *this;
+		}
 
 		void SetFrom(const T* src)
 		{
-			x = src[0];
-			y = src[1];
-			z = src[2];
+			BaseType::x = src[0];
+
+			if constexpr (size >= 2)
+				BaseType::y = src[1];
+			if constexpr (size >= 3)
+				BaseType::z = src[2];
+			if constexpr (size >= 4)
+				BaseType::w = src[3];
 		}
 
-		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
-		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
+#ifndef __INTELLISENSE__
+		std::partial_ordering operator<=>(const ThisType& other) const
+		{
+			for (size_t i = 0; i < size; i++)
+			{
+				auto result = (*this)[i] <=> other[i];
+				if (!std::is_eq(result))
+					return result;
+			}
 
+			return std::partial_ordering::equivalent;
+		}
+#endif
+
+		template<typename = std::enable_if_t<size == 1>>
+		ThisType& Set(const T& x_)
+		{
+			BaseType::x = x_;
+			return *this;
+		}
+		template<typename = std::enable_if_t<size == 2>>
+		ThisType& Set(const T& x_, const T& y_)
+		{
+			BaseType::x = x_;
+			BaseType::y = y_;
+			return *this;
+		}
+		template<typename = std::enable_if_t<size == 3>>
 		ThisType& Set(const T& x_, const T& y_, const T& z_)
 		{
-			x = x_;
-			y = y_;
-			z = z_;
+			BaseType::x = x_;
+			BaseType::y = y_;
+			BaseType::z = z_;
 			return *this;
 		}
-
-		T x;
-		T y;
-		T z;
-	};
-	template<typename T>
-	struct alignas(sizeof(T) * 4) vector<T, 4>
-	{
-		constexpr vector() = default;
-		explicit constexpr vector(T all) : x(all), y(all), z(all), w(all) {}
-		constexpr vector(T x_, T y_, T z_, T w_) : x(x_), y(y_), z(z_), w(w_) {}
-		using ThisType = vector<T, 4>;
-		DEFAULT_PARTIAL_ORDERING_OPERATOR(ThisType);
-		static constexpr size_t ELEM_COUNT = 4;
-
-		void SetFrom(const T* src)
-		{
-			x = src[0];
-			y = src[1];
-			z = src[2];
-			w = src[3];
-		}
-
-		auto& operator[](size_t i) { assert(i < ELEM_COUNT); return *(&x + i); }
-		auto& operator[](size_t i) const { assert(i < ELEM_COUNT); return *(&x + i); }
-
+		template<typename = std::enable_if_t<size == 4>>
 		ThisType& Set(const T& x_, const T& y_, const T& z_, const T& w_)
 		{
-			x = x_;
-			y = y_;
-			z = z_;
-			w = w_;
+			BaseType::x = x_;
+			BaseType::y = y_;
+			BaseType::z = z_;
+			BaseType::w = w_;
 			return *this;
 		}
 
-		T x;
-		T y;
-		T z;
-		T w;
+		template<typename = std::enable_if_t<size == 1>>
+		operator T & () { return BaseType::x; }
+		template<typename = std::enable_if_t<size == 1>>
+		constexpr operator const T & () const { return BaseType::x; }
+
+		template<typename = std::enable_if_t<(size == 1) && std::is_same_v<T, bool32>>>
+		constexpr operator bool() const { return BaseType::x; }
 	};
 
 	template<typename T, int sizeY>
@@ -254,3 +339,191 @@ namespace TF2Vulkan{ namespace Shaders
 } }
 
 #pragma pack(pop)
+
+template<typename T, size_t elements>
+constexpr inline TF2Vulkan::Shaders::vector<T, elements> operator-(const TF2Vulkan::Shaders::vector<T, elements>& v)
+{
+	TF2Vulkan::Shaders::vector<T, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = -v[i];
+
+	return retVal;
+}
+
+template<typename TElemLeft, typename TElemRight, size_t elements>
+inline auto operator+(const TF2Vulkan::Shaders::vector<TElemLeft, elements>& lhs, const TF2Vulkan::Shaders::vector<TElemRight, elements>& rhs)
+{
+	TF2Vulkan::Shaders::vector<std::common_type_t<TElemLeft, TElemRight>, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs[i] + rhs[i];
+
+	return lhs;
+}
+template<typename TElemLeft, typename TElemRight, size_t elements>
+inline TF2Vulkan::Shaders::vector<TElemLeft, elements>& operator+=(
+	TF2Vulkan::Shaders::vector<TElemLeft, elements>& lhs, const TF2Vulkan::Shaders::vector<TElemRight, elements>& rhs)
+{
+	for (size_t i = 0; i < elements; i++)
+		lhs[i] += rhs[i];
+
+	return lhs;
+}
+
+template<typename TElemLhs, typename TElemRhs, size_t elements>
+inline auto operator*(
+	const TF2Vulkan::Shaders::vector<TElemLhs, elements>& lhs, const TF2Vulkan::Shaders::vector<TElemRhs, elements>& rhs)
+{
+	TF2Vulkan::Shaders::vector<std::common_type_t<TElemLhs, TElemRhs>, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs[i] * rhs[i];
+
+	return retVal;
+}
+template<typename TElem, size_t elements, typename TScalar, typename = std::enable_if_t<std::is_arithmetic_v<TScalar>>>
+inline TF2Vulkan::Shaders::vector<TElem, elements> operator*(
+	const TF2Vulkan::Shaders::vector<TElem, elements>& lhs, const TScalar& rhs)
+{
+	TF2Vulkan::Shaders::vector<TElem, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs[i] * rhs;
+
+	return retVal;
+}
+
+template<typename TElem, size_t elements, typename TScalar, typename = std::enable_if_t<std::is_arithmetic_v<TScalar>>>
+inline TF2Vulkan::Shaders::vector<TElem, elements> operator*(
+	const TScalar& lhs, const TF2Vulkan::Shaders::vector<TElem, elements>& rhs)
+{
+	TF2Vulkan::Shaders::vector<TElem, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs * rhs[i];
+
+	return retVal;
+}
+
+template<typename TElem, size_t elements, typename TScalar>
+inline TF2Vulkan::Shaders::vector<TElem, elements>& operator*=(TF2Vulkan::Shaders::vector<TElem, elements>& lhs, const TScalar& scalar)
+{
+	for (size_t i = 0; i < elements; i++)
+		lhs[i] *= scalar;
+
+	return lhs;
+}
+
+template<typename TElem, size_t elements, typename TScalar, typename = std::enable_if_t<std::is_arithmetic_v<TScalar>>>
+inline auto operator/(const TScalar& lhs, const TF2Vulkan::Shaders::vector<TElem, elements>& rhs)
+{
+	TF2Vulkan::Shaders::vector<std::common_type_t<TScalar, TElem>, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs / rhs[i];
+
+	return retVal;
+}
+
+template<typename TElem, size_t elements, typename TScalar, typename = std::enable_if_t<std::is_arithmetic_v<TScalar>>>
+inline auto operator/(const TF2Vulkan::Shaders::vector<TElem, elements>& lhs, const TScalar& rhs)
+{
+	TF2Vulkan::Shaders::vector<std::common_type_t<TScalar, TElem>, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs[i] / rhs;
+
+	return retVal;
+}
+
+template<typename TLhs, typename TRhs, size_t elements>
+inline auto operator-(const TF2Vulkan::Shaders::vector<TLhs, elements>& lhs, const TF2Vulkan::Shaders::vector<TRhs, elements>& rhs)
+{
+	TF2Vulkan::Shaders::vector<std::common_type_t<TLhs, TRhs>, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs[i] - rhs[i];
+
+	return retVal;
+}
+
+template<typename TLhs, typename TRhs, size_t elements, typename = std::enable_if_t<std::is_arithmetic_v<TLhs>>>
+inline auto operator-(const TLhs& lhs, const TF2Vulkan::Shaders::vector<TRhs, elements>& rhs)
+{
+	TF2Vulkan::Shaders::vector<std::common_type_t<TLhs, TRhs>, elements> retVal;
+
+	for (size_t i = 0; i < elements; i++)
+		retVal[i] = lhs - rhs[i];
+
+	return retVal;
+}
+
+namespace TF2Vulkan{ namespace Shaders{ namespace detail
+{
+	template<typename TLhs, typename TRhs, size_t elements, typename TFunc>
+	inline auto CreateVecFromOp(const TF2Vulkan::Shaders::vector<TLhs, elements>& lhs, const TF2Vulkan::Shaders::vector<TRhs, elements>& rhs,
+		const TFunc& func)
+	{
+		using RetType = decltype(func(lhs, rhs));
+
+		if constexpr (elements == 1)
+			return vector<RetType, elements>(func(lhs.x, rhs.x));
+		else if constexpr (elements == 2)
+			return vector<RetType, elements>(func(lhs.x, rhs.x), func(lhs.y, rhs.y));
+		else if constexpr (elements == 3)
+			return vector<RetType, elements>(func(lhs.x, rhs.x), func(lhs.y, rhs.y), func(lhs.z, rhs.z));
+		else if constexpr (elements == 4)
+			return vector<RetType, elements>(func(lhs.x, rhs.x), func(lhs.y, rhs.y), func(lhs.z, rhs.z), func(lhs.w, rhs.w));
+		else
+			static_assert(false, "Invalid component count");
+	}
+	template<typename TLhs, typename TScalar, size_t elements, typename TFunc, typename = std::enable_if_t<std::is_arithmetic_v<TScalar>>>
+	inline auto CreateVecFromOp(const TF2Vulkan::Shaders::vector<TLhs, elements>& lhs, const TScalar& rhs,
+		const TFunc& func)
+	{
+		using RetType = decltype(func(lhs, rhs));
+
+		if constexpr (elements == 1)
+			return vector<RetType, elements>(func(lhs.x, rhs));
+		else if constexpr (elements == 2)
+			return vector<RetType, elements>(func(lhs.x, rhs), func(lhs.y, rhs));
+		else if constexpr (elements == 3)
+			return vector<RetType, elements>(func(lhs.x, rhs), func(lhs.y, rhs), func(lhs.z, rhs));
+		else if constexpr (elements == 4)
+			return vector<RetType, elements>(func(lhs.x, rhs), func(lhs.y, rhs), func(lhs.z, rhs), func(lhs.w, rhs));
+		else
+			static_assert(false, "Invalid component count");
+	}
+	template<typename TScalar, typename TRhs, size_t elements, typename TFunc, typename = std::enable_if_t<std::is_arithmetic_v<TScalar>>>
+	inline auto CreateVecFromOp(const TScalar& lhs, const TF2Vulkan::Shaders::vector<TRhs, elements>& rhs,
+		const TFunc& func)
+	{
+		using RetType = decltype(func(lhs, rhs));
+
+		if constexpr (elements == 1)
+			return vector<RetType, elements>(func(lhs, rhs.x));
+		else if constexpr (elements == 2)
+			return vector<RetType, elements>(func(lhs, rhs.x), func(lhs, rhs.y));
+		else if constexpr (elements == 3)
+			return vector<RetType, elements>(func(lhs, rhs.x), func(lhs, rhs.y), func(lhs, rhs.z));
+		else if constexpr (elements == 4)
+			return vector<RetType, elements>(func(lhs, rhs.x), func(lhs, rhs.y), func(lhs, rhs.z), func(lhs, rhs.w));
+		else
+			static_assert(false, "Invalid component count");
+	}
+} } }
+
+template<typename TLhs, typename TRhs, typename = std::enable_if_t<TF2Vulkan::Shaders::detail::is_valid_vec_op<TLhs, TRhs>>>
+inline auto operator<(const TLhs& lhs, const TRhs& rhs)
+{
+	return TF2Vulkan::Shaders::detail::CreateVecFromOp(lhs, rhs,
+		[](const auto& l, const auto& r) -> TF2Vulkan::Shaders::bool32 { return l < r; });
+}
+
+template<typename TLhs, typename TRhs, typename = std::enable_if_t<TF2Vulkan::Shaders::detail::is_valid_vec_op<TLhs, TRhs>>>
+inline auto operator>(const TLhs& lhs, const TRhs& rhs)
+{
+	return TF2Vulkan::Shaders::detail::CreateVecFromOp(lhs, rhs,
+		[](const auto& l, const auto& r) -> TF2Vulkan::Shaders::bool32 { return l > r; });
+}

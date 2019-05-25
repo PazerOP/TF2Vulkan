@@ -4,7 +4,7 @@
 struct PS_INPUT
 {
 	//float4 projPos              : SV_Position;
-	float4 color                : TEXCOORD2;
+	float4 color                : COLOR0;
 	float fog                   : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;
@@ -15,8 +15,8 @@ struct PS_INPUT
 
 	float4 vProjPos             : TEXCOORD6;
 	float4 worldPos_ProjPosZ    : TEXCOORD7;
-	float3 SeamlessWeights      : COLOR0;
-	float4 fogFactorW           : COLOR1;
+	float3 SeamlessWeights      : TEXCOORD8;
+	float4 fogFactorW           : TEXCOORD9;
 };
 
 float4 main(const PS_INPUT i) : SV_Target
@@ -29,8 +29,8 @@ float4 main(const PS_INPUT i) : SV_Target
 	if (TEXACTIVE_BASETEXTURE)
 		baseTextureColor = BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
 
-	if (DIFFUSELIGHTING)
-		return baseTextureColor;
+	//if (DIFFUSELIGHTING)
+	//	return float4(diffuseColor, 1);
 
 	const float3 finalColor = diffuseColor.rgb * baseTextureColor.rgb;
 	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, g_fVertexAlpha);
