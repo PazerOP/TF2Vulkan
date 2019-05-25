@@ -32,7 +32,7 @@ float4 main(const PS_INPUT i) : SV_Target
 	//if (DIFFUSELIGHTING)
 	//	return float4(diffuseColor, 1);
 
-	const float3 finalColor = diffuseColor.rgb * baseTextureColor.rgb;
+	const float3 finalColor = LinearToGamma(diffuseColor.rgb) * baseTextureColor.rgb;
 	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, g_fVertexAlpha);
 	return float4(finalColor, finalAlpha);
 }

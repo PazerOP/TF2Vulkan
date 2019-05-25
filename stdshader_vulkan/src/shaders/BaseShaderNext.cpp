@@ -164,6 +164,8 @@ void BaseShaderNext::LoadLights(ShaderDataCommon& data) const
 
 		lightOut.atten.Set(lightIn.m_Attenuation0, lightIn.m_Attenuation1, lightIn.m_Attenuation2);
 	}
+
+	dynamic->GetAmbientLightCube(data.m_AmbientCube);
 }
 
 void BaseShaderNext::OnDrawElements(IMaterialVar** params, IShaderShadow* pShaderShadow,

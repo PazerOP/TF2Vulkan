@@ -6,6 +6,9 @@
 #include <TF2Vulkan/Util/std_compare.h>
 namespace TF2Vulkan{ namespace Shaders
 {
+#define FLOAT3_ARRAY(name, size) float3_aligned name[size];
+#else
+#define FLOAT3_ARRAY(name, size) float3 name[size]
 #endif // __cplusplus
 
 	struct LightInfo
@@ -49,10 +52,14 @@ namespace TF2Vulkan{ namespace Shaders
 
 	struct AmbientLightCube
 	{
-		float3 x[2];
-		float3 y[2];
-		float3 z[2];
+		FLOAT3_ARRAY(x, 2);
+		FLOAT3_ARRAY(y, 2);
+		FLOAT3_ARRAY(z, 2);
 	};
+
+#ifdef __cplusplus
+	static_assert(sizeof(AmbientLightCube) == 96);
+#endif
 
 	struct FogParams
 	{

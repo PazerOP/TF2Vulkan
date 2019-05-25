@@ -713,7 +713,7 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 		auto& attrs = m_VertexInputAttributeDescriptions;
 
 		const auto& vertexShaderRefl = key.m_VSShaderGroup->GetVulkanShader().GetReflectionData();
-		
+
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
 		const auto vertexElementCount = key.m_VSVertexFormat.GetVertexElements(vertexElements, std::size(vertexElements), &totalVertexSize);

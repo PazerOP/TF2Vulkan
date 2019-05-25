@@ -24,11 +24,13 @@ namespace TF2Vulkan
 		virtual void SetShaderInstance(ShaderType type, const IShaderInstance* instance) = 0;
 		virtual void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) = 0;
 
+		[[nodiscard]] virtual size_t GetLights(LightDesc_t* lights, size_t maxLights) const = 0;
+		virtual void GetAmbientLightCube(Shaders::AmbientLightCube& cube) const = 0;
+
 		// From IShaderDynamicAPI
 		virtual void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) = 0;
 		virtual void GetWorldSpaceCameraPosition(Vector& pPos) const = 0;
 		virtual void GetMatrix(MaterialMatrixMode_t matrixMode, VMatrix& dst) const = 0;
-		[[nodiscard]] virtual size_t GetLights(LightDesc_t* lights, size_t maxLights) const = 0;
 
 		virtual int GetCurrentNumBones() const = 0;
 		virtual void LoadBoneMatrices(Shaders::VSModelMatrices& bones) const = 0;

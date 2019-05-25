@@ -55,6 +55,18 @@ void IShaderAPI_StateManagerDynamic::SetAmbientLightCube(Vector4D cube[6])
 		*reinterpret_cast<const std::array<Vector4D, 6>*>(cube), m_Dirty);
 }
 
+void IShaderAPI_StateManagerDynamic::GetAmbientLightCube(Shaders::AmbientLightCube& cube) const
+{
+	LOG_FUNC();
+
+	cube.x[0].SetFrom(m_State.m_LightAmbientCube[0].Base());
+	cube.x[1].SetFrom(m_State.m_LightAmbientCube[1].Base());
+	cube.y[0].SetFrom(m_State.m_LightAmbientCube[2].Base());
+	cube.y[1].SetFrom(m_State.m_LightAmbientCube[3].Base());
+	cube.z[0].SetFrom(m_State.m_LightAmbientCube[4].Base());
+	cube.z[1].SetFrom(m_State.m_LightAmbientCube[5].Base());
+}
+
 void IShaderAPI_StateManagerDynamic::CullMode(MaterialCullMode_t mode)
 {
 	LOG_FUNC();

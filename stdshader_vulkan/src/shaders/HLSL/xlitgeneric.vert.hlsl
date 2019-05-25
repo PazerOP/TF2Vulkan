@@ -156,7 +156,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	if (VERTEXCOLOR)
 	{
 		// Assume that this is unlitgeneric if you are using vertex color.
-		o.color.rgb = (DONT_GAMMA_CONVERT_VERTEX_COLOR) ? v.vColor.rgb : GammaToLinear(v.vColor.rgb);
+		o.color.rgb = GAMMA_CONVERT_VERTEX_COLOR ? GammaToLinear(v.vColor.rgb) : v.vColor.rgb;
 		o.color.a = v.vColor.a;
 	}
 	else

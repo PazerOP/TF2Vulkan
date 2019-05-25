@@ -26,12 +26,12 @@ namespace TF2Vulkan{ namespace Shaders
 	};
 
 	template<typename T, int sizeX, int sizeY> struct matrix;
-	template<typename T, size_t size> struct vector;
+	template<typename T, size_t size, size_t alignment> struct vector;
 
 	namespace detail
 	{
 		static constexpr bool IsVector(const void*) { return false; }
-		template<typename T, size_t size> static constexpr bool IsVector(const vector<T, size>*) { return true; }
+		template<typename T, size_t size, size_t alignment> static constexpr bool IsVector(const vector<T, size, alignment>*) { return true; }
 		template<typename T> static constexpr bool is_vector_v = IsVector((T*)nullptr);
 		template<typename T> static constexpr bool is_vector_or_scalar_v = is_vector_v<T> || std::is_arithmetic_v<T>;
 
@@ -41,36 +41,42 @@ namespace TF2Vulkan{ namespace Shaders
 		template<typename T, int sizeY, int sizeX> static constexpr auto GetMatrixSizeX(const matrix<T, sizeX, sizeY>&) { return sizeX; }
 		template<typename T, int sizeY, int sizeX> static constexpr auto GetMatrixSizeY(const matrix<T, sizeX, sizeY>&) { return sizeY; }
 
-		template<typename T, size_t elements> struct vector_storage;
+		template<typename T, size_t elements, size_t alignment> struct vector_storage;
 
-		template<typename T> struct alignas(sizeof(T)) vector_storage<T, 1>
+		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 1, alignment>
 		{
 			T x;
 		};
-		template<typename T> struct alignas(sizeof(T) * 2) vector_storage<T, 2>
+		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 2, alignment>
 		{
 			T x;
 			T y;
 		};
-		template<typename T> struct vector_storage<T, 3>
+		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 3, alignment>
 		{
 			T x;
 			T y;
 			T z;
 		};
-		template<typename T> struct alignas(sizeof(T) * 4) vector_storage<T, 4>
+		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 4, alignment>
 		{
 			T x;
 			T y;
 			T z;
 			T w;
 		};
+
+		template<typename T, size_t size> static constexpr size_t GetDefaultAlignment()
+		{
+			return sizeof(T) * (size == 3 ? 1 : size);
+		}
 	}
 
-	template<typename T, size_t size> struct vector : detail::vector_storage<T, size>
+	template<typename T, size_t size, size_t alignment = detail::GetDefaultAlignment<T, size>()>
+	struct vector : detail::vector_storage<T, size, alignment>
 	{
 	private:
-		using BaseType = detail::vector_storage<T, size>;
+		using BaseType = detail::vector_storage<T, size, alignment>;
 
 		template<typename TArg, typename... TInit>
 		static constexpr BaseType InitBaseType(const TArg& arg1, const TInit&... args)
@@ -101,7 +107,7 @@ namespace TF2Vulkan{ namespace Shaders
 	public:
 		static_assert(size >= 1 && size <= 4);
 
-		using ThisType = vector<T, size>;
+		using ThisType = vector<T, size, alignment>;
 		constexpr vector() = default;
 		constexpr vector(const ThisType&) noexcept = default;
 		constexpr vector(ThisType&&) noexcept = default;
@@ -318,6 +324,8 @@ namespace TF2Vulkan{ namespace Shaders
 	using float2 = vector<float, 2>;
 	using float3 = vector<float, 3>;
 	using float4 = vector<float, 4>;
+
+	using float3_aligned = vector<float, 3, 16>;
 
 	static_assert(sizeof(float1) == sizeof(float) * 1);
 	static_assert(sizeof(float2) == sizeof(float) * 2);

@@ -80,7 +80,7 @@ inline namespace XLitGeneric
 		bool32 SKINNING;
 		bool32 COMPRESSED_VERTS;
 		bool32 DIFFUSELIGHTING;
-		bool32 DONT_GAMMA_CONVERT_VERTEX_COLOR;
+		bool32 GAMMA_CONVERT_VERTEX_COLOR;
 
 		bool32 DYNAMIC_LIGHT;
 
@@ -94,7 +94,7 @@ inline namespace XLitGeneric
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, SKINNING);
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, COMPRESSED_VERTS);
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DIFFUSELIGHTING);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DONT_GAMMA_CONVERT_VERTEX_COLOR);
+		SPEC_CONST_BUF_ENTRY(SpecConstBuf, GAMMA_CONVERT_VERTEX_COLOR);
 
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DYNAMIC_LIGHT);
 
@@ -502,7 +502,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	const bool bHasNormal = IsPC() || bVertexLitGeneric || bHasEnvmap || bHasFlashlight || bSeamlessBase || bSeamlessDetail;
 
 	const bool bSRGBWrite = !params[LINEARWRITE]->GetBoolValue();
-	drawParams.m_SpecConsts.DONT_GAMMA_CONVERT_VERTEX_COLOR = !bSRGBWrite && bHasVertexColor;
+	drawParams.m_SpecConsts.GAMMA_CONVERT_VERTEX_COLOR = !(!bSRGBWrite && bHasVertexColor);
 
 	static constexpr auto SAMPLER_BASETEXTURE = SHADER_SAMPLER0;
 	static constexpr auto SAMPLER_BUMPMAP = SHADER_SAMPLER1;

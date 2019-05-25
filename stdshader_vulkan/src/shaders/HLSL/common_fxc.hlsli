@@ -14,7 +14,7 @@
 [[vk::constant_id(6)]] const bool SEAMLESS_DETAIL = false;
 [[vk::constant_id(7)]] const bool SEPARATE_DETAIL_UVS = false;
 [[vk::constant_id(8)]] const bool DECAL = false;
-[[vk::constant_id(9)]] const bool DONT_GAMMA_CONVERT_VERTEX_COLOR = false;
+[[vk::constant_id(9)]] const bool GAMMA_CONVERT_VERTEX_COLOR = true;
 
 [[vk::constant_id(10)]] const bool DYNAMIC_LIGHT = false;
 [[vk::constant_id(11)]] const bool STATIC_LIGHT_VERTEX = false;

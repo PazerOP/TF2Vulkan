@@ -34,6 +34,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Inactive Projects", "Inactive Projects", "{2B33EDE1-32E5-4408-848E-D5BEBEC7523F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ShaderDebuggingEnv", "ShaderDebuggingEnv\ShaderDebuggingEnv.vcxproj", "{7B521A4D-BB8E-466F-9E8B-EBE3FB1BE919}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BCAA3EF6-6521-4314-A301-BF1D2FB740C5} = {BCAA3EF6-6521-4314-A301-BF1D2FB740C5}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

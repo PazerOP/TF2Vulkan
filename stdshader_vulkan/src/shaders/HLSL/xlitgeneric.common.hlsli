@@ -24,6 +24,17 @@
 [[vk::constant_id(SPEC_CONST_ID_BASE + 1)]] const bool TEXACTIVE_BASETEXTURE = false;
 [[vk::constant_id(SPEC_CONST_ID_BASE + 2)]] const bool TEXACTIVE_BUMPMAP = false;
 
+#if false // TODO: Array-based textures
+[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const uint TEXTURE_COUNT = 1;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 4)]] const uint SAMPLER_COUNT = 1;
+
+[[vk::constant_id(SPEC_CONST_ID_BASE + 5)]] const uint TEXINDEX_BASE = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 5)]] const uint SMPINDEX_BASE = 0;
+
+[[vk::binding(100)]] Texture2D g_Textures[TEXTURE_COUNT];
+[[vk::binding(100)]] SamplerState g_Samplers[SAMPLER_COUNT];
+#endif
+
 [[vk::binding(0)]] Texture2D BaseTexture;
 [[vk::binding(0)]] SamplerState BaseTextureSampler;
 

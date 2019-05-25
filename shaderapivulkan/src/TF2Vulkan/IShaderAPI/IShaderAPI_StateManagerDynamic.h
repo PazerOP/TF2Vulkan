@@ -122,6 +122,7 @@ namespace TF2Vulkan
 		void SetLightingOrigin(Vector lightingOrigin) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetAmbientLight(float r, float g, float b) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetAmbientLightCube(Vector4D cube[6]) override final;
+		void GetAmbientLightCube(Shaders::AmbientLightCube& cube) const override final;
 		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override final;
 		void CommitPixelShaderLighting(int pshReg) override final;
 		void GetDX9LightState(LightState_t* state) const override final;
