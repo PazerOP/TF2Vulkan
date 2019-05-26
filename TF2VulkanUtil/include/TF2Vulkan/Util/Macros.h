@@ -98,3 +98,11 @@ static constexpr const char* PRINTF_BOOL(bool val) { return val ? "true" : "fals
 #define DISABLE_OBJ_COPY_MOVE(type) \
 	DISABLE_OBJ_MOVE(type); \
 	DISABLE_OBJ_COPY(type);
+
+#define CHECK_OFFSET(type, member, expectedOffset) \
+	static_assert(!(offsetof(type, member) < expectedOffset), "Actual offset less than expected"); \
+	static_assert(!(offsetof(type, member) > expectedOffset), "Actual offset greater than expected");
+
+#define CHECK_SIZE(type, expectedSize) \
+	static_assert(!(sizeof(type) < expectedSize), "Actual size less than expected"); \
+	static_assert(!(sizeof(type) > expectedSize), "Actual size greater than expected");

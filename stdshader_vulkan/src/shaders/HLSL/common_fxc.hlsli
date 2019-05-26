@@ -60,8 +60,6 @@ static const float cOneThird = 1.0f / 3.0f;
 	// PS standard
 	float4 g_LinearFogColor;
 	float4 cLightScale;
-	float4 cFlashlightColor;
-	float4 cFlashlightScreenScale;
 };
 
 #define NUM_LIGHTS g_nLightCountRegister

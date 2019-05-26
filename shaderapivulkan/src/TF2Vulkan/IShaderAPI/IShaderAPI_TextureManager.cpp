@@ -271,7 +271,7 @@ void IShaderAPI_TextureManager::DeleteTexture(ShaderAPITextureHandle_t tex)
 	{
 		const auto dbgName = realTex.GetDebugName();
 
-		char buf[128];
+		char buf[512];
 		sprintf_s(buf, "[DELETED] Texture: %.*s", PRINTF_SV(dbgName));
 		g_ShaderDevice.SetDebugName(realTex.m_Image.GetImage(), buf);
 

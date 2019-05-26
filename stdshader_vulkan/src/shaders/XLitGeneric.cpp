@@ -82,6 +82,7 @@ inline namespace XLitGeneric
 		bool32 DIFFUSELIGHTING;
 		bool32 GAMMA_CONVERT_VERTEX_COLOR;
 
+		bool32 AMBIENT_LIGHT;
 		bool32 DYNAMIC_LIGHT;
 
 		bool32 TEXACTIVE_BASETEXTURE;
@@ -98,6 +99,7 @@ inline namespace XLitGeneric
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DIFFUSELIGHTING);
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, GAMMA_CONVERT_VERTEX_COLOR);
 
+		SPEC_CONST_BUF_ENTRY(SpecConstBuf, AMBIENT_LIGHT);
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DYNAMIC_LIGHT);
 
 		SPEC_CONST_BUF_ENTRY(SpecConstBuf, TEXACTIVE_BASETEXTURE);
@@ -567,6 +569,8 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		{
 			drawParams.m_SpecConsts.DYNAMIC_LIGHT = true;
 			LoadLights(common);
+
+			drawParams.m_SpecConsts.AMBIENT_LIGHT = (common.m_AmbientCube != AmbientLightCube());
 		}
 
 		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;

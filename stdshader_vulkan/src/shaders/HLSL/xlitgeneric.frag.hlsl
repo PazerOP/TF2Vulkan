@@ -65,13 +65,14 @@ static float3 PixelShaderDoGeneralDiffuseLight(const float fAtten, const float3 
 // ... actually, now only 9: mul, cmp, cmp, mul, mad, mad, mad, mad, mad
 static float3 PixelShaderAmbientLight(const float3 worldNormal)
 {
-	float3 linearColor, nSquared = worldNormal * worldNormal;
+	float3 linearColor;
+	float3 nSquared = worldNormal * worldNormal;
 	float3 isNegative = (worldNormal >= 0.0) ? 0 : nSquared;
 	float3 isPositive = (worldNormal >= 0.0) ? nSquared : 0;
-	linearColor = isPositive.x * cAmbientCube.x[0] + isNegative.x * cAmbientCube.x[1] +
+
+	return isPositive.x * cAmbientCube.x[0] + isNegative.x * cAmbientCube.x[1] +
 		isPositive.y * cAmbientCube.y[0] + isNegative.y * cAmbientCube.y[1] +
 		isPositive.z * cAmbientCube.z[0] + isNegative.z * cAmbientCube.z[1];
-	return linearColor;
 }
 
 static void UnpackPSLightInfo(const uint index, out float3 pos, out float3 color)
@@ -150,7 +151,7 @@ float4 main(PS_INPUT i) : SV_TARGET
 
 	if (DIFFUSELIGHTING)
 	{
-		diffuseColor = PixelShaderDoLighting(i.worldPos_ProjPosZ.xyz, i.worldSpaceNormal,
+		diffuseColor = PixelShaderDoLighting(i.worldSpacePos, i.worldSpaceNormal,
 			float3(0.0f, 0.0f, 0.0f), false, i.lightAtten,
 			false, 1.0f);
 	}

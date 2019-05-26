@@ -84,12 +84,12 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 
 	// Perform skinning
-	float3 worldPos, worldTangentS, worldTangentT;
+	float3 worldTangentS, worldTangentT;
 
 	if (NORMALMAPPING)
 	{
 		SkinPositionNormalAndTangentSpace(g_bSkinning, vPosition, vNormal, vTangent,
-			v.vBoneWeights, v.vBoneIndices, worldPos,
+			v.vBoneWeights, v.vBoneIndices, o.worldSpacePos,
 			o.worldSpaceNormal, worldTangentS, worldTangentT);
 
 		worldTangentS = normalize(worldTangentS);
@@ -101,14 +101,14 @@ VS_OUTPUT main(const VS_INPUT v)
 			g_bSkinning,
 			vPosition, vNormal,
 			v.vBoneWeights, v.vBoneIndices,
-			worldPos, o.worldSpaceNormal);
+			o.worldSpacePos, o.worldSpaceNormal);
 	}
 
 	if (NORMALMAPPING || !VERTEXCOLOR)
 		o.worldSpaceNormal = normalize(o.worldSpaceNormal);
 
 	if (MORPHING && DECAL)
-		worldPos += o.worldSpaceNormal * 0.05f * v.vTexCoord2.z;
+		o.worldSpacePos += o.worldSpaceNormal * 0.05f * v.vTexCoord2.z;
 
 	if (NORMALMAPPING)
 	{
@@ -117,19 +117,15 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 
 	// Transform into projection space
-	float4 vProjPos = mul(float4(worldPos, 1), cViewProj);
-	o.projPos = vProjPos;
-	vProjPos.z = o.projPos.z; //dot(float4(worldPos, 1), cViewProjZ);
+	o.vProjPos = mul(float4(o.worldSpacePos, 1), cViewProj);
+	o.projPos = o.vProjPos;
 
-	o.vProjPos = vProjPos;
-	o.fogFactorW.w = CalcFog(worldPos, vProjPos.xyz, DOWATERFOG);
+	o.fogFactorW.w = CalcFog(o.worldSpacePos, o.vProjPos.xyz, DOWATERFOG);
 	o.fog = o.fogFactorW.w;
-	o.worldPos_ProjPosZ.xyz = worldPos.xyz;
-	o.worldPos_ProjPosZ.w = vProjPos.z;
 
 	// Needed for cubemaps
 	if (CUBEMAP)
-		o.worldVertToEyeVector.xyz = cEyePos - worldPos;
+		o.worldVertToEyeVector.xyz = cEyePos - o.worldSpacePos;
 
 	if (VERTEXCOLOR)
 	{
@@ -140,7 +136,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	else
 	{
 		//o.color = float4(worldPos, 1);
-		o.color = float4(DoLighting(worldPos, o.worldSpaceNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT), 1);
+		o.color = float4(DoLighting(o.worldSpacePos, o.worldSpaceNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT), 1);
 	}
 
 	if (SEAMLESS_BASE)
@@ -168,15 +164,10 @@ VS_OUTPUT main(const VS_INPUT v)
 
 	// Light attenuation
 	for (uint i = 0; i < NUM_LIGHTS; i++)
-		o.lightAtten[i] = GetVertexAttenForLight(worldPos, i);
+		o.lightAtten[i] = GetVertexAttenForLight(o.worldSpacePos, i);
 
 	if (SEPARATE_DETAIL_UVS)
 		o.detailTexCoord.xy = v.vTexCoord1.xy;
 
-#ifdef INVERT_Y
-	o.projPos.y = 1 - o.projPos.y;
-#endif
-
-	//o.color = v.vColor.rgba;
 	return o;
 }

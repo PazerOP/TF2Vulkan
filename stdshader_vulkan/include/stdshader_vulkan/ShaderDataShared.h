@@ -3,6 +3,7 @@
 
 #ifdef __cplusplus
 #include <TF2Vulkan/AlignedTypes.h>
+#include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/std_compare.h>
 namespace TF2Vulkan{ namespace Shaders
 {
@@ -26,19 +27,27 @@ namespace TF2Vulkan{ namespace Shaders
 		float1 stopdot1;
 		float1 stopdot2;
 		float1 OOdot;
+
+#ifdef __cplusplus
+		// Padding
+		uint32_t : 32;
+		uint32_t : 32;
+#endif
 	};
 
 #ifdef __cplusplus
-	static_assert(offsetof(LightInfo, color) == 0);           // 0
-	static_assert(offsetof(LightInfo, bIsDirectional) == 12); // 1
-	static_assert(offsetof(LightInfo, dir) == 16);            // 2
-	static_assert(offsetof(LightInfo, bIsSpot) == 28);        // 3
-	static_assert(offsetof(LightInfo, pos) == 32);            // 4
-	static_assert(offsetof(LightInfo, falloff) == 44);        // 5
-	static_assert(offsetof(LightInfo, atten) == 48);          // 6
-	static_assert(offsetof(LightInfo, stopdot1) == 60);       // 7
-	static_assert(offsetof(LightInfo, stopdot2) == 64);       // 8
-	static_assert(offsetof(LightInfo, OOdot) == 68);          // 9
+	CHECK_OFFSET(LightInfo, color, 0);
+	CHECK_OFFSET(LightInfo, bIsDirectional, 12);
+	CHECK_OFFSET(LightInfo, dir, 16);
+	CHECK_OFFSET(LightInfo, bIsSpot, 28);
+	CHECK_OFFSET(LightInfo, pos, 32);
+	CHECK_OFFSET(LightInfo, falloff, 44);
+	CHECK_OFFSET(LightInfo, atten, 48);
+	CHECK_OFFSET(LightInfo, stopdot1, 60);
+	CHECK_OFFSET(LightInfo, stopdot2, 64);
+	CHECK_OFFSET(LightInfo, OOdot, 68);
+
+	CHECK_SIZE(LightInfo, 80);
 #endif
 
 #if false
@@ -60,6 +69,12 @@ namespace TF2Vulkan{ namespace Shaders
 	};
 
 #ifdef __cplusplus
+	static_assert(offsetof(AmbientLightCube, x[0]) == 0);
+	static_assert(offsetof(AmbientLightCube, x[1]) == 16);
+	static_assert(offsetof(AmbientLightCube, y[0]) == 32);
+	static_assert(offsetof(AmbientLightCube, y[1]) == 48);
+	static_assert(offsetof(AmbientLightCube, z[0]) == 64);
+	static_assert(offsetof(AmbientLightCube, z[1]) == 80);
 	static_assert(sizeof(AmbientLightCube) == 96);
 #endif
 

@@ -28,7 +28,6 @@ struct VS_TO_PS_INTERSTAGE_DATA
 #endif
 
 	float4 color                : COLOR0;
-	float fog : FOG;
 
 	float3 baseTexCoord         : TEXCOORD0;
 	float3 detailTexCoord       : TEXCOORD1;
@@ -39,13 +38,15 @@ struct VS_TO_PS_INTERSTAGE_DATA
 	float3 worldSpaceBinormal   : BINORMAL;
 	float4 lightAtten           : LIGHT_ATTEN;
 
-	float4 vProjPos             : TEXCOORD6;
-	float4 worldPos_ProjPosZ    : TEXCOORD7;
+	float4 vProjPos             : POS_PROJ;
+	float3 worldSpacePos        : POS_WORLD;
 
 	float3 SeamlessWeights      : TEXCOORD8;
-	float4 fogFactorW           : TEXCOORD9;
 
 	float3 boneWeightsOut       : TEST_BONEWEIGHTSOUT;
+
+	float1 fog : FOG;
+	float4 fogFactorW           : TEXCOORD9;
 };
 
 #ifdef VERTEX_SHADER
