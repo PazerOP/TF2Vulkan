@@ -24,7 +24,7 @@ namespace Util
 
 	void LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line, const std::string_view& msg);
 	[[noreturn]] void EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line);
-	void FunctionNotImplemented(const char* fnSig, const char* file, int line);
+	void FunctionNotImplemented(const char* fnSig, const char* file, int line, const std::string_view& msg = {});
 
 	template<>
 	struct LogFunctionCallScope<false>
@@ -49,7 +49,7 @@ namespace Util
 #define ALL_STATIC_TYPE_INFO(type) \
 	::Util::StaticTypeInfo{ sizeof(type), 0, alignof(type) }
 
-//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)
@@ -66,7 +66,7 @@ namespace Util
 
 #define TF2VULKAN_PREFIX "[TF2Vulkan] " __FUNCSIG__ ": "
 
-#define NOT_IMPLEMENTED_FUNC_NOBREAK() ::Util::FunctionNotImplemented(__FUNCSIG__, __FILE__, __LINE__)
+#define NOT_IMPLEMENTED_FUNC_NOBREAK(...) ::Util::FunctionNotImplemented(__FUNCSIG__, __FILE__, __LINE__, __VA_ARGS__)
 
 #define PRINTF_SV(stringView) Util::SafeConvert<int>((stringView).size()), (stringView).data()
 static constexpr const char* PRINTF_BOOL(bool val) { return val ? "true" : "false"; }

@@ -31,11 +31,11 @@ namespace TF2Vulkan
 	private:
 		[[deprecated]] void SetPixelShader(const char* name, int staticIndex) override final
 		{
-			NOT_IMPLEMENTED_FUNC_NOBREAK();
+			NOT_IMPLEMENTED_FUNC_NOBREAK(name);
 		}
 		[[deprecated]] void SetVertexShader(const char* name, int staticIndex) override final
 		{
-			NOT_IMPLEMENTED_FUNC_NOBREAK();
+			NOT_IMPLEMENTED_FUNC_NOBREAK(name);
 		}
 
 		[[deprecated]] void EnableTexture(Sampler_t sampler, bool bEnable) override final {}

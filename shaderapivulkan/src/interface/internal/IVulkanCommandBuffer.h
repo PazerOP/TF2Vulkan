@@ -27,10 +27,11 @@ namespace TF2Vulkan
 		void InsertDebugLabel(const char* text);
 		template<typename... TArgs> void InsertDebugLabel(const Color& color, const char* fmt, const TArgs&... args);
 		template<typename... TArgs> void InsertDebugLabel(const char* fmt, const TArgs&... args);
-		PixScope DebugRegionBegin(const Color& color, const char* text);
-		PixScope DebugRegionBegin(const char* text);
-		template<typename... TArgs> PixScope DebugRegionBegin(const Color& color, const char* fmt, const TArgs&... args);
-		template<typename... TArgs> PixScope DebugRegionBegin(const char* fmt, const TArgs&... args);
+		[[nodiscard]] PixScope DebugRegionBegin(const Color& color, const char* text);
+		[[nodiscard]] PixScope DebugRegionBegin(const char* text);
+		template<typename... TArgs> [[nodiscard]] PixScope DebugRegionBegin(const Color& color, const char* fmt, const TArgs&... args);
+		template<typename... TArgs> [[nodiscard]] PixScope DebugRegionBegin(const char* fmt, const TArgs&... args);
+		static vk::DebugUtilsLabelEXT InitDebugUtilsLabel(const char* name, const Color& color = PIX_COLOR_MISC);
 
 		struct ActiveRenderPass final
 		{
@@ -69,6 +70,7 @@ namespace TF2Vulkan
 			const vk::ArrayProxy<const vk::DeviceSize>& offsets);
 		void copyBufferToImage(const vk::Buffer& buf, const vk::Image& img, const vk::ImageLayout& dstImageLayout,
 			const vk::ArrayProxy<const vk::BufferImageCopy>& regions);
+		void copyBuffer(const vk::Buffer& srcBuf, const vk::Buffer& dstBuf, const vk::ArrayProxy<const vk::BufferCopy> &regions);
 		void clearAttachments(uint32_t attachmentCount, const vk::ClearAttachment* pAttachments,
 			uint32_t rectCount, const vk::ClearRect* pRects);
 		void clearAttachments(const vk::ArrayProxy<const vk::ClearAttachment>& attachments,

@@ -496,7 +496,7 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
 	const bool bIsAdditive = CShader_IsFlagSet(params.matvars, MATERIAL_VAR_ADDITIVE);
 	const bool bHasFlashlight = false;
-	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (/*g_pConfig->UseBumpmapping() && */params[BUMPMAP]->IsTexture());
+	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsTexture());
 	drawParams.m_SpecConsts.NORMALMAPPING = bHasBump;
 
 	const bool bHasVertexColor = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);

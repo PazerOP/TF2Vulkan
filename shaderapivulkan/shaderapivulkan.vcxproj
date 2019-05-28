@@ -94,6 +94,7 @@
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\AlignedTypes.h" />
     <ClInclude Include="include\TF2Vulkan\DataFormat.h" />
+    <ClInclude Include="include\TF2Vulkan\LogicalFogParams.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderGroup.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderNextFactory.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderDynamicNext.h" />
@@ -101,6 +102,7 @@
     <ClInclude Include="include\TF2Vulkan\IShaderShadowNext.h" />
     <ClInclude Include="include\TF2Vulkan\ISpecConstLayout.h" />
     <ClInclude Include="include\TF2Vulkan\IBufferPool.h" />
+    <ClInclude Include="include\TF2Vulkan\TextureSubrect.h" />
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
@@ -139,7 +141,7 @@
     <ClInclude Include="src\interface\internal\IVulkanCommandBuffer.h" />
     <ClInclude Include="src\TF2Vulkan\VulkanCommandBufferBase.h" />
     <ClInclude Include="src\TF2Vulkan\VulkanFactories.h" />
-    <ClInclude Include="src\TF2Vulkan\VulkanMesh.h" />
+    <ClInclude Include="src\TF2Vulkan\meshes\VulkanMesh.h" />
     <ClInclude Include="src\TF2Vulkan\VulkanUtil.h" />
   </ItemGroup>
   <ItemGroup>
@@ -184,7 +186,7 @@
     <ClCompile Include="src\TF2Vulkan\IShaderAPI\IShaderAPI_StateManagerDynamic.cpp" />
     <ClCompile Include="src\TF2Vulkan\VertexFormat.cpp" />
     <ClCompile Include="src\TF2Vulkan\vk_mem_alloc.cpp" />
-    <ClCompile Include="src\TF2Vulkan\VulkanMesh.cpp" />
+    <ClCompile Include="src\TF2Vulkan\meshes\VulkanMesh.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanUtil.cpp" />
   </ItemGroup>
   <ItemGroup>

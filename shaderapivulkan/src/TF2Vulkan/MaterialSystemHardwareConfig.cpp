@@ -142,31 +142,31 @@ IMaterialSystemHardwareConfigInternal& TF2Vulkan::g_MatSysConfig = s_HardwareCon
 
 bool MaterialSystemHardwareConfig::HasDestAlphaBuffer() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::HasStencilBuffer() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 int MaterialSystemHardwareConfig::GetFrameBufferColorDepth() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 int MaterialSystemHardwareConfig::GetSamplerCount() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 bool MaterialSystemHardwareConfig::HasSetDeviceGammaRamp() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
@@ -238,7 +238,7 @@ int MaterialSystemHardwareConfig::MaxTextureHeight() const
 
 int MaterialSystemHardwareConfig::TextureMemorySize() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
@@ -268,19 +268,19 @@ bool MaterialSystemHardwareConfig::SupportsNonPow2Textures() const
 
 int MaterialSystemHardwareConfig::GetTextureStageCount() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 int MaterialSystemHardwareConfig::NumVertexShaderConstants() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 int MaterialSystemHardwareConfig::NumPixelShaderConstants() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
@@ -294,19 +294,19 @@ int MaterialSystemHardwareConfig::MaxNumLights() const
 
 bool MaterialSystemHardwareConfig::SupportsHardwareLighting() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 int MaterialSystemHardwareConfig::MaxBlendMatrices() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 int MaterialSystemHardwareConfig::MaxBlendMatrixIndices() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
@@ -318,7 +318,7 @@ int MaterialSystemHardwareConfig::MaxTextureAspectRatio() const
 
 int MaterialSystemHardwareConfig::MaxVertexShaderBlendMatrices() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
@@ -354,37 +354,40 @@ bool MaterialSystemHardwareConfig::ReadPixelsFromFrontBuffer() const
 
 bool MaterialSystemHardwareConfig::PreferDynamicTextures() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC_ANYTHREAD();
+
+	// TODO: What does "prefer" mean? "Prefer for frequently updated textures"
+	// or "Prefer for all textuers"?
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::SupportsHDR() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::HasProjectedBumpEnv() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::SupportsSpheremapping() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::NeedsAAClamp() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::NeedsATICentroidHack() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
@@ -396,13 +399,16 @@ bool MaterialSystemHardwareConfig::SupportsColorOnSecondStream() const
 
 bool MaterialSystemHardwareConfig::SupportsStaticPlusDynamicLighting() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC_ANYTHREAD();
+	return true;  // All vulkan hardware supports this
 }
 
 bool MaterialSystemHardwareConfig::PreferReducedFillrate() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC_ANYTHREAD();
+	// TODO: Make this user-configurable, and determine if it is even
+	// necessary (we can probably just expose fine-grained controls
+	// directly through ConVars in stdshader_vulkan.dll)
 	return false;
 }
 
@@ -418,26 +424,26 @@ int MaterialSystemHardwareConfig::GetMaxDXSupportLevel() const
 
 bool MaterialSystemHardwareConfig::SpecifiesFogColorInLinearSpace() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::SupportsSRGB() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::FakeSRGBWrite() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 bool MaterialSystemHardwareConfig::CanDoSRGBReadFromRTs() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	return false;  // TODO
 }
 
 bool MaterialSystemHardwareConfig::SupportsGLMixedSizeTargets() const
@@ -448,19 +454,19 @@ bool MaterialSystemHardwareConfig::SupportsGLMixedSizeTargets() const
 
 bool MaterialSystemHardwareConfig::IsAAEnabled() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
 int MaterialSystemHardwareConfig::GetVertexTextureCount() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 int MaterialSystemHardwareConfig::GetMaxVertexTextureDimension() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
@@ -496,24 +502,24 @@ bool MaterialSystemHardwareConfig::SupportsStreamOffset() const
 
 int MaterialSystemHardwareConfig::StencilBufferBits() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 int MaterialSystemHardwareConfig::MaxViewports() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
 void MaterialSystemHardwareConfig::OverrideStreamOffsetSupport(bool overrideEnabled, bool enableSupport)
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 int MaterialSystemHardwareConfig::GetShadowFilterMode() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return -1;
 }
 
@@ -543,7 +549,7 @@ bool MaterialSystemHardwareConfig::HasFastVertexTextures() const
 
 int MaterialSystemHardwareConfig::MaxHWMorphBatchCount() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return 0;
 }
 
@@ -555,7 +561,7 @@ bool MaterialSystemHardwareConfig::ActuallySupportsPixelShaders_2_b() const
 
 bool MaterialSystemHardwareConfig::SupportsHDRMode(HDRType_t mode) const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 
@@ -579,7 +585,7 @@ bool MaterialSystemHardwareConfig::SupportsBorderColor() const
 
 bool MaterialSystemHardwareConfig::SupportsFetch4() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	return false;
 }
 

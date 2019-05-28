@@ -2,7 +2,7 @@
 
 #include "IShaderAPI_TextureManager.h"
 #include "TF2Vulkan/VertexFormat.h"
-#include "TF2Vulkan/VulkanMesh.h"
+#include "TF2Vulkan/meshes/VulkanMesh.h"
 
 namespace TF2Vulkan
 {
@@ -19,7 +19,7 @@ namespace TF2Vulkan
 		IMesh* GetFlexMesh() override final;
 
 		int GetCurrentDynamicVBSize() override final;
-		void DestroyVertexBuffers(bool exitingLevel) override final { NOT_IMPLEMENTED_FUNC(); }
+		void DestroyVertexBuffers(bool exitingLevel) override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 
 		CMeshBuilder* GetVertexModifyBuilder() override final;
 		IMesh* GetDynamicMesh(IMaterial* material, int hwSkinBoneCount, bool buffered,

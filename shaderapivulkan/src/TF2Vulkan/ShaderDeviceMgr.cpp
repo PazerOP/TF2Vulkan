@@ -11,6 +11,8 @@
 #include <tier2/tier2.h>
 #include <tier3/tier3.h>
 
+#include <atomic>
+#include <cstdlib>
 #include <optional>
 #include <vector>
 
@@ -46,6 +48,8 @@ namespace
 
 		const vk::Instance& GetInstance() const override;
 		const vk::DispatchLoaderDynamic& GetDynamicDispatch() const override;
+
+		const vk::AllocationCallbacks& GetAllocationCallbacks() const override;
 
 	private:
 		vk::PhysicalDevice GetAdapterByIndex(uint32_t index) const;
@@ -115,6 +119,51 @@ static ConVar mat_hdr_level("mat_hdr_level", "2");
 static ConVar mat_disable_ps_patch("mat_disable_ps_patch", "0");
 static ConVar mat_force_ps_patch("mat_force_ps_patch", "0");
 static ConVar mat_remoteshadercompile("mat_remoteshadercompile", "0");
+
+static std::atomic_size_t s_ActiveAllocations = 0;
+static std::array<std::array<std::atomic_size_t, VK_SYSTEM_ALLOCATION_SCOPE_RANGE_SIZE>, VK_INTERNAL_ALLOCATION_TYPE_RANGE_SIZE> s_ActiveAllocationsInternal = {};
+
+static void* VKAPI_CALL AllocationFunction(void* userData, size_t size, size_t alignment, VkSystemAllocationScope scope)
+{
+	++s_ActiveAllocations;
+	return _aligned_malloc(size, alignment);
+}
+
+static void* VKAPI_CALL ReallocationFunction(void* userData, void* original, size_t size, size_t alignment, VkSystemAllocationScope scope)
+{
+	if (!original)
+		++s_ActiveAllocations;
+
+	return _aligned_realloc(original, size, alignment);
+}
+
+static void VKAPI_CALL FreeFunction(void* userData, void* memory)
+{
+	--s_ActiveAllocations;
+	return _aligned_free(memory);
+}
+
+static void VKAPI_CALL InternalAllocationNotificationFunction(void* userData, size_t size,
+	VkInternalAllocationType allocationType, VkSystemAllocationScope scope)
+{
+	// Do nothing
+	++s_ActiveAllocationsInternal.at(allocationType).at(scope);
+}
+
+static void VKAPI_CALL InternalFreeNotificationFunction(void* userData, size_t size,
+	VkInternalAllocationType allocationType, VkSystemAllocationScope scope)
+{
+	// Do nothing
+	--s_ActiveAllocationsInternal.at(allocationType).at(scope);
+}
+
+static const vk::AllocationCallbacks s_AllocationCallbacks(
+	nullptr, // User data
+	&AllocationFunction,
+	&ReallocationFunction,
+	&FreeFunction,
+	&InternalAllocationNotificationFunction,
+	&InternalFreeNotificationFunction);
 
 bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 {
@@ -253,7 +302,7 @@ static vk::UniqueInstance CreateInstance()
 	createInfo.ppEnabledExtensionNames = INSTANCE_EXTENSIONS;
 	createInfo.enabledExtensionCount = std::size(INSTANCE_EXTENSIONS);
 
-	auto retVal = vk::createInstanceUnique(createInfo);
+	auto retVal = vk::createInstanceUnique(createInfo, s_AllocationCallbacks);
 	if (!retVal)
 		Error("[TF2Vulkan] Failed to create vulkan instance\n");
 
@@ -337,7 +386,7 @@ static vk::UniqueDevice CreateDevice(vk::PhysicalDevice& adapter, QueueFamilies&
 	createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
 	createInfo.enabledExtensionCount = std::size(DEVICE_EXTENSIONS);
 
-	return adapter.createDeviceUnique(createInfo);
+	return adapter.createDeviceUnique(createInfo, s_AllocationCallbacks);
 }
 
 vk::PhysicalDevice ShaderDeviceMgr::GetAdapterByIndex(size_t index) const
@@ -586,4 +635,9 @@ const vk::DispatchLoaderDynamic& ShaderDeviceMgr::GetDynamicDispatch() const
 {
 	assert(m_Instance);
 	return m_InstanceDynDisp;
+}
+
+const vk::AllocationCallbacks& ShaderDeviceMgr::GetAllocationCallbacks() const
+{
+	return s_AllocationCallbacks;
 }

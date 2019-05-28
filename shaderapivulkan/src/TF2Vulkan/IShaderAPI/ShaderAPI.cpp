@@ -6,7 +6,7 @@
 #include "TF2Vulkan/IStateManagerVulkan.h"
 #include "TF2Vulkan/TextureData.h"
 #include "TF2Vulkan/VulkanFactories.h"
-#include "TF2Vulkan/VulkanMesh.h"
+#include "TF2Vulkan/meshes/VulkanMesh.h"
 #include "TF2Vulkan/VulkanUtil.h"
 
 #include <TF2Vulkan/Util/Color.h>
@@ -68,11 +68,11 @@ namespace
 
 		StateSnapshot_t TakeSnapshot() override;
 
-		void CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle) override { NOT_IMPLEMENTED_FUNC(); }
+		void CopyRenderTargetToTexture(ShaderAPITextureHandle_t texHandle) override;
 		void CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID,
-			const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
+			const Rect_t* srcRect, const Rect_t* dstRect) override;
 		void CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t texHandle,
-			const Rect_t* srcRect, const Rect_t* dstRect) override { NOT_IMPLEMENTED_FUNC(); }
+			const Rect_t* srcRect, const Rect_t* dstRect) override;
 		void CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
 			ShaderAPITextureHandle_t dstTex, const Rect_t* srcRect, const Rect_t* dstRect) override;
 
@@ -98,8 +98,6 @@ namespace
 
 		void ShadeMode(ShaderShadeMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void OverrideDepthEnable(bool enable, bool depthEnable) override { NOT_IMPLEMENTED_FUNC(); }
-
 		void SetHeightClipZ(float z) override { NOT_IMPLEMENTED_FUNC(); }
 		void SetHeightClipMode(MaterialHeightClipMode_t mode) override { NOT_IMPLEMENTED_FUNC(); }
 
@@ -107,12 +105,6 @@ namespace
 		ImageFormat GetNearestRenderTargetFormat(ImageFormat fmt) const override;
 
 		bool DoRenderTargetsNeedSeparateDepthBuffer() const override;
-
-		bool TexLock(int level, int cubeFaceID, int xOffset, int yOffset,
-			int width, int height, CPixelWriter& writer) override { NOT_IMPLEMENTED_FUNC(); }
-		void TexUnlock() override { NOT_IMPLEMENTED_FUNC(); }
-
-		void TexSetPriority(int priority) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetRenderTarget(ShaderAPITextureHandle_t colTexHandle,
 			ShaderAPITextureHandle_t depthTexHandle) override;
@@ -143,11 +135,11 @@ namespace
 
 		void SetStandardVertexShaderConstants(float overbright) override;
 
-		ShaderAPIOcclusionQuery_t CreateOcclusionQueryObject() override { NOT_IMPLEMENTED_FUNC(); }
-		void DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query) override { NOT_IMPLEMENTED_FUNC(); }
-		void BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override { NOT_IMPLEMENTED_FUNC(); }
-		void EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override { NOT_IMPLEMENTED_FUNC(); }
-		int OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush) override { NOT_IMPLEMENTED_FUNC(); }
+		ShaderAPIOcclusionQuery_t CreateOcclusionQueryObject() override;
+		void DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query) override;
+		void BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override;
+		void EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query) override;
+		int OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush) override;
 
 		const FlashlightState_t& GetFlashlightState(VMatrix& worldToTexture) const override { NOT_IMPLEMENTED_FUNC(); }
 		const FlashlightState_t& GetFlashlightStateEx(VMatrix& worldToTexture,
@@ -156,8 +148,8 @@ namespace
 		void SetFlashlightStateEx(const FlashlightState_t& state, const VMatrix& worldToTexture,
 			ITexture* flashlightDepthTex) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ClearVertexAndPixelShaderRefCounts() override { NOT_IMPLEMENTED_FUNC(); }
-		void PurgeUnusedVertexAndPixelShaders() override { NOT_IMPLEMENTED_FUNC(); }
+		void ClearVertexAndPixelShaderRefCounts() override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
+		void PurgeUnusedVertexAndPixelShaders() override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 
 		void DXSupportLevelChanged() override;
 
@@ -170,15 +162,14 @@ namespace
 
 		void ClearStencilBufferRectangle(int xmin, int ymin, int xmax, int ymax, int value) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void DisableAllLocalLights() override { NOT_IMPLEMENTED_FUNC(); }
-		int CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs) override { NOT_IMPLEMENTED_FUNC(); }
+		int CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs) override;
 
 		bool SupportsMSAAMode(int msaaMode) override { NOT_IMPLEMENTED_FUNC(); }
 
 		bool OwnGPUResources(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BeginPIXEvent(unsigned long color, const char* szName) override { NOT_IMPLEMENTED_FUNC(); }
-		void EndPIXEvent() override { NOT_IMPLEMENTED_FUNC(); }
+		void BeginPIXEvent(unsigned long color, const char* szName) override;
+		void EndPIXEvent() override;
 		void SetPIXMarker(const Color& color, const char* szName) override;
 
 		void EnableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
@@ -189,7 +180,7 @@ namespace
 		bool SupportsShadowDepthTextures() override { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetDisallowAccess(bool disallowed) override { NOT_IMPLEMENTED_FUNC(); }
-		void EnableShaderShaderMutex(bool enabled) override { NOT_IMPLEMENTED_FUNC(); }
+		void EnableShaderShaderMutex(bool enabled) override;
 		void ShaderLock() override;
 		void ShaderUnlock() override;
 
@@ -223,12 +214,12 @@ namespace
 
 		void SetFlexWeights(int firstWeight, int count, const MorphWeight_t* weights) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void AcquireThreadOwnership() override { NOT_IMPLEMENTED_FUNC(); }
-		void ReleaseThreadOwnership() override { NOT_IMPLEMENTED_FUNC(); }
+		void AcquireThreadOwnership() override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
+		void ReleaseThreadOwnership() override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 
 		bool SupportsNormalMapCompression() const override { NOT_IMPLEMENTED_FUNC(); }
 
-		void EnableBuffer2FramesAhead(bool enable) override { NOT_IMPLEMENTED_FUNC(); }
+		void EnableBuffer2FramesAhead(bool enable) override { LOG_FUNC(); } // Does nothing
 
 		void PrintfVA(char* fmt, va_list vargs) override { NOT_IMPLEMENTED_FUNC(); }
 		void Printf(PRINTF_FORMAT_STRING const char* fmt, ...) override { NOT_IMPLEMENTED_FUNC(); }
@@ -370,6 +361,23 @@ void ShaderAPI::SetPIXMarker(const Color& color, const char* name)
 {
 	LOG_FUNC();
 	g_ShaderDevice.GetPrimaryCmdBuf().InsertDebugLabel(color, name);
+}
+
+void ShaderAPI::BeginPIXEvent(unsigned long color, const char* name)
+{
+	LOG_FUNC();
+	Color c;
+	c.m_RawColor = color;
+
+	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
+	const auto marker = cmdBuf.InitDebugUtilsLabel(name, c);
+	g_ShaderDevice.GetPrimaryCmdBuf().beginDebugUtilsLabelEXT(marker);
+}
+
+void ShaderAPI::EndPIXEvent()
+{
+	LOG_FUNC();
+	g_ShaderDevice.GetPrimaryCmdBuf().endDebugUtilsLabelEXT();
 }
 
 bool ShaderAPI::IsTranslucent(StateSnapshot_t id) const
@@ -631,13 +639,13 @@ void ShaderAPI::RenderPass(int passID, int passCount)
 
 bool ShaderAPI::ShouldWriteDepthToDestAlpha() const
 {
-	NOT_IMPLEMENTED_FUNC();
-	return false;
+	LOG_FUNC();
+	return GetIntRenderingParameter(INT_RENDERPARM_WRITE_DEPTH_TO_DESTALPHA);
 }
 
 bool ShaderAPI::IsHWMorphingEnabled() const
 {
-	NOT_IMPLEMENTED_FUNC();
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 	//return true; // Always enabled for vulkan
 	return false; // Disabled (for now) to reduce complexity
 }
@@ -692,7 +700,8 @@ namespace
 			int m_DestRegister;
 		} m_SetPixelShaderFogParams,
 			m_SetPixelShaderStateAmbientLightCube,
-			m_CommitPixelShaderLighting;
+			m_CommitPixelShaderLighting,
+			m_StoreEyePosInPSConst;
 
 		struct : BaseCommandBufferCmd
 		{
@@ -870,6 +879,14 @@ void ShaderAPI::ExecuteCommandBuffer(uint8* cmdBuf)
 			cmdBuf += sizeof(cmd);
 			break;
 		}
+
+		case CBCMD_STORE_EYE_POS_IN_PSCONST:
+		{
+			const auto& cmd = cmdBufTyped->m_StoreEyePosInPSConst;
+			SetPixelShaderConstant(cmd.m_DestRegister, nullptr, 1);
+			cmdBuf += sizeof(cmd);
+			break;
+		}
 		}
 	}
 }
@@ -1012,4 +1029,69 @@ void ShaderAPI::CopyRenderTargetToScratchTexture(ShaderAPITextureHandle_t srcRT,
 		.SetOldLayout(vk::ImageLayout::eTransferDstOptimal)
 		.SetNewLayout(dstTex.GetDefaultLayout())
 		.Submit(cmdBuf);
+}
+
+int ShaderAPI::CompareSnapshots(StateSnapshot_t lhs, StateSnapshot_t rhs)
+{
+	LOG_FUNC();
+
+	const auto& stateLHS = g_StateManagerStatic.GetState(lhs);
+	const auto& stateRHS = g_StateManagerStatic.GetState(rhs);
+
+	const auto result = stateLHS <=> stateRHS;
+
+	if (std::is_lt(result))
+		return -1;
+	else if (std::is_gt(result))
+		return 1;
+	else
+		return 0;
+}
+
+ShaderAPIOcclusionQuery_t ShaderAPI::CreateOcclusionQueryObject()
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	return ShaderAPIOcclusionQuery_t(0);
+}
+void ShaderAPI::DestroyOcclusionQueryObject(ShaderAPIOcclusionQuery_t query)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+void ShaderAPI::BeginOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+void ShaderAPI::EndOcclusionQueryDrawing(ShaderAPIOcclusionQuery_t query)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+int ShaderAPI::OcclusionQuery_GetNumPixelsRendered(ShaderAPIOcclusionQuery_t query, bool flush)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	return 0;
+}
+
+void ShaderAPI::CopyRenderTargetToTextureEx(ShaderAPITextureHandle_t texHandle, int renderTargetID,
+	const Rect_t* srcRect, const Rect_t* dstRect)
+{
+	LOG_FUNC();
+	TF2VULKAN_PIX_MARKER(__FUNCTION__ "(): NOT IMPLEMENTED");
+}
+
+void ShaderAPI::CopyTextureToRenderTargetEx(int renderTargetID, ShaderAPITextureHandle_t texHandle,
+	const Rect_t* srcRect, const Rect_t* dstRect)
+{
+	LOG_FUNC();
+	TF2VULKAN_PIX_MARKER(__FUNCTION__ "(): NOT IMPLEMENTED");
+}
+
+void ShaderAPI::CopyRenderTargetToTexture(ShaderAPITextureHandle_t texID)
+{
+	LOG_FUNC();
+	return CopyRenderTargetToTextureEx(texID, 0, nullptr, nullptr);
+}
+
+void ShaderAPI::EnableShaderShaderMutex(bool enabled)
+{
+	LOG_FUNC(); // We always use thread-safe code with vulkan
 }

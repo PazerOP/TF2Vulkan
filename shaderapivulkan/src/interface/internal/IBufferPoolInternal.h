@@ -19,6 +19,7 @@ namespace TF2Vulkan
 		};
 
 		virtual BufferInfo GetBufferInfo(size_t offset) const = 0;
+		virtual std::byte* GetBufferData(size_t offset) = 0;
 		vk::Buffer GetBuffer(size_t offset) const { return GetBufferInfo(offset).m_Buffer; }
 
 		BufferInfo GetBufferInfo(const BufferPoolEntry& buf) const

@@ -7,6 +7,8 @@
 #include <TF2Vulkan/Util/platform.h>
 #include <TF2Vulkan/Util/std_string.h>
 
+#include <pixelwriter.h>
+
 #define LOG_FUNC_TEX_NAME(texHandle, texName) \
 	LOG_FUNC_MSG(texName)
 
@@ -400,9 +402,9 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 			region.imageSubresource.layerCount = 1;
 			region.imageSubresource.mipLevel = slice.m_MipLevel;
 
-			Util::SafeConvert(slice.m_XOffset, region.imageOffset.x);
-			Util::SafeConvert(slice.m_YOffset, region.imageOffset.y);
-			Util::SafeConvert(slice.m_ZOffset, region.imageOffset.z);
+			Util::SafeConvert(slice.m_OffsetX, region.imageOffset.x);
+			Util::SafeConvert(slice.m_OffsetY, region.imageOffset.y);
+			Util::SafeConvert(slice.m_OffsetZ, region.imageOffset.z);
 
 			Util::SafeConvert(slice.m_Width, region.imageExtent.width);
 			Util::SafeConvert(slice.m_Height, region.imageExtent.height);
@@ -603,6 +605,8 @@ void IShaderAPI_TextureManager::LockRect(void** outBits, int* outPitch, ShaderAP
 	const auto [offset, stride] = FormatInfo::GetSubrectOffset(ci.format,
 		Util::SafeConvert<uint32_t>(x), Util::SafeConvert<uint32_t>(y), 0,
 		ci.extent.width, ci.extent.height, ci.extent.depth,
+		CubeMapFaceIndex_t(0), 1, // face, faceCount
+		0, 1, // frame, frameCount
 		Util::SafeConvert<uint_fast8_t>(mipLevel));
 
 	if (outPitch)
@@ -642,6 +646,122 @@ void IShaderAPI_TextureManager::UnlockRect(ShaderAPITextureHandle_t texID, int m
 	ENSURE(_CrtCheckMemory());
 }
 
+bool IShaderAPI_TextureManager::TexLock(ShaderAPITextureHandle_t texID, int level, int cubeFaceID,
+	int xOffset, int yOffset, int width, int height, CPixelWriter& writer)
+{
+	LOG_FUNC();
+
+	TextureData data;
+	Util::SafeConvert(level, data.m_MipLevel);
+	Util::SafeConvert(cubeFaceID, data.m_CubeFace);
+	Util::SafeConvert(xOffset, data.m_OffsetX);
+	Util::SafeConvert(yOffset, data.m_OffsetY);
+	Util::SafeConvert(width, data.m_Width);
+	Util::SafeConvert(height, data.m_Height);
+
+	if (!TexLock(texID, data, false, true))
+		return false;
+
+	writer.SetPixelMemory(data.m_Format, data.m_Data, Util::SafeConvert<int>(data.m_Stride));
+	return true;
+}
+
+bool IShaderAPI_TextureManager::TexLock(ShaderAPITextureHandle_t texID,
+	TextureData& data, bool read, bool write)
+{
+	LOG_FUNC();
+
+	assert(read || write);
+
+	auto& tex = m_Textures.at(texID);
+	const auto& ci = tex.GetImageCreateInfo();
+
+	data.m_Format = FormatInfo::ConvertImageFormat(ci.format);
+
+	const auto [offset, stride] = FormatInfo::GetSubrectOffset(ci.format,
+		data.m_OffsetX, data.m_OffsetY, data.m_OffsetZ,
+		ci.extent.width, ci.extent.height, ci.extent.depth,
+		CubeMapFaceIndex_t(0), 1, // face, faceCount
+		data.m_CubeFace, ci.arrayLayers, data.m_MipLevel);
+
+	data.m_SliceStride = 0;
+
+	auto& alloc = tex.m_Image.GetAllocation();
+	auto& rect = tex.m_LockedRects.at(data.m_MipLevel);
+	assert(!rect);
+
+	if (auto mapped = alloc.data())
+	{
+		data.m_DataLength = data.m_Stride * data.m_Height;
+		Util::SafeConvert(stride, data.m_Stride);
+		data.m_Data = alloc.data() + offset;
+		rect.m_IsDirectMapped = true;
+	}
+	else
+	{
+		if (read)
+			NOT_IMPLEMENTED_FUNC();  // TODO: alternative slow path if texture is not mappable
+
+		rect.m_DataLength = data.m_DataLength = FormatInfo::GetSliceSize(data.m_Format, data.m_Width, data.m_Height);
+		data.m_Stride = FormatInfo::GetStride(data.m_Format, data.m_Width);
+
+		rect.m_Data = std::make_unique<std::byte[]>(data.m_DataLength);
+		data.m_Data = rect.m_Data.get();
+
+		rect.m_IsDirectMapped = false;
+	}
+
+	rect.m_Subrect = data;
+
+	return true;
+}
+
+void IShaderAPI_TextureManager::TexUnlock(ShaderAPITextureHandle_t texID)
+{
+	LOG_FUNC();
+
+	auto& tex = m_Textures.at(texID);
+	const auto& ci = tex.GetImageCreateInfo();
+
+	bool found = false;
+	for (auto& rect : tex.m_LockedRects)
+	{
+		if (rect)
+		{
+#ifdef _DEBUG
+			assert(!found);
+			found = true;
+#endif
+
+			if (!rect.m_IsDirectMapped)
+			{
+				TextureData data(rect.m_Subrect);
+				data.m_Format = FormatInfo::ConvertImageFormat(ci.format);
+				data.m_Data = rect.m_Data.get();
+				data.m_DataLength = rect.m_DataLength;
+				data.m_Stride = FormatInfo::GetStride(ci.format, data.m_Width);
+
+				UpdateTexture(texID, &data, 1);
+
+				rect.m_Data.reset();
+				rect.m_DataLength = 0;
+			}
+			else
+			{
+				assert(!rect.m_Data);
+				rect.m_IsDirectMapped = false;
+			}
+
+			assert(!rect);
+#ifndef _DEBUG
+			break;
+#endif
+		}
+	}
+
+	assert(found);
+}
+
 void IShaderAPI_TextureManager::ModifyTexture(ShaderAPITextureHandle_t tex)
 {
 	LOG_FUNC();
@@ -676,9 +796,9 @@ void IShaderAPI_TextureManager::TexSubImage2D(int level, int cubeFaceID, int xOf
 	data.m_CubeFace = CubeMapFaceIndex_t(cubeFaceID);
 	data.m_Format = srcFormat;
 	Util::SafeConvert(level, data.m_MipLevel);
-	Util::SafeConvert(xOffset, data.m_XOffset);
-	Util::SafeConvert(yOffset, data.m_YOffset);
-	Util::SafeConvert(zOffset, data.m_ZOffset);
+	Util::SafeConvert(xOffset, data.m_OffsetX);
+	Util::SafeConvert(yOffset, data.m_OffsetY);
+	Util::SafeConvert(zOffset, data.m_OffsetZ);
 	Util::SafeConvert(width, data.m_Width);
 	Util::SafeConvert(height, data.m_Height);
 	Util::SafeConvert(srcStride, data.m_Stride);
@@ -712,4 +832,23 @@ void IShaderAPI_TextureManager::TexWrap(ShaderTexCoordComponent_t coord, ShaderT
 {
 	LOG_FUNC();
 	return TexWrap(m_ModifyTexture, coord, wrapMode);
+}
+
+void IShaderAPI_TextureManager::TexSetPriority(int priority)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
+bool IShaderAPI_TextureManager::TexLock(int level, int cubeFaceID,
+	int xOffset, int yOffset, int width, int height, CPixelWriter& writer)
+{
+	LOG_FUNC();
+	return TexLock(m_ModifyTexture, level, cubeFaceID,
+		xOffset, yOffset, width, height, writer);
+}
+
+void IShaderAPI_TextureManager::TexUnlock()
+{
+	LOG_FUNC();
+	return TexUnlock(m_ModifyTexture);
 }

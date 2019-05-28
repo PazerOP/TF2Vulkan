@@ -6,7 +6,7 @@
 
 using namespace TF2Vulkan;
 
-static vk::DebugUtilsLabelEXT InitDebugUtilsLabel(const char* name, const Color& color = PIX_COLOR_MISC)
+vk::DebugUtilsLabelEXT IVulkanCommandBuffer::InitDebugUtilsLabel(const char* name, const Color& color)
 {
 	vk::DebugUtilsLabelEXT label;
 
@@ -105,6 +105,11 @@ void IVulkanCommandBuffer::copyBufferToImage(const vk::Buffer& buf, const vk::Im
 	const vk::ImageLayout& dstImageLayout, const vk::ArrayProxy<const vk::BufferImageCopy>& regions)
 {
 	return GetCmdBuffer().copyBufferToImage(buf, img, dstImageLayout, regions);
+}
+
+void IVulkanCommandBuffer::copyBuffer(const vk::Buffer& srcBuf, const vk::Buffer& dstBuf, const vk::ArrayProxy<const vk::BufferCopy>& regions)
+{
+	return GetCmdBuffer().copyBuffer(srcBuf, dstBuf, regions);
 }
 
 void IVulkanCommandBuffer::clearAttachments(uint32_t attachmentCount, const vk::ClearAttachment* pAttachments,

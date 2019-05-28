@@ -47,17 +47,18 @@ namespace
 
 void Util::EnsureConditionFailed(const char* condition, const char* fnSig, const char* file, int line)
 {
-	Warning("[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n", condition, fnSig, file, line);
+	const char* fmtStr = "[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n";
+	Warning(fmtStr, condition, fnSig, file, line);
 
 	if (Plat_IsInDebugSession())
 		__debugbreak();
 
-	Error("[TF2Vulkan] ENSURE(%s) failed @ %s, %s:%i\n", condition, fnSig, file, line);
+	Error(fmtStr, condition, fnSig, file, line);
 }
 
-void Util::FunctionNotImplemented(const char* fnSig, const char* file, int line)
+void Util::FunctionNotImplemented(const char* fnSig, const char* file, int line, const std::string_view& msg)
 {
-	Warning("[TF2Vulkan] NOT IMPLEMENTED: %s in %s:%i\n", fnSig, file, line);
+	Warning("[TF2Vulkan] NOT IMPLEMENTED: %s in %s:%i%.*s\n", fnSig, file, line, PRINTF_SV(msg));
 }
 
 static thread_local int s_LogFunctionCallIndentation = 0;
@@ -85,7 +86,6 @@ template struct Util::LogFunctionCallScope<true>;
 void Util::LogFunctionCall(const std::string_view& fnSig, const std::string_view& file, int line,
 	const std::string_view& msg)
 {
-	ASSERT_MAIN_THREAD();
 	const FnSigComponents comps(fnSig);
 
 	char buf[512];

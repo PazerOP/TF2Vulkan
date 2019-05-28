@@ -3,7 +3,11 @@
 #include <TF2Vulkan/IBufferPool.h>
 #include <TF2Vulkan/IShaderGroup.h>
 #include <TF2Vulkan/IShaderInstance.h>
+#include "TF2Vulkan/FogParams.h"
 #include <TF2Vulkan/Util/Macros.h>
+
+#include <stdshader_vulkan/ShaderDataShared.h>
+
 #include <shaderapi/ishaderdynamic.h>
 
 namespace TF2Vulkan
@@ -26,6 +30,8 @@ namespace TF2Vulkan
 
 		[[nodiscard]] virtual size_t GetLights(LightDesc_t* lights, size_t maxLights) const = 0;
 		virtual void GetAmbientLightCube(Shaders::AmbientLightCube& cube) const = 0;
+
+		virtual const LogicalFogParams& GetFogParams() const = 0;
 
 		// From IShaderDynamicAPI
 		virtual void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) = 0;

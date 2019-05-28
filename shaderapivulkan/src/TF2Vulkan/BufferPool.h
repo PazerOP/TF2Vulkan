@@ -1,6 +1,7 @@
 #pragma once
 
 #include "interface/internal/IBufferPoolInternal.h"
+#include "TF2Vulkan/Util/MutexWrapper.h"
 
 namespace TF2Vulkan
 {
@@ -13,6 +14,7 @@ namespace TF2Vulkan
 		BufferInfo GetBackingBufferInfo() const override;
 		BufferPoolEntry Create(size_t size) override;
 		void Update(const void* data, size_t size, size_t offset) override;
+		std::byte* GetBufferData(size_t offset) override;
 
 		BufferInfo GetBufferInfo(size_t offset) const override;
 
@@ -29,6 +31,7 @@ namespace TF2Vulkan
 
 		vma::AllocatedBuffer CreateBackingBuffer(vk::BufferUsageFlags usage) const;
 		vma::AllocatedBuffer m_BackingBuffer;
+		std::unique_ptr<Util::MutexDbg> m_Mutex;
 	};
 
 	class BufferPool final : public IBufferPoolInternal

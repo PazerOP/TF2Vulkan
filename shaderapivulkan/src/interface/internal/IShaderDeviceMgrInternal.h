@@ -17,6 +17,8 @@ namespace TF2Vulkan
 			return SetAdapter(adapter, MaterialInitFlags_t(flags));
 		}
 
+		virtual const vk::AllocationCallbacks& GetAllocationCallbacks() const = 0;
+
 		virtual vk::PhysicalDevice GetAdapter() = 0;
 		virtual const vk::PhysicalDeviceProperties& GetAdapterProperties() const = 0;
 		virtual const vk::PhysicalDeviceFeatures& GetAdapterFeatures() const = 0;

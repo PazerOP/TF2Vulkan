@@ -4,6 +4,7 @@
 
 #include <TF2Vulkan/VertexFormat.h>
 #include <TF2Vulkan/IBufferPool.h>
+#include "TF2Vulkan/FogParams.h"
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
@@ -38,11 +39,12 @@ namespace TF2Vulkan
 		uint_fast8_t m_AnisotropicLevel = 0;
 		Util::InPlaceVector<ShaderViewport_t, 4> m_Viewports;
 		std::array<float, 4> m_ClearColor = {};
-		MaterialFogMode_t m_SceneFogMode = MATERIAL_FOG_NONE;
 		Vector m_WorldSpaceCameraPosition;
 		bool m_ForceDepthFuncEquals = false;
 		bool m_FBLinear = false;
 		Vector m_TonemappingScale{ 1, 1, 1 };
+
+		LogicalFogParams m_FogParams;
 
 		const IShaderInstanceInternal* m_VSShader = nullptr;
 		const IShaderInstanceInternal* m_PSShader = nullptr;
@@ -88,12 +90,12 @@ namespace TF2Vulkan
 	struct LogicalShadowState final
 	{
 		constexpr LogicalShadowState() = default;
-		DEFAULT_WEAK_EQUALITY_OPERATOR(LogicalShadowState); // weak because we have floats
+		DEFAULT_PARTIAL_ORDERING_OPERATOR(LogicalShadowState); // weak because we have floats
 
 		struct Sampler
 		{
 			constexpr Sampler() = default;
-			DEFAULT_STRONG_EQUALITY_OPERATOR(Sampler);
+			DEFAULT_STRONG_ORDERING_OPERATOR(Sampler);
 
 			bool m_SRGBRead = false;
 		};

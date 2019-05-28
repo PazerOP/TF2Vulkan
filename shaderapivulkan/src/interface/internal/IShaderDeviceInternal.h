@@ -48,8 +48,11 @@ namespace TF2Vulkan
 		virtual const vk::Buffer& GetDummyUniformBuffer() const = 0;
 		virtual const vk::Buffer& GetDummyVertexBuffer() const = 0;
 
-		virtual IBufferPool& GetVertexBufferPool() = 0;
-		virtual IBufferPool& GetIndexBufferPool() = 0;
+		virtual vk::QueryPool GetQueryPool(vk::QueryType type) const = 0;
+
+		virtual IBufferPool& GetBufferPool(const vk::BufferUsageFlags& usage) = 0;
+		IBufferPool& GetVertexBufferPool() { return GetBufferPool(vk::BufferUsageFlagBits::eVertexBuffer); }
+		IBufferPool& GetIndexBufferPool() { return GetBufferPool(vk::BufferUsageFlagBits::eIndexBuffer); }
 
 		virtual const IShaderAPITexture & GetBackBufferColorTexture() const = 0;
 		IShaderAPITexture & GetBackBufferColorTexture()

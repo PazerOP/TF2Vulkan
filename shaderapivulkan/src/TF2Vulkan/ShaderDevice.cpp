@@ -7,7 +7,7 @@
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "VulkanCommandBufferBase.h"
 #include "VulkanFactories.h"
-#include "VulkanMesh.h"
+#include "TF2Vulkan/meshes/VulkanMesh.h"
 
 #include <TF2Vulkan/Util/AutoInit.h>
 #include <TF2Vulkan/Util/interface.h>
@@ -130,8 +130,9 @@ namespace
 		const vk::Buffer& GetDummyUniformBuffer() const override { return m_Data.m_DummyUniformBuffer.GetBuffer(); }
 		const vk::Buffer& GetDummyVertexBuffer() const override { return m_Data.m_DummyVertexBuffer.GetBuffer(); }
 
-		IBufferPoolInternal& GetVertexBufferPool() override { return m_Data.m_VertexBufferPool.value(); }
-		IBufferPoolInternal& GetIndexBufferPool() override { return m_Data.m_IndexBufferPool.value(); }
+		vk::QueryPool GetQueryPool(vk::QueryType type) const override;
+
+		IBufferPoolInternal& GetBufferPool(const vk::BufferUsageFlags& usage) override;
 
 		bool SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info) override;
 
@@ -166,8 +167,11 @@ namespace
 			vma::AllocatedBuffer m_DummyUniformBuffer;
 			vma::AllocatedBuffer m_DummyVertexBuffer;
 
+			std::optional<BufferPoolContiguous> m_TransferSrcBufferPool;
 			std::optional<BufferPoolContiguous> m_VertexBufferPool;
 			std::optional<BufferPoolContiguous> m_IndexBufferPool;
+
+			vk::UniqueQueryPool m_OcclusionQueryPool;
 
 			vk::UniquePipelineCache m_PipelineCache;
 
@@ -403,17 +407,16 @@ void ShaderDevice::DestroyPixelShader(PixelShaderHandle_t shader)
 
 IMesh* ShaderDevice::CreateStaticMesh(VertexFormat_t format, const char* textureBudgetGroup, IMaterial* material)
 {
-	// TODO
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	// TODO: Tracking of these?
 	const VertexFormat realFmt(format);
 	return new VulkanMesh(realFmt, false);
 }
 
 void ShaderDevice::DestroyStaticMesh(IMesh* mesh)
 {
-	// TODO
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
-	delete assert_cast<VulkanMesh*>(mesh);
+	LOG_FUNC();
+	static_assert(std::has_virtual_destructor_v<IMesh>);
+	delete mesh;
 }
 
 IVertexBuffer* ShaderDevice::CreateVertexBuffer(ShaderBufferType_t type, VertexFormat_t fmt, int vertexCount, const char* budgetGroup)
@@ -424,7 +427,9 @@ IVertexBuffer* ShaderDevice::CreateVertexBuffer(ShaderBufferType_t type, VertexF
 
 void ShaderDevice::DestroyVertexBuffer(IVertexBuffer* buffer)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	static_assert(std::has_virtual_destructor_v<IVertexBuffer>);
+	delete buffer;
 }
 
 IIndexBuffer* ShaderDevice::CreateIndexBuffer(ShaderBufferType_t type, MaterialIndexFormat_t fmt, int indexCount, const char* budgetGroup)
@@ -435,7 +440,9 @@ IIndexBuffer* ShaderDevice::CreateIndexBuffer(ShaderBufferType_t type, MaterialI
 
 void ShaderDevice::DestroyIndexBuffer(IIndexBuffer* buffer)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	static_assert(std::has_virtual_destructor_v<IIndexBuffer>);
+	delete buffer;
 }
 
 IVertexBuffer* ShaderDevice::GetDynamicVertexBuffer(int streamID, VertexFormat_t format, bool buffered)
@@ -476,6 +483,7 @@ static vma::UniqueAllocator CreateAllocator(vk::Device& device)
 	vma::AllocatorCreateInfo info;
 	info.device = (VkDevice)device;
 	info.physicalDevice = (VkPhysicalDevice)g_ShaderDeviceMgr.GetAdapter();
+	info.pAllocationCallbacks = &(const VkAllocationCallbacks&)g_ShaderDeviceMgr.GetAllocationCallbacks();
 
 	return vma::createAllocatorUnique(info);
 }
@@ -487,7 +495,7 @@ static vk::UniqueCommandPool CreateCommandPool(const vk::Device& device, uint32_
 	// Allow resetting command buffers
 	createInfo.flags |= vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 
-	auto result = device.createCommandPoolUnique(createInfo);
+	auto result = device.createCommandPoolUnique(createInfo, g_ShaderDeviceMgr.GetAllocationCallbacks());
 	if (!result)
 		Error(TF2VULKAN_PREFIX "Failed to create command pool for queue %u\n", queueFamily);
 
@@ -512,6 +520,14 @@ static VulkanQueue CreateQueueWrapper(const vk::Device& device, uint32_t queueFa
 	g_ShaderDevice.SetDebugName(retVal.m_CommandPool, buf);
 
 	return retVal;
+}
+
+static vk::UniqueQueryPool CreateQueryPool(vk::QueryType type, uint32_t count = 1024)
+{
+	vk::QueryPoolCreateInfo ci;
+	ci.queryType = type;
+	ci.queryCount = count;
+	return s_Device.GetVulkanDevice().createQueryPoolUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 }
 
 void ShaderDevice::VulkanInit(VulkanInitData&& inData)
@@ -547,11 +563,14 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 
 	m_Data.m_VertexBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eVertexBuffer);
 	m_Data.m_IndexBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eIndexBuffer);
+	m_Data.m_TransferSrcBufferPool.emplace(8 * 1024 * 1024, vk::BufferUsageFlagBits::eTransferSrc);
+
+	m_Data.m_OcclusionQueryPool = CreateQueryPool(vk::QueryType::eOcclusion);
 
 	// Pipeline cache
 	{
 		vk::PipelineCacheCreateInfo ci;
-		m_Data.m_PipelineCache = device->createPipelineCacheUnique(ci);
+		m_Data.m_PipelineCache = device->createPipelineCacheUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		SetDebugName(m_Data.m_PipelineCache, "TF2Vulkan Pipeline Cache");
 	}
 
@@ -597,7 +616,8 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		surfCreateInfo.hwnd = HWND(hwnd);
 		surfCreateInfo.hinstance = HINSTANCE(GetWindowLong(surfCreateInfo.hwnd, GWL_HINSTANCE));
 
-		newSwapChain.m_Surface = g_ShaderDeviceMgr.GetInstance().createWin32SurfaceKHRUnique(surfCreateInfo);
+		newSwapChain.m_Surface = g_ShaderDeviceMgr.GetInstance().createWin32SurfaceKHRUnique(
+			surfCreateInfo, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		if (!newSwapChain.m_Surface)
 			throw VulkanException("Failed to create window surface", EXCEPTION_DATA());
 	}
@@ -649,7 +669,8 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 				scCreateInfo.presentMode = presentModes.at(0);
 		}
 
-		newSwapChain.m_SwapChain = m_Data.m_Device->createSwapchainKHRUnique(scCreateInfo);
+		newSwapChain.m_SwapChain = m_Data.m_Device->createSwapchainKHRUnique(scCreateInfo,
+			g_ShaderDeviceMgr.GetAllocationCallbacks());
 		SetDebugName(newSwapChain.m_SwapChain, "TF2Vulkan Swap Chain");
 	}
 
@@ -673,7 +694,8 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 			ci.viewType = vk::ImageViewType::e2D;
 
 			ci.image = img;
-			perImg.m_ImageView = m_Data.m_Device->createImageViewUnique(ci);
+			perImg.m_ImageView = m_Data.m_Device->createImageViewUnique(ci,
+				g_ShaderDeviceMgr.GetAllocationCallbacks());
 
 			char buf[128];
 			sprintf_s(buf, "TF2Vulkan Swap Chain Image View #%zu", index);
@@ -706,15 +728,18 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 		for (auto& img : newSwapChain.m_Images)
 		{
 			char buf[128];
-			img.m_ImageAvailableSemaphore = m_Data.m_Device->createSemaphoreUnique(sCI);
+			img.m_ImageAvailableSemaphore = m_Data.m_Device->createSemaphoreUnique(sCI,
+				g_ShaderDeviceMgr.GetAllocationCallbacks());
 			sprintf_s(buf, "TF2Vulkan Image Available Semaphore #%zu", index);
 			SetDebugName(img.m_ImageAvailableSemaphore, buf);
 
-			img.m_RenderFinishedSemaphore = m_Data.m_Device->createSemaphoreUnique(sCI);
+			img.m_RenderFinishedSemaphore = m_Data.m_Device->createSemaphoreUnique(sCI,
+				g_ShaderDeviceMgr.GetAllocationCallbacks());
 			sprintf_s(buf, "TF2Vulkan Render Finished Semaphore #%zu", index);
 			SetDebugName(img.m_RenderFinishedSemaphore, buf);
 
-			img.m_InFlightFence = m_Data.m_Device->createFenceUnique(fCI);
+			img.m_InFlightFence = m_Data.m_Device->createFenceUnique(fCI,
+				g_ShaderDeviceMgr.GetAllocationCallbacks());
 			sprintf_s(buf, "TF2Vulkan In Flight Fence #%zu", index);
 			SetDebugName(img.m_InFlightFence, buf);
 
@@ -817,5 +842,33 @@ IVulkanCommandBuffer& ShaderDevice::GetPrimaryCmdBuf()
 	{
 		assert(m_Data.m_TempPrimaryCmdBuf);
 		return *m_Data.m_TempPrimaryCmdBuf;
+	}
+}
+
+IBufferPoolInternal& ShaderDevice::GetBufferPool(const vk::BufferUsageFlags& usage)
+{
+	switch ((vk::BufferUsageFlagBits)(VkBufferUsageFlags)usage)
+	{
+	case vk::BufferUsageFlagBits::eTransferSrc:
+		return m_Data.m_TransferSrcBufferPool.value();
+	case vk::BufferUsageFlagBits::eVertexBuffer:
+		return m_Data.m_VertexBufferPool.value();
+	case vk::BufferUsageFlagBits::eIndexBuffer:
+		return m_Data.m_IndexBufferPool.value();
+
+	default:
+		throw VulkanException("Invalid buffer pool", EXCEPTION_DATA());
+	}
+}
+
+vk::QueryPool ShaderDevice::GetQueryPool(vk::QueryType type) const
+{
+	switch (type)
+	{
+	case vk::QueryType::eOcclusion:
+		return m_Data.m_OcclusionQueryPool.get();
+
+	default:
+		throw VulkanException("Invalid query type", EXCEPTION_DATA());
 	}
 }

@@ -2,6 +2,7 @@
 
 #include "interface/internal/IShaderAPIInternal.h"
 #include "TF2Vulkan/SamplerSettings.h"
+#include "TF2Vulkan/TextureSubrect.h"
 #include "TF2Vulkan/VulkanFactories.h"
 
 #include <array>
@@ -28,6 +29,7 @@ namespace TF2Vulkan
 		void TexMinFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode);
 		void TexMagFilter(ShaderAPITextureHandle_t texHandle, ShaderTexFilterMode_t mode);
 		void TexWrap(ShaderAPITextureHandle_t tex, ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode);
+		void TexSetPriority(ShaderAPITextureHandle_t tex, int priority);
 
 		using IShaderAPI::CreateTexture;
 		IShaderAPITexture& CreateTexture(std::string&& dbgName, const vk::ImageCreateInfo& imgCI);
@@ -53,19 +55,26 @@ namespace TF2Vulkan
 			int x, int y, int w, int h, bool write, bool read) override final;
 		void UnlockRect(ShaderAPITextureHandle_t tex, int mipLevel) override final;
 
+		bool TexLock(ShaderAPITextureHandle_t tex, int level, int cubeFaceID, int xOffset, int yOffset,
+			int width, int height, CPixelWriter& writer);
+		void TexUnlock(ShaderAPITextureHandle_t tex);
+
+		bool TexLock(ShaderAPITextureHandle_t tex, TextureData& data, bool read, bool write);
+
 	private:
 		std::atomic<ShaderAPITextureHandle_t> m_NextTextureHandle = 1;
 
 		struct LockedTextureRect final
 		{
 			std::unique_ptr<std::byte[]> m_Data;
-			vk::Extent3D m_Extent{};
-			vk::Offset3D m_Offset{};
+			size_t m_DataLength = 0;
+			TextureSubrect m_Subrect;
 			bool m_IsDirectMapped = false;
 
 			operator bool() const
 			{
 				assert(!(m_IsDirectMapped && m_Data));
+				assert(!m_DataLength == !m_Data);
 				return m_IsDirectMapped || m_Data;
 			}
 		};
@@ -115,6 +124,11 @@ namespace TF2Vulkan
 		void TexWrap(ShaderTexCoordComponent_t coord, ShaderTexWrapMode_t wrapMode) override final;
 		void TexLodClamp(int something) override final;
 		void TexLodBias(float bias) override final;
+		void TexSetPriority(int priority) override final;
+
+		bool TexLock(int level, int cubeFaceID, int xOffset, int yOffset,
+			int width, int height, CPixelWriter& writer) override final;
+		void TexUnlock() override final;
 	};
 
 	extern IShaderAPI_TextureManager& g_TextureManager;

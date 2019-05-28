@@ -40,7 +40,8 @@ BufferPoolContiguous::BufferPoolContiguous(size_t backingBufferSize, vk::BufferU
 	m_BackingBufferSize(backingBufferSize),
 	m_ElementAlignment(GetAlignment(usage)),
 	m_BackingBuffer(CreateBackingBuffer(usage)),
-	m_SliceInfo(backingBufferSize / m_ElementAlignment)
+	m_SliceInfo(backingBufferSize / m_ElementAlignment),
+	m_Mutex(std::make_unique<Util::MutexDbg>())
 {
 }
 
@@ -52,6 +53,12 @@ void BufferPoolContiguous::Update(const void* data, size_t size, size_t offset)
 	m_BackingBuffer.GetAllocation().Write(data, size, offset);
 }
 
+std::byte* BufferPoolContiguous::GetBufferData(size_t offset)
+{
+	auto mapped = m_BackingBuffer.GetAllocation().data();
+	return mapped ? (mapped + offset) : nullptr;
+}
+
 auto BufferPoolContiguous::GetBackingBufferInfo() const -> BufferInfo
 {
 	return BufferInfo{ m_BackingBuffer.GetBuffer(), m_BackingBufferSize };
@@ -59,7 +66,8 @@ auto BufferPoolContiguous::GetBackingBufferInfo() const -> BufferInfo
 
 BufferPoolEntry BufferPoolContiguous::Create(size_t size)
 {
-	ASSERT_MAIN_THREAD();
+	std::lock_guard lock(*m_Mutex);
+	LOG_FUNC_ANYTHREAD();
 
 	size = ALIGN_VALUE(size, m_ElementAlignment);
 
@@ -76,7 +84,7 @@ BufferPoolEntry BufferPoolContiguous::Create(size_t size)
 	}
 
 	assert((offset + size) <= m_BackingBufferSize);
-	assert(ALIGN_VALUE(offset, m_ElementAlignment) == offset);
+	assert((offset % m_ElementAlignment) == 0);
 
 	m_SliceInfo.at(offset / m_ElementAlignment).m_Length = size;
 

@@ -23,6 +23,18 @@ void IShaderAPI_StateManagerDynamic::SetAnisotropicLevel(int anisoLevel)
 	Util::SetDirtyVar(m_State.m_AnisotropicLevel, anisoLevel, m_Dirty);
 }
 
+MaterialFogMode_t IShaderAPI_StateManagerDynamic::GetCurrentFogType() const
+{
+	LOG_FUNC();
+	return GetFogParams().m_Mode;
+}
+
+const LogicalFogParams& IShaderAPI_StateManagerDynamic::GetFogParams() const
+{
+	LOG_FUNC();
+	return m_State.m_FogParams;
+}
+
 void IShaderAPI_StateManagerDynamic::SetLight(int light, const LightDesc_t& desc)
 {
 	LOG_FUNC();
@@ -71,6 +83,11 @@ void IShaderAPI_StateManagerDynamic::CullMode(MaterialCullMode_t mode)
 {
 	LOG_FUNC();
 	Util::SetDirtyVar(m_State.m_CullMode, mode, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::OverrideDepthEnable(bool enable, bool depthEnable)
+{
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
 }
 
 void IShaderAPI_StateManagerDynamic::ForceDepthFuncEquals(bool enable)
@@ -169,28 +186,47 @@ void IShaderAPI_StateManagerDynamic::SetViewports(int count, const ShaderViewpor
 MaterialFogMode_t IShaderAPI_StateManagerDynamic::GetSceneFogMode()
 {
 	LOG_FUNC();
-	return m_State.m_SceneFogMode;
+	return m_State.m_FogParams.m_Mode;
 }
 
-void IShaderAPI_StateManagerDynamic::SetPixelShaderFogParams(int reg)
+void IShaderAPI_StateManagerDynamic::GetFogDistances(float* start, float* end, float* fogZ)
 {
 	LOG_FUNC();
-	float fogParams[4];
 
-	NOT_IMPLEMENTED_FUNC();
+	auto& fog = m_State.m_FogParams;
 
-	SetPixelShaderConstant(reg, fogParams, 1);
+	if (start)
+		*start = fog.m_Start;
+
+	if (end)
+		*end = fog.m_End;
+
+	if (fogZ)
+		*fogZ = fog.m_Z;
 }
 
-void IShaderAPI_StateManagerDynamic::SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack)
+void IShaderAPI_StateManagerDynamic::FogMaxDensity(float maxDensity)
 {
-	NOT_IMPLEMENTED_FUNC();
-	// TODO: Remove this function, we write directly into ps state via uniform buffers?
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FogParams.m_MaxDensity, maxDensity, m_Dirty);
 }
 
-void IShaderAPI_StateManagerDynamic::CommitPixelShaderLighting(int pshReg)
+void IShaderAPI_StateManagerDynamic::GetSceneFogColor(unsigned char* rgb)
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	if (rgb)
+	{
+		auto& fog = m_State.m_FogParams;
+		rgb[0] = fog.m_ColorR;
+		rgb[1] = fog.m_ColorG;
+		rgb[2] = fog.m_ColorB;
+	}
+}
+
+void IShaderAPI_StateManagerDynamic::SceneFogMode(MaterialFogMode_t mode)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FogParams.m_Mode, mode, m_Dirty);
 }
 
 void IShaderAPI_StateManagerDynamic::GetDX9LightState(LightState_t * state) const
@@ -198,7 +234,15 @@ void IShaderAPI_StateManagerDynamic::GetDX9LightState(LightState_t * state) cons
 	LOG_FUNC();
 
 	if (state)
-		* state = m_State.m_LightState;
+		*state = m_State.m_LightState;
+}
+
+void IShaderAPI_StateManagerDynamic::DisableAllLocalLights()
+{
+	LOG_FUNC();
+
+	for (auto& light : m_State.m_Lights)
+		Util::SetDirtyVar(light.m_Type, MATERIAL_LIGHT_DISABLE, m_Dirty);
 }
 
 void IShaderAPI_StateManagerDynamic::GetWorldSpaceCameraPosition(float* pos) const
@@ -216,11 +260,6 @@ void IShaderAPI_StateManagerDynamic::GetWorldSpaceCameraPosition(Vector& pos) co
 	pos[2] = m_State.m_WorldSpaceCameraPosition.z;
 }
 
-void IShaderAPI_StateManagerDynamic::SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 void IShaderAPI_StateManagerDynamic::SetToneMappingScaleLinear(const Vector & scale)
 {
 	LOG_FUNC();
@@ -231,6 +270,12 @@ const Vector& IShaderAPI_StateManagerDynamic::GetToneMappingScaleLinear() const
 {
 	LOG_FUNC();
 	return m_State.m_TonemappingScale;
+}
+
+float IShaderAPI_StateManagerDynamic::GetLightMapScaleFactor() const
+{
+	LOG_FUNC();
+	return 1; // TODO
 }
 
 void IShaderAPI_StateManagerDynamic::EnableUserClipTransformOverride(bool enable)
@@ -410,80 +455,6 @@ bool IShaderAPI_StateManagerDynamic::InFlashlightMode() const
 	return m_State.m_InFlashlightMode;
 }
 
-void IShaderAPI_StateManagerDynamic::SetVertexShaderConstant(int var, const float* vec, int numConst, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-#if false
-	LOG_FUNC();
-	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
-		m_State.m_ShaderData.m_VSData, Util::SafeConvert<uint32_t>(var),
-		reinterpret_cast<const ShaderConstants::float4*>(vec),
-		Util::SafeConvert<uint32_t>(numConst));
-#endif
-}
-
-void IShaderAPI_StateManagerDynamic::SetBooleanVertexShaderConstant(int var, const BOOL * vec, int numBools, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-#if false
-	LOG_FUNC();
-	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
-		m_State.m_ShaderData.m_VSData, Util::SafeConvert<uint32_t>(var),
-		reinterpret_cast<const ShaderConstants::bool4*>(vec),
-		Util::SafeConvert<uint32_t>(numBools));
-#endif
-}
-
-void IShaderAPI_StateManagerDynamic::SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-#if false
-	LOG_FUNC();
-	g_StateManagerStatic.GetVertexShader().GetCompatData().SetConstants(
-		m_State.m_ShaderData.m_VSData, Util::SafeConvert<uint32_t>(var),
-		reinterpret_cast<const ShaderConstants::int4*>(vec),
-		Util::SafeConvert<uint32_t>(numIntVecs));
-#endif
-}
-
-void IShaderAPI_StateManagerDynamic::SetPixelShaderConstant(int var, const float* vec, int numVecs, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-#if false
-	LOG_FUNC();
-	auto& ps = g_StateManagerStatic.GetPixelShader();
-	[[maybe_unused]] auto dbgName = ps.GetName();
-	ps.GetCompatData().SetConstants(
-		m_State.m_ShaderData.m_PSData, Util::SafeConvert<uint32_t>(var),
-		reinterpret_cast<const ShaderConstants::float4*>(vec),
-		Util::SafeConvert<uint32_t>(numVecs));
-#endif
-}
-
-void IShaderAPI_StateManagerDynamic::SetBooleanPixelShaderConstant(int var, const BOOL * vec, int numBools, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-#if false
-	LOG_FUNC();
-	g_StateManagerStatic.GetPixelShader().GetCompatData().SetConstants(
-		m_State.m_ShaderData.m_PSData, Util::SafeConvert<uint32_t>(var),
-		reinterpret_cast<const ShaderConstants::bool4*>(vec),
-		Util::SafeConvert<uint32_t>(numBools));
-#endif
-}
-
-void IShaderAPI_StateManagerDynamic::SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force)
-{
-	NOT_IMPLEMENTED_FUNC();
-#if false
-	LOG_FUNC();
-	g_StateManagerStatic.GetPixelShader().GetCompatData().SetConstants(
-		m_State.m_ShaderData.m_PSData, Util::SafeConvert<uint32_t>(var),
-		reinterpret_cast<const ShaderConstants::int4*>(vec),
-		Util::SafeConvert<uint32_t>(numIntVecs));
-#endif
-}
-
 void IShaderAPI_StateManagerDynamic::SetFloatRenderingParameter(RenderParamFloat_t param, float value)
 {
 	LOG_FUNC();
@@ -591,6 +562,33 @@ void IShaderAPI_StateManagerDynamic::SetClipPlane(int index, const float* plane)
 void IShaderAPI_StateManagerDynamic::EnableClipPlane(int index, bool enable)
 {
 	NOT_IMPLEMENTED_FUNC_NOBREAK();
+}
+
+void IShaderAPI_StateManagerDynamic::FogStart(float start)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FogParams.m_Start, start, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::FogEnd(float end)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FogParams.m_End, end, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetFogZ(float fogZ)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_FogParams.m_Z, fogZ, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b)
+{
+	LOG_FUNC();
+	auto& fog = m_State.m_FogParams;
+	Util::SetDirtyVar(fog.m_ColorR, r, m_Dirty);
+	Util::SetDirtyVar(fog.m_ColorG, g, m_Dirty);
+	Util::SetDirtyVar(fog.m_ColorB, b, m_Dirty);
 }
 
 void IShaderAPI_StateManagerDynamic::LoadBoneMatrix(int boneIndex, const float* m)

@@ -75,12 +75,12 @@ namespace TF2Vulkan
 		bool InFlashlightMode() const override final;
 		void BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle) override final;
 
-		void SetVertexShaderConstant(int var, const float* vec, int numConst, bool force = false) override final;
-		void SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force = false) override final;
-		void SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force = false) override final;
-		void SetPixelShaderConstant(int var, const float* vec, int numConst, bool force = false) override final;
-		void SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force = false) override final;
-		void SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force = false) override final;
+		void SetVertexShaderConstant(int var, const float* vec, int numConst, bool force = false) override final { NOT_IMPLEMENTED_FUNC(); }
+		void SetBooleanVertexShaderConstant(int var, const BOOL* vec, int numBools, bool force = false) override final { NOT_IMPLEMENTED_FUNC(); }
+		void SetIntegerVertexShaderConstant(int var, const int* vec, int numIntVecs, bool force = false) override final { NOT_IMPLEMENTED_FUNC(); }
+		void SetPixelShaderConstant(int var, const float* vec, int numConst, bool force = false) override final { NOT_IMPLEMENTED_FUNC(); }
+		void SetBooleanPixelShaderConstant(int var, const BOOL* vec, int numBools, bool force = false) override final { NOT_IMPLEMENTED_FUNC(); }
+		void SetIntegerPixelShaderConstant(int var, const int* vec, int numIntVecs, bool force = false) override final { NOT_IMPLEMENTED_FUNC(); }
 
 		void SetFloatRenderingParameter(RenderParamFloat_t param, float value) override final;
 		void SetIntRenderingParameter(RenderParamInt_t param, int value) override final;
@@ -104,28 +104,30 @@ namespace TF2Vulkan
 		void SetClipPlane(int index, const float* plane) override final;
 		void EnableClipPlane(int index, bool enable) override final;
 
-		void FogStart(float start) override final { NOT_IMPLEMENTED_FUNC(); }
-		void FogEnd(float end) override final { NOT_IMPLEMENTED_FUNC(); }
-		void SetFogZ(float fogZ) override final { NOT_IMPLEMENTED_FUNC(); }
-		void SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b) override final { NOT_IMPLEMENTED_FUNC(); }
-		void SceneFogMode(MaterialFogMode_t mode) override final { NOT_IMPLEMENTED_FUNC(); }
-		void GetFogDistances(float* start, float* end, float* fogZ) override final { NOT_IMPLEMENTED_FUNC(); }
-		void FogMaxDensity(float maxDensity) override final { NOT_IMPLEMENTED_FUNC(); }
+		void FogStart(float start) override final;
+		void FogEnd(float end) override final;
+		void SetFogZ(float fogZ) override final;
+		void SceneFogColor3ub(unsigned char r, unsigned char g, unsigned char b) override final;
+		void SceneFogMode(MaterialFogMode_t mode) override final;
 		MaterialFogMode_t GetSceneFogMode() override final;
-		void GetSceneFogColor(unsigned char* rgb) override final { NOT_IMPLEMENTED_FUNC(); }
-		void SetPixelShaderFogParams(int reg) override final;
-		MaterialFogMode_t GetCurrentFogType() const override final { NOT_IMPLEMENTED_FUNC(); }
-		int GetPixelFogCombo() override final { NOT_IMPLEMENTED_FUNC(); return 0; }
+		void GetFogDistances(float* start, float* end, float* fogZ) override final;
+		void FogMaxDensity(float maxDensity) override final;
+		void GetSceneFogColor(unsigned char* rgb) override final;
+		void SetPixelShaderFogParams(int reg) override final { NOT_IMPLEMENTED_FUNC(); }
+		MaterialFogMode_t GetCurrentFogType() const override final;
+		int GetPixelFogCombo() override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); return 0; }
+		const LogicalFogParams& GetFogParams() const override final;
 
 		void SetLight(int light, const LightDesc_t& desc) override final;
 		size_t GetLights(LightDesc_t* lights, size_t maxLights) const override final;
-		void SetLightingOrigin(Vector lightingOrigin) override final { NOT_IMPLEMENTED_FUNC(); }
-		void SetAmbientLight(float r, float g, float b) override final { NOT_IMPLEMENTED_FUNC(); }
+		void SetLightingOrigin(Vector lightingOrigin) override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
+		void SetAmbientLight(float r, float g, float b) override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		void SetAmbientLightCube(Vector4D cube[6]) override final;
 		void GetAmbientLightCube(Shaders::AmbientLightCube& cube) const override final;
-		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override final;
-		void CommitPixelShaderLighting(int pshReg) override final;
+		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override final { NOT_IMPLEMENTED_FUNC(); }
+		void CommitPixelShaderLighting(int pshReg) override final { NOT_IMPLEMENTED_FUNC(); }
 		void GetDX9LightState(LightState_t* state) const override final;
+		void DisableAllLocalLights() override final;
 
 		void CullMode(MaterialCullMode_t mode) override final;
 
@@ -135,15 +137,16 @@ namespace TF2Vulkan
 		void SetVertexShaderIndex(int index) override final { NOT_IMPLEMENTED_FUNC(); }
 		void SetPixelShaderIndex(int index) override final { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale) override final;
+		void SetDepthFeatheringPixelShaderConstant(int constant, float depthBlendScale) override final { NOT_IMPLEMENTED_FUNC(); }
 
+		void OverrideDepthEnable(bool enable, bool depthEnable) override final;
 		void ForceDepthFuncEquals(bool enable) override final;
 
 		void EnableLinearColorSpaceFrameBuffer(bool enable) override final;
 
 		void SetToneMappingScaleLinear(const Vector& scale) override final;
 		const Vector& GetToneMappingScaleLinear(void) const override final;
-		float GetLightMapScaleFactor(void) const override final { NOT_IMPLEMENTED_FUNC(); }
+		float GetLightMapScaleFactor() const override final;
 
 		void EnableUserClipTransformOverride(bool enable) override final;
 		void UserClipTransform(const VMatrix& worldToView) override final;

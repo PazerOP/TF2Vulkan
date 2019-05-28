@@ -443,40 +443,107 @@ vk::Extent3D FormatInfo::GetMipResolution(uint_fast8_t mipIndex,
 	};
 }
 
-size_t FormatInfo::GetSliceSize(vk::Format format, uint32_t width, uint32_t height)
-{
-	return GetStride(format, width) * height;
-}
-
-size_t FormatInfo::GetFrameSize3D(vk::Format format,
+size_t TF2Vulkan::FormatInfo::GetImageSize(vk::Format format,
 	uint32_t width, uint32_t height, uint32_t depth,
-	uint_fast8_t mipCount, uint_fast8_t firstMip)
+	uint_fast8_t faceCount, uint32_t frameCount,
+	uint_fast8_t mipCount, uint_fast8_t baseMip)
 {
 	size_t retVal = 0;
 
-	for (uint_fast8_t i = 0; i < mipCount; i++)
+	for (uint_fast8_t i = baseMip; i < mipCount; i++)
 	{
-		const auto [mipW, mipH, mipD] = GetMipResolution(firstMip + i, width, height, depth);
-		retVal += GetSliceSize(format, mipW, mipH) * mipD;
+		const auto [mipW, mipH, mipD] = GetMipResolution(baseMip + i, width, height, depth);
+		retVal += GetMipLevelSize(format, mipW, mipH, mipD, faceCount, frameCount);
 	}
 
 	return retVal;
 }
 
+size_t FormatInfo::GetMipLevelSize(vk::Format format,
+	uint32_t width, uint32_t height, uint32_t depth,
+	uint_fast8_t faceCount, uint32_t frameCount)
+{
+	return GetFrameSize(format, width, height, depth, faceCount) * frameCount;
+}
+
+size_t FormatInfo::GetFrameSize(vk::Format format,
+	uint32_t width, uint32_t height, uint32_t depth,
+	uint_fast8_t faceCount)
+{
+	return GetFaceSize(format, width, height, depth) * faceCount;
+}
+
+size_t FormatInfo::GetFaceSize(vk::Format format, uint32_t width, uint32_t height, uint32_t depth)
+{
+	return GetSliceSize(format, width, height) * depth;
+}
+
+size_t FormatInfo::GetSliceSize(vk::Format format, uint32_t width, uint32_t height)
+{
+	return GetStride(format, width) * height;
+}
+
 FormatInfo::SubrectOffset FormatInfo::GetSubrectOffset(vk::Format format,
 	uint32_t offsetX, uint32_t offsetY, uint32_t offsetZ,
-	uint32_t width, uint32_t height, uint32_t depth,
+	uint32_t baseWidth, uint32_t baseHeight, uint32_t baseDepth,
+	CubeMapFaceIndex_t face, uint_fast8_t faceCount,
+	uint32_t frame, uint32_t frameCount,
 	uint_fast8_t mipLevel)
 {
-	size_t offset = GetFrameSize3D(format, width, height, depth, mipLevel);
+	assert(baseWidth >= 1);
+	assert(baseHeight >= 1);
+	assert(baseDepth >= 1);
+	assert(frameCount >= 1);
+	assert(faceCount >= 1);
+	assert(face < faceCount);
+	assert(frame < frameCount);
 
-	const auto [mipW, mipH, mipD] = GetMipResolution(mipLevel, width, height, depth);
+	assert(face != CUBEMAP_FACE_SPHEREMAP);
+	assert(face < CUBEMAP_FACE_COUNT);
+
+	size_t offset = 0;
+
+	// Entire mip level offset
+	offset += GetImageSize(format,
+		baseWidth, baseHeight, baseDepth,
+		faceCount, frameCount, mipLevel);
+
+	const auto [mipW, mipH, mipD] = GetMipResolution(mipLevel, baseWidth, baseHeight, baseDepth);
+
+	assert(offsetX < mipW);
+	assert(offsetY < mipH);
+	assert(offsetZ < mipD);
+
+	// Frame offset
+	offset += GetMipLevelSize(format, mipW, mipH, mipD, faceCount, frame);
+
+	// Face offseet
+	offset += GetFrameSize(format, mipW, mipH, mipD, face);
+
+	// Slice offset
+	offset += GetFaceSize(format, mipW, mipH, offsetZ);
+
 	const uint32_t pixelSize = FormatInfo::GetPixelSize(format);
-	const uint32_t mipStride = FormatInfo::GetStride(format, width);
-	const uint32_t mipSliceStride = FormatInfo::GetSliceSize(format, mipW, mipH);
+	const uint32_t mipStride = FormatInfo::GetStride(format, mipW);
 
-	offset += (mipSliceStride * offsetZ) + (mipStride * offsetY) + (pixelSize * offsetX);
+	// X/Y offset
+	offset += (mipStride * offsetY) + (pixelSize * offsetX);
 	return { offset, mipStride };
+}
+
+SubrectOffset FormatInfo::GetSubrectOffset(ImageFormat format,
+	uint32_t offsetX, uint32_t offsetY, uint32_t offsetZ,
+	uint32_t baseWidth, uint32_t baseHeight, uint32_t baseDepth,
+	CubeMapFaceIndex_t face, uint_fast8_t faceCount,
+	uint32_t arrayLayer, uint32_t arrayLayerCount,
+	uint_fast8_t mipLevel)
+{
+	return GetSubrectOffset(ConvertImageFormat(format),
+		offsetX, offsetY, offsetZ,
+		baseWidth, baseHeight, baseDepth,
+		face, faceCount,
+		arrayLayer, arrayLayerCount,
+		mipLevel);
 }
 
 vk::ImageAspectFlags FormatInfo::GetAspects(const vk::Format& format)
