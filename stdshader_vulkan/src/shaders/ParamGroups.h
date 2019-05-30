@@ -1,8 +1,11 @@
 #pragma once
 
+#include "ShaderComponents/BaseShaderComponent.h"
 #include "ShaderParamNext.h"
 
 #include <TF2Vulkan/Util/SafeConvert.h>
+
+#include <shaderlib/cshader.h>
 
 namespace TF2Vulkan{ namespace Shaders
 {
@@ -13,12 +16,20 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(BUMPSTRETCH, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader1_normal", "expansion bump map");
 		NSHADER_PARAM(BUMPFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $bumpmap");
 		NSHADER_PARAM(BUMPTRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$bumpmap texcoord transform");
+
+		void InitParamGroup(IMaterialVar** params) const
+		{
+			if (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined())
+				SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
+		}
 	};
 
 	struct WrinkleParams
 	{
 		NSHADER_PARAM(COMPRESS, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "compression wrinklemap");
 		NSHADER_PARAM(STRETCH, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "expansion wrinklemap");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct EnvMapParams
@@ -31,6 +42,16 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(ENVMAPTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "envmap tint");
 		NSHADER_PARAM(ENVMAPCONTRAST, SHADER_PARAM_TYPE_FLOAT, "0.0", "contrast 0 == normal 1 == color*color");
 		NSHADER_PARAM(ENVMAPSATURATION, SHADER_PARAM_TYPE_FLOAT, "1.0", "saturation 0 == greyscale 1 == normal");
+		NSHADER_PARAM(ENVMAPFRESNEL, SHADER_PARAM_TYPE_FLOAT, "0", "Degree to which Fresnel should be applied to env map");
+
+		void InitParamGroup(IMaterialVar** params) const
+		{
+			if (IS_FLAG_SET(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK))
+			{
+				params[ENVMAPMASK]->SetUndefined();
+				CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
+			}
+		}
 	};
 
 	struct PhongParams
@@ -46,6 +67,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)");
 		NSHADER_PARAM(PHONGEXPONENTTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "Phong Exponent map");
 		NSHADER_PARAM(PHONGEXPONENTFACTOR, SHADER_PARAM_TYPE_FLOAT, "0.0", "When using a phong exponent texture, this will be multiplied by the 0..1 that comes out of the texture.");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct RimlightParams
@@ -54,6 +77,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(RIMLIGHTEXPONENT, SHADER_PARAM_TYPE_FLOAT, "4.0", "Exponent for rim lights");
 		NSHADER_PARAM(RIMLIGHTBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Boost for rim lights");
 		NSHADER_PARAM(RIMMASK, SHADER_PARAM_TYPE_BOOL, "0", "Indicates whether or not to use alpha channel of exponent texture to mask the rim term");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct SelfillumParams
@@ -61,8 +86,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(SELFILLUMTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Self-illumination tint");
 		NSHADER_PARAM(SELFILLUM_ENVMAPMASK_ALPHA, SHADER_PARAM_TYPE_FLOAT, "0.0", "defines that self illum value comes from env map mask alpha");
 		NSHADER_PARAM(SELFILLUMFRESNEL, SHADER_PARAM_TYPE_BOOL, "0", "Self illum fresnel");
-		NSHADER_PARAM(SELFILLUMFRESNELMINMAXEXP, SHADER_PARAM_TYPE_VEC4, "0", "Self illum fresnel min, max, exp");
+		NSHADER_PARAM(SELFILLUMFRESNELMINMAXEXP, SHADER_PARAM_TYPE_VEC3, "[0 1 1]", "Self illum fresnel min, max, exp");
 		NSHADER_PARAM(SELFILLUMMASK, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "If we bind a texture here, it overrides base alpha (if any) for self illum");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct DetailParams
@@ -74,6 +101,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(DETAILBLENDFACTOR, SHADER_PARAM_TYPE_FLOAT, "1", "blend amount for detail texture.");
 		NSHADER_PARAM(DETAILTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "detail texture tint");
 		NSHADER_PARAM(DETAILTEXTURETRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$detail texcoord transform");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct EmissiveScrollParams
@@ -86,6 +115,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(EMISSIVEBLENDTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Self-illumination tint");
 		NSHADER_PARAM(EMISSIVEBLENDFLOWTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "flow map");
 		NSHADER_PARAM(TIME, SHADER_PARAM_TYPE_FLOAT, "0.0", "Needs CurrentTime Proxy");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct WeaponSheenParams
@@ -101,6 +132,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(SHEENMAPMASKOFFSETY, SHADER_PARAM_TYPE_FLOAT, "0", "Y Offset of the mask relative to model space coords of target");
 		NSHADER_PARAM(SHEENMAPMASKDIRECTION, SHADER_PARAM_TYPE_INTEGER, "0", "The direction the sheen should move (length direction of weapon) XYZ, 0,1,2");
 		NSHADER_PARAM(SHEENINDEX, SHADER_PARAM_TYPE_INTEGER, "0", "Index of the Effect Type (Color Additive, Override etc...)");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct SeamlessScaleParams
@@ -108,14 +141,18 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(SEAMLESS_BASE, SHADER_PARAM_TYPE_BOOL, "0", "whether to apply seamless mapping to the base texture. requires a smooth model.");
 		NSHADER_PARAM(SEAMLESS_DETAIL, SHADER_PARAM_TYPE_BOOL, "0", "where to apply seamless mapping to the detail texture.");
 		NSHADER_PARAM(SEAMLESS_SCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "the scale for the seamless mapping. # of repetions of texture per inch.");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct CloakParams
 	{
 		NSHADER_PARAM(CLOAKPASSENABLED, SHADER_PARAM_TYPE_BOOL, "0", "Enables cloak render in a second pass");
 		NSHADER_PARAM(CLOAKFACTOR, SHADER_PARAM_TYPE_FLOAT, "0.0", "");
-		NSHADER_PARAM(CLOAKCOLORTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Cloak color tint");
+		NSHADER_PARAM(CLOAKCOLORTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1 1]", "Cloak color tint");
 		NSHADER_PARAM(REFRACTAMOUNT, SHADER_PARAM_TYPE_FLOAT, "2", "");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct FleshParams
@@ -140,6 +177,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(FLESHGLOBALOPACITY, SHADER_PARAM_TYPE_FLOAT, "1.0", "Flesh global opacity");
 		NSHADER_PARAM(FLESHGLOSSBRIGHTNESS, SHADER_PARAM_TYPE_FLOAT, "0.66", "Flesh gloss brightness");
 		NSHADER_PARAM(FLESHSCROLLSPEED, SHADER_PARAM_TYPE_FLOAT, "1.0", "Flesh scroll speed");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
 
 	struct DistanceAlphaParams
@@ -168,49 +207,7 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(OUTLINEEND0, SHADER_PARAM_TYPE_FLOAT, "0.0", "inner end value for outline");
 		NSHADER_PARAM(OUTLINEEND1, SHADER_PARAM_TYPE_FLOAT, "0.0", "outer end value for outline");
 		NSHADER_PARAM(SCALEOUTLINESOFTNESSBASEDONSCREENRES, SHADER_PARAM_TYPE_BOOL, "0", "Scale the size of the soft part of the outline based upon resolution. 1024x768 = nominal.");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
-
-	template<typename T>
-	static constexpr size_t GetShaderParamCount()
-	{
-		if constexpr (std::is_empty_v<T>)
-		{
-			return 0;
-		}
-		else
-		{
-			constexpr size_t PARAM_COUNT = sizeof(T) / sizeof(ShaderParamNext);
-			static_assert(sizeof(ShaderParamNext[PARAM_COUNT]) == sizeof(T));
-			return PARAM_COUNT;
-		}
-	}
-
-	template<typename T>
-	inline static const ShaderParamNext* GetAsShaderParams(const T& type)
-	{
-		// Make sure these static_asserts get evalutated
-		GetShaderParamCount<T>();
-
-		return reinterpret_cast<const ShaderParamNext*>(&type);
-	}
-
-	template<typename T>
-	inline static ShaderParamNext* GetAsShaderParams(T& type)
-	{
-		return const_cast<ShaderParamNext*>(GetAsShaderParams(const_cast<const T&>(type)));
-	}
-
-	template<typename T>
-	inline T& InitParamIndices(T& type)
-	{
-		auto params = GetAsShaderParams(type);
-		size_t actualParamIndex = NUM_SHADER_MATERIAL_VARS;
-		for (size_t i = 0; i < GetShaderParamCount<T>(); i++)
-		{
-			if (params[i].InitIndex(Util::SafeConvert<int>(actualParamIndex)))
-				actualParamIndex++;
-		}
-
-		return type;
-	}
 } }

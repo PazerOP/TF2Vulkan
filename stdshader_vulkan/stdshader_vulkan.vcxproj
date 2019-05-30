@@ -82,39 +82,11 @@
     <ClCompile Include="src\ShaderDLL.cpp" />
     <ClCompile Include="src\ShaderDLLVerification.cpp" />
     <ClCompile Include="src\shaders\BaseShaderNext.cpp" />
-    <ClCompile Include="src\shaders\BloomAdd.cpp" />
-    <ClCompile Include="src\shaders\BlurFilter.cpp" />
-    <ClCompile Include="src\shaders\BufferClearObeyStencil.cpp" />
     <ClCompile Include="src\shaders\BaseShader.cpp" />
-    <ClCompile Include="src\shaders\Cable.cpp" />
-    <ClCompile Include="src\shaders\Compositor.cpp" />
-    <ClCompile Include="src\shaders\DebugDepth.cpp" />
-    <ClCompile Include="src\shaders\DebugLuxel.cpp" />
-    <ClCompile Include="src\shaders\DebugNormalMap.cpp" />
-    <ClCompile Include="src\shaders\DebugTangentSpace.cpp" />
-    <ClCompile Include="src\shaders\DecalModulate.cpp" />
-    <ClCompile Include="src\shaders\Downsample.cpp" />
-    <ClCompile Include="src\shaders\Engine_Post.cpp" />
-    <ClCompile Include="src\shaders\Eyeglint.cpp" />
-    <ClCompile Include="src\shaders\Fillrate.cpp" />
-    <ClCompile Include="src\shaders\FloatCombine.cpp" />
-    <ClCompile Include="src\shaders\FloatToScreen.cpp" />
     <ClCompile Include="src\shaders\LightmappedGeneric.cpp" />
-    <ClCompile Include="src\shaders\Luminance_Compare.cpp" />
-    <ClCompile Include="src\shaders\Modulate.cpp" />
-    <ClCompile Include="src\shaders\MorphWeight.cpp" />
-    <ClCompile Include="src\shaders\MotionBlur.cpp" />
-    <ClCompile Include="src\shaders\Occlusion.cpp" />
-    <ClCompile Include="src\shaders\ParticleSphere.cpp" />
-    <ClCompile Include="src\shaders\Pyro_Vision.cpp" />
-    <ClCompile Include="src\shaders\Refract.cpp" />
-    <ClCompile Include="src\shaders\Screenspace_General.cpp" />
+    <ClCompile Include="src\shaders\PlaceholderShader.cpp" />
+    <ClCompile Include="src\shaders\ShaderComponents\BaseShaderComponent.cpp" />
     <ClCompile Include="src\shaders\ShaderParamNext.cpp" />
-    <ClCompile Include="src\shaders\ShadowBuild.cpp" />
-    <ClCompile Include="src\shaders\Sprite.cpp" />
-    <ClCompile Include="src\shaders\Spritecard.cpp" />
-    <ClCompile Include="src\shaders\UnlitTwoTexture.cpp" />
-    <ClCompile Include="src\shaders\WriteZ.cpp" />
     <ClCompile Include="src\shaders\XLitGeneric.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -126,6 +98,8 @@
     <ClInclude Include="src\shaders\BaseShaderNext.h" />
     <ClInclude Include="src\shaders\CommonSpecConstLayout.h" />
     <ClInclude Include="src\shaders\ParamGroups.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\BaseShaderComponent.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\BaseSpecConsts.h" />
     <ClInclude Include="src\shaders\ShaderParamNext.h" />
     <ClInclude Include="src\shaders\UniformBufConstructs\TextureTransform.h" />
   </ItemGroup>

@@ -6,18 +6,14 @@
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
 
-#define SHADER_NAME Screenspace_General
-
-inline namespace SHADER_NAME
+inline namespace PlaceholderShader
 {
-	struct Params
-	{
-	};
-
-	class Shader final : public ShaderNext<Shader, Params>
+	class Shader : public ShaderNext<Shader>
 	{
 	public:
-		const char* GetName() const override { return V_STRINGIFY(SHADER_NAME); }
+		Shader(const char* name) : m_Name(name) {}
+
+		const char* GetName() const override { return m_Name; }
 
 		//void OnInitShaderParams(IMaterialVar** params, const char* materialName) override;
 		void OnInitShader(IShaderNextFactory& factory) override;
@@ -26,11 +22,43 @@ inline namespace SHADER_NAME
 		void OnDrawElements(const OnDrawElementsParams& params) override;
 
 	private:
-		IShaderGroup* m_VSShader = nullptr;
-		IShaderGroup* m_PSShader = nullptr;
+		const char* m_Name;
 	};
 
-	static const Shader::InstanceRegister s_Shader;
+	static const Shader::InstanceRegister s_PlaceholderShaders[] =
+	{
+		"BloomAdd",
+		"BlurFilterX",
+		"BlurFilterY",
+		"BufferClearObeyStencil",
+		"Cable",
+		"Compositor",
+		"DebugDepth",
+		"DebugLuxels",
+		"DebugNormalMap",
+		"DebugTangentSpace",
+		"DecalModulate",
+		"Downsample",
+		"Engine_Post",
+		"Eyeglint",
+		"Fillrate",
+		"FloatCombine",
+		"FloatToScreen",
+		"Luminance_Compare",
+		"Modulate",
+		"MorphWeight",
+		"MotionBlur",
+		"Occlusion",
+		"Pyro_Vision",
+		"Refract",
+		"Screenspace_General",
+		"ParticleSphere",
+		"ShadowBuild",
+		"Sprite",
+		"Spritecard",
+		"UnlitTwoTexture",
+		"WriteZ",
+	};
 }
 
 void Shader::OnInitShader(IShaderNextFactory& factory)

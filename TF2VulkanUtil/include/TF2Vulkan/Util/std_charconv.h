@@ -2,6 +2,7 @@
 
 #include <charconv>
 #include <string_view>
+#include <optional>
 
 namespace Util{ namespace charconv
 {
@@ -36,5 +37,25 @@ namespace Util{ namespace charconv
 		int base = 10)
 	{
 		return from_chars_result(from_chars(sv.data(), sv.data() + sv.size(), value, base), sv);
+	}
+
+	template<typename T, typename = std::enable_if_t<std::is_floating_point_v<T>>>
+	std::optional<T> from_chars_v(const std::string_view & sv, std::chars_format fmt = std::chars_format::general)
+	{
+		T temp{};
+		if (from_chars(sv, temp, fmt))
+			return temp;
+
+		return std::nullopt;
+	}
+
+	template<typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+	std::optional<T> from_chars_v(const std::string_view & sv, int base = 10)
+	{
+		T temp{};
+		if (from_chars(sv, temp, base))
+			return temp;
+
+		return std::nullopt;
 	}
 } }

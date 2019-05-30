@@ -36,11 +36,11 @@ namespace TF2Vulkan{ namespace Shaders
 		void InitShader(IShaderNextFactory& factory);
 
 	protected:
-		void InitIntParam(int param, IMaterialVar** params, int defaultVal) const;
-		void InitFloatParam(int param, IMaterialVar** params, float defaultVal) const;
-		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const;
-		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
-		void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
+		[[deprecated]] void InitIntParam(int param, IMaterialVar** params, int defaultVal) const;
+		[[deprecated]] void InitFloatParam(int param, IMaterialVar** params, float defaultVal) const;
+		[[deprecated]] void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY) const;
+		[[deprecated]] void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
+		[[deprecated]] void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
 		virtual void OnInitShader(IShaderNextFactory& instanceMgr) = 0;
 
 		void LoadLights(TF2Vulkan::Shaders::ShaderDataCommon& data) const;
@@ -80,7 +80,10 @@ namespace TF2Vulkan{ namespace Shaders
 	struct DefaultInstanceRegister
 	{
 		T m_Instance;
-		DefaultInstanceRegister()
+
+		template<typename... TArgs>
+		DefaultInstanceRegister(TArgs&&... args) :
+			m_Instance(std::move(args)...)
 		{
 			GetShaderDLL()->InsertShader(&m_Instance);
 		}
@@ -88,20 +91,25 @@ namespace TF2Vulkan{ namespace Shaders
 		bool IsRegistered() { return m_Instance.GetNumParams(); }
 	};
 
-	struct EmptyParams {};
-
-	template<typename T, typename TParams = EmptyParams, ShaderFlags_t FLAGS = ShaderFlags_t(0)>
+	template<typename T, typename TParams = ShaderParams<>, ShaderFlags_t FLAGS = ShaderFlags_t(0)>
 	class ShaderNext : public TParams, public BaseShaderNext
 	{
 	protected:
+		static_assert(is_shader_params_v<TParams>);
+
 		using BaseClass = BaseShaderNext;
+		using Params = TParams;
+
 	public:
-		ShaderNext() : BaseShaderNext(GetAsShaderParams(InitParamIndices(GetParamsObj())), GetShaderParamCount<TParams>())
+		ShaderNext() : BaseShaderNext(TParams::ParamsBase(), TParams::ParamsCount)
 		{
 		}
 
-		TParams& GetParamsObj() { return *this; }
-		const TParams& GetParamsObj() const { return *this; }
+		void InitShaderParams(IMaterialVar** ppParams, const char* pMaterialName) override
+		{
+			BaseClass::InitShaderParams(ppParams, pMaterialName);
+			TParams::InitParamGroups(ppParams);
+		}
 
 		using InstanceRegister = DefaultInstanceRegister<T>;
 

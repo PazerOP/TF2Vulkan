@@ -6,14 +6,17 @@
 
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
+//using namespace TF2Vulkan::Shaders::Components;
 
 #define SHADER_NAME LightmappedGeneric
 
 inline namespace SHADER_NAME
 {
-	struct Params : DetailParams, SelfillumParams, BumpmapParams, SeamlessScaleParams
+	struct CustomParamGroup
 	{
 	};
+
+	using Params = ShaderParams<>;// /*CustomParamGroup, */DetailParams, SelfillumParams, BumpmapParams, SeamlessScaleParams>;
 
 	class Shader final : public ShaderNext<Shader, Params>
 	{

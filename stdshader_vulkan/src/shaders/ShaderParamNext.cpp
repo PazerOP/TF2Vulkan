@@ -76,3 +76,44 @@ bool ShaderParamNext::InitIndex(int index)
 	assert(m_Index >= 0 && m_Index < NUM_SHADER_MATERIAL_VARS);
 	return false;
 }
+
+static bool CheckParamIndex(int index)
+{
+	if (index < 0)
+	{
+		assert(!"Invalid param index");
+		return false;
+	}
+
+	return true;
+}
+
+void ShaderParamNext::InitParamInt(IMaterialVar** params, int defaultVal) const
+{
+	if (CheckParamIndex(m_Index) && !params[m_Index]->IsDefined())
+		params[m_Index]->SetIntValue(defaultVal);
+}
+
+void ShaderParamNext::InitParamFloat(IMaterialVar** params, float defaultVal) const
+{
+	if (CheckParamIndex(m_Index) && !params[m_Index]->IsDefined())
+		params[m_Index]->SetFloatValue(defaultVal);
+}
+
+void ShaderParamNext::InitParamVec(IMaterialVar** params, float defaultValX, float defaultValY) const
+{
+	if (CheckParamIndex(m_Index) && !params[m_Index]->IsDefined())
+		params[m_Index]->SetVecValue(defaultValX, defaultValY);
+}
+
+void ShaderParamNext::InitParamVec(IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const
+{
+	if (CheckParamIndex(m_Index) && !params[m_Index]->IsDefined())
+		params[m_Index]->SetVecValue(defaultValX, defaultValY, defaultValZ);
+}
+
+void ShaderParamNext::InitParamVec(IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const
+{
+	if (CheckParamIndex(m_Index) && !params[m_Index]->IsDefined())
+		params[m_Index]->SetVecValue(defaultValX, defaultValY, defaultValZ, defaultValW);
+}

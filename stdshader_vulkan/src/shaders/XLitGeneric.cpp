@@ -28,10 +28,11 @@ inline namespace XLitGeneric
 	static constexpr float4 DEFAULT_CLOAK_COLOR_TINT{ 1, 1, 1, 1 };
 	static constexpr float1 DEFAULT_REFRACT_AMOUNT = 0.1f;
 
-	struct Params : BumpmapParams, WrinkleParams, EnvMapParams, PhongParams, RimlightParams, SelfillumParams, DetailParams, EmissiveScrollParams, WeaponSheenParams, SeamlessScaleParams, CloakParams, FleshParams, DistanceAlphaParams
+	struct CustomParams
 	{
 		NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
 		NSHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "");
+		NSHADER_PARAM(VERTEXALPHATEST, SHADER_PARAM_TYPE_INTEGER, "0", "");
 		NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0");
 		NSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine");
 
@@ -39,7 +40,6 @@ inline namespace XLitGeneric
 		NSHADER_PARAM(AMBIENTONLY, SHADER_PARAM_TYPE_INTEGER, "0", "Control drawing of non-ambient light ()");
 
 		NSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term");
-		NSHADER_PARAM(ENVMAPFRESNEL, SHADER_PARAM_TYPE_FLOAT, "0", "Degree to which Fresnel should be applied to env map");
 
 		NSHADER_PARAM(SEPARATEDETAILUVS, SHADER_PARAM_TYPE_BOOL, "0", "Use texcoord1 for detail texture");
 		NSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.");
@@ -49,11 +49,14 @@ inline namespace XLitGeneric
 		NSHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation");
 		NSHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
 
-		NSHADER_PARAM(VERTEXALPHATEST, SHADER_PARAM_TYPE_INTEGER, "0", "");
 		NSHADER_PARAM(HDRCOLORSCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "hdr color scale");
 		NSHADER_PARAM(RECEIVEFLASHLIGHT, SHADER_PARAM_TYPE_INTEGER, "0", "Forces this material to receive flashlights.");
 		NSHADER_PARAM(GAMMACOLORREAD, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of color texture read.");
+
+		void InitParamGroup(IMaterialVar** params) const {}
 	};
+
+	using Params = ShaderParams<CustomParams, BumpmapParams, WrinkleParams, EnvMapParams, PhongParams, RimlightParams, SelfillumParams, DetailParams, EmissiveScrollParams, WeaponSheenParams, SeamlessScaleParams, CloakParams, FleshParams, DistanceAlphaParams>;
 
 	struct UniformBuf final
 	{
@@ -137,9 +140,6 @@ inline namespace XLitGeneric
 		virtual bool SupportsCompressedVertices() const { return true; }
 
 	private:
-		bool WantsSkinShader(IMaterialVar** params) const;
-		bool WantsPhongShader(IMaterialVar** params) const;
-
 		void InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const;
 		void InitParamsSkin(IMaterialVar** params) const;
 		void InitParamsCloakBlendedPass(IMaterialVar** params) const;
@@ -365,26 +365,6 @@ bool Shader::ShouldDrawMaterialSheen(IMaterialVar** params) const
 {
 	// TODO: Is this more complicated?
 	return !!params[SHEENPASSENABLED]->GetIntValue();
-}
-
-bool Shader::WantsPhongShader(IMaterialVar** params) const
-{
-	if (!mat_phong.GetBool())
-		return false;
-
-	if (!params[PHONG]->GetBoolValue())
-		return false;
-
-	if (params[LIGHTWARPTEXTURE]->IsTexture())
-		return true;
-
-	if (params[BASEMAPALPHAPHONGMASK]->GetIntValue() != -1)
-	{
-		if (!params[BUMPMAP]->IsDefined())
-			return false;
-	}
-
-	return true;
 }
 
 void Shader::DrawWeaponSheenPass(DrawParams& params)
@@ -618,64 +598,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	Draw();
 }
 
-bool Shader::WantsSkinShader(IMaterialVar** params) const
-{
-	LOG_FUNC();
-
-	if (!params[PHONG]->GetIntValue())
-		return false; // No skin without phong
-
-	if (params[LIGHTWARPTEXTURE]->IsTexture())
-		return true; // If phong && diffuse warp, do skin
-
-	if (params[BASEMAPALPHAPHONGMASK]->GetIntValue() != 1)
-	{
-		if (!params[BUMPMAP]->IsTexture())
-			return false; // Don't use if texture isn't specified
-	}
-
-	return true;
-}
-
 void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const
 {
 	LOG_FUNC();
-
-	InitIntParam(PHONG, params, 0);
-
-	InitFloatParam(ALPHATESTREFERENCE, params, 0.0f);
-	InitIntParam(VERTEXALPHATEST, params, 0);
-
-	InitIntParam(FLASHLIGHTNOLAMBERT, params, 0);
-
-	InitVecParam(DETAILTINT, params, 1, 1, 1);
-
-	InitVecParam(ENVMAPTINT, params, 1, 1, 1);
-
-	InitIntParam(ENVMAPFRAME, params, 0);
-	InitIntParam(BUMPFRAME, params, 0);
-	InitFloatParam(DETAILBLENDFACTOR, params, 1.0);
-	InitIntParam(RECEIVEFLASHLIGHT, params, 0);
-
-	InitFloatParam(DETAILSCALE, params, 4.0f);
-
-	InitIntParam(BLENDTINTBYBASEALPHA, params, 0);
-	InitFloatParam(BLENDTINTCOLOROVERBASE, params, 0);
-
-	InitVecParam(SELFILLUMTINT, params, 1, 1, 1);
-
-	if (WantsSkinShader(params))
-	{
-		if (!g_pHardwareConfig->SupportsPixelShaders_2_b() || !g_pConfig->UsePhong())
-		{
-			params[PHONG]->SetIntValue(0);
-		}
-		else
-		{
-			InitParamsSkin(params);
-			return;
-		}
-	}
 
 	// FLASHLIGHTFIXME: Do ShaderAPI::BindFlashlightTexture
 	if (g_pHardwareConfig->SupportsBorderColor())
@@ -706,16 +631,10 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 		CLEAR_FLAGS(MATERIAL_VAR_SELFILLUM);
 	}
 
-	InitIntParam(ENVMAPMASKFRAME, params, 0);
-	InitFloatParam(ENVMAPCONTRAST, params, 0.0);
-	InitFloatParam(ENVMAPSATURATION, params, 1.0f);
-	InitFloatParam(SEAMLESS_SCALE, params, 0.0);
-
-	// handle line art parms
-	InitFloatParam(EDGESOFTNESSSTART, params, 0.5);
-	InitFloatParam(EDGESOFTNESSEND, params, 0.5);
-	InitFloatParam(GLOWALPHA, params, 1.0);
-	InitFloatParam(OUTLINEALPHA, params, 1.0);
+	// TODO: These don't match the ShaderParamNext default for SEAMLESS_SCALE
+	//InitFloatParam(SEAMLESS_SCALE, params, 0.0);
+	//InitFloatParam(EDGESOFTNESSSTART, params, 0.5);
+	//InitFloatParam(OUTLINEALPHA, params, 1.0);
 
 	// No texture means no self-illum or env mask in base alpha
 	if (!params[BASETEXTURE]->IsDefined())
@@ -746,12 +665,7 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 		CLEAR_FLAGS(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
 	}
 
-	bool hasNormalMapAlphaEnvmapMask = IS_FLAG_SET(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
-	if (hasNormalMapAlphaEnvmapMask)
-	{
-		params[ENVMAPMASK]->SetUndefined();
-		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
-	}
+	const bool hasNormalMapAlphaEnvmapMask = IS_FLAG_SET(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
 
 	if (IS_FLAG_SET(MATERIAL_VAR_BASEALPHAENVMAPMASK) && params[BUMPMAP]->IsDefined() && !hasNormalMapAlphaEnvmapMask)
 	{
@@ -772,14 +686,6 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 	// If mat_specular 0, then get rid of envmap
 	if (!g_pConfig->UseSpecular() && params[ENVMAP]->IsDefined() && params[BASETEXTURE]->IsDefined())
 		params[ENVMAP]->SetUndefined();
-
-	InitFloatParam(HDRCOLORSCALE, params, 1.0f);
-
-	InitIntParam(LINEARWRITE, params, 0);
-	InitIntParam(GAMMACOLORREAD, params, 0);
-
-	InitIntParam(DEPTHBLEND, params, 0);
-	InitFloatParam(DEPTHBLENDSCALE, params, 50.0f);
 }
 
 void Shader::InitParamsSkin(IMaterialVar** params) const
@@ -829,14 +735,6 @@ void Shader::InitParamsSkin(IMaterialVar** params) const
 	{
 		CLEAR_FLAGS(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
 	}
-
-	InitIntParam(SELFILLUMFRESNEL, params, 0);
-
-	InitVecParam(SELFILLUMFRESNELMINMAXEXP, params, 0, 1, 1);
-
-	InitIntParam(BASEMAPALPHAPHONGMASK, params, 0);
-
-	InitFloatParam(ENVMAPFRESNEL, params, 0);
 }
 
 void Shader::InitParamsCloakBlendedPass(IMaterialVar** params) const
@@ -849,10 +747,8 @@ void Shader::InitParamsCloakBlendedPass(IMaterialVar** params) const
 	SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
 
 	// Set material parameter default values
-	InitFloatParam(CLOAKFACTOR, params, DEFAULT_CLOAK_FACTOR);
-	InitFloatParam(REFRACTAMOUNT, params, DEFAULT_REFRACT_AMOUNT);
-	InitVecParam(CLOAKCOLORTINT, params, DEFAULT_CLOAK_COLOR_TINT.x, DEFAULT_CLOAK_COLOR_TINT.y, DEFAULT_CLOAK_COLOR_TINT.z, DEFAULT_CLOAK_COLOR_TINT.w);
-	InitIntParam(BUMPFRAME, params, 0);
+	// TODO: These don't match the ShaderParamNext defaults
+	//InitFloatParam(REFRACTAMOUNT, params, DEFAULT_REFRACT_AMOUNT);
 }
 
 void Shader::InitParamsWeaponSheenPass(IMaterialVar** params) const

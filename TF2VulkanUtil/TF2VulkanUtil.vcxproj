@@ -89,6 +89,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\AutoInit.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Buffer.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Checked.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\CollapsingStruct.h" />
     <ClInclude Include="include\TF2Vulkan\Util\color.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ConstexprCRC.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ConstexprRandom.h" />

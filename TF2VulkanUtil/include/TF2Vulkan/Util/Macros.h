@@ -8,7 +8,7 @@
 
 #include <tier0/basetypes.h>
 
-#define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(_T(#condition), __FUNCSIG__, __FILE__, __LINE__); }
+#define ENSURE(condition) { if (!(condition)) ::Util::EnsureConditionFailed(V_STRINGIFY(#condition), __FUNCSIG__, __FILE__, __LINE__); }
 
 #define ASSERT_MAIN_THREAD() ENSURE(::Util::IsMainThread())
 
@@ -49,7 +49,7 @@ namespace Util
 #define ALL_STATIC_TYPE_INFO(type) \
 	::Util::StaticTypeInfo{ sizeof(type), 0, alignof(type) }
 
-#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
+//#define TF2VULKAN_ENABLE_FUNCTION_LOGGING 1
 #define TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING true
 
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)

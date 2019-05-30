@@ -26,6 +26,12 @@ namespace TF2Vulkan{ namespace Shaders
 
 		[[nodiscard]] bool InitIndex(int index);
 
+		void InitParamInt(IMaterialVar** params, int defaultVal) const;
+		void InitParamFloat(IMaterialVar** params, float defaultVal) const;
+		void InitParamVec(IMaterialVar** params, float defaultValX, float defaultValY) const;
+		void InitParamVec(IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ) const;
+		void InitParamVec(IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
+
 	private:
 		ShaderParamInfo_t m_Info;
 		int m_Index = -1;
