@@ -24,12 +24,14 @@ namespace
 	{
 		SpecConstLayout(const SpecConstLayoutEntry* entries, size_t entryCount);
 
-		bool operator==(const SpecConstLayout& other) const;
-
-		// Inherited via ISpecConstLayout
-		const SpecConstLayoutEntry* GetEntries(size_t& count) const override { count = m_EntryCount; return m_Entries; }
-		size_t GetEntryCount() const { return m_EntryCount; }
 		size_t GetBufferSize() const override { return m_BufferSize; }
+		const SpecConstLayoutEntry* GetEntries(size_t& count) const override
+		{
+			count = m_EntryCount;
+			return m_Entries;
+		}
+
+		bool operator==(const SpecConstLayout& other) const;
 
 		auto begin() const { return m_Entries; }
 		auto end() const { return m_Entries + m_EntryCount; }
@@ -44,7 +46,7 @@ namespace
 	{
 		DEFAULT_STRONG_EQUALITY_OPERATOR(ShaderGroupKey);
 		CUtlSymbolDbg m_Name;
-		const SpecConstLayout* m_Layout = nullptr;;
+		const ISpecConstLayout* m_Layout = nullptr;;
 	};
 }
 
@@ -53,13 +55,21 @@ STD_HASH_DEFINITION(ShaderGroupKey,
 	v.m_Layout
 );
 
-template<>
-struct ::std::hash<SpecConstLayout>
+
+template<typename T> static size_t HashSpecConstLayout(const T& layout)
 {
-	size_t operator()(const SpecConstLayout& layout) const
-	{
-		return Util::hash_range(std::begin(layout), std::end(layout));
-	}
+	size_t count;
+	const auto* first = layout.GetEntries(count);
+	return Util::hash_range(first, first + count);
+}
+
+template<> struct ::std::hash<ISpecConstLayout>
+{
+	size_t operator()(const ISpecConstLayout& layout) const { return HashSpecConstLayout(layout); }
+};
+template<> struct ::std::hash<SpecConstLayout>
+{
+	size_t operator()(const SpecConstLayout& layout) const { return HashSpecConstLayout(layout); }
 };
 
 namespace
@@ -88,11 +98,11 @@ namespace
 
 	struct ShaderGroup final : IShaderGroupInternal
 	{
-		ShaderGroup(ShaderType type, const IVulkanShader& shader, const SpecConstLayout& layout);
+		ShaderGroup(ShaderType type, const IVulkanShader& shader, const ISpecConstLayout& layout);
 
 		// Inherited via IShaderGroupInternal
 		const char* GetName() const override { return GetVulkanShader().GetName().String(); }
-		const SpecConstLayout& GetSpecConstLayout() const override { return *m_SpecConstLayout; }
+		const ISpecConstLayout& GetSpecConstLayout() const override { return *m_SpecConstLayout; }
 		ShaderType GetShaderType() const override { return m_Type; }
 		IShaderInstance& FindOrCreateInstance(const void* specConstBuf, size_t specConstBufSize) override;
 		const IVulkanShader& GetVulkanShader() const override { return *m_VulkanShader; }
@@ -102,7 +112,7 @@ namespace
 	private:
 		ShaderType m_Type;
 		const IVulkanShader* m_VulkanShader = nullptr;
-		const SpecConstLayout* m_SpecConstLayout = nullptr;
+		const ISpecConstLayout* m_SpecConstLayout = nullptr;
 		std::vector<vk::SpecializationMapEntry> m_VkEntries;
 
 		struct Hasher
@@ -130,11 +140,11 @@ namespace
 		IBufferPool& GetUniformBufferPool() override { return m_UniformBufferPool.value(); }
 
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const ISpecConstLayout* layout) override;
-		const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutEntry* entries, size_t count) override;
+		const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutCreateInfo& ci) override;
 
 	private:
 		std::array<std::unordered_map<ShaderGroupKey, ShaderGroup>, 2> m_ShaderInstanceGroups;
-		const SpecConstLayout* m_EmptySCLayout;
+		const ISpecConstLayout* m_EmptySCLayout;
 		std::unordered_set<SpecConstLayout> m_SpecConstLayouts;
 		std::optional<BufferPoolContiguous> m_UniformBufferPool;
 	};
@@ -234,7 +244,7 @@ size_t ShaderGroup::Hasher::operator()(const std::byte * data) const
 	return Util::hash_value(std::string_view((const char*)data, m_Size));
 }
 
-ShaderGroup::ShaderGroup(ShaderType type, const IVulkanShader & shader, const SpecConstLayout & layout) :
+ShaderGroup::ShaderGroup(ShaderType type, const IVulkanShader & shader, const ISpecConstLayout & layout) :
 	m_Type(type),
 	m_VulkanShader(&shader),
 	m_SpecConstLayout(&layout),
@@ -242,8 +252,12 @@ ShaderGroup::ShaderGroup(ShaderType type, const IVulkanShader & shader, const Sp
 {
 	// Actually look up the spec const layout string names here
 	const auto& reflData = shader.GetReflectionData();
-	for (const auto& scEntry : layout)
+	size_t entryCount;
+	const auto* scEntries = layout.GetEntries(entryCount);
+	for (size_t i = 0; i < entryCount; i++)
 	{
+		const auto& scEntry = scEntries[i];
+
 		const auto found = std::find_if(reflData.m_SpecConstants.begin(), reflData.m_SpecConstants.end(),
 			[&](const auto & sc) { return sc.m_Name == scEntry.m_Name; });
 		if (found == reflData.m_SpecConstants.end())
@@ -281,11 +295,11 @@ IShaderInstance& ShaderGroup::FindOrCreateInstance(const void* specConstBuf,
 }
 
 IShaderGroup & ShaderNextFactory::FindOrCreateShaderGroup(ShaderType type,
-	const char* name, const ISpecConstLayout * layout)
+	const char* name, const ISpecConstLayout* layout)
 {
 	LOG_FUNC();
 
-	auto& scLayout = layout ? *assert_cast<const SpecConstLayout*>(layout) : *m_EmptySCLayout;
+	auto& scLayout = layout ? *layout : *m_EmptySCLayout;
 
 	const ShaderGroupKey key{ name, &scLayout };
 	auto& groupMap = m_ShaderInstanceGroups.at(size_t(type));
@@ -302,11 +316,11 @@ IShaderGroup & ShaderNextFactory::FindOrCreateShaderGroup(ShaderType type,
 }
 
 const ISpecConstLayout& ShaderNextFactory::FindOrCreateSpecConstLayout(
-	const SpecConstLayoutEntry * entries, size_t count)
+	const SpecConstLayoutCreateInfo& ci)
 {
 	LOG_FUNC();
 
-	return *m_SpecConstLayouts.emplace(SpecConstLayout(entries, count)).first;
+	return *m_SpecConstLayouts.emplace(SpecConstLayout(ci.m_Entries, ci.m_EntryCount)).first;
 }
 
 bool SpecConstLayout::operator==(const SpecConstLayout & other) const

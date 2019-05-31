@@ -53,9 +53,9 @@ namespace TF2Vulkan
 				BindUniformBuffer(*buf, index);
 		}
 
-		template<size_t size> size_t GetLights(LightDesc_t(&lights)[size]) const
+		template<size_t size> [[nodiscard]] size_t GetLights(LightDesc_t(&lights)[size]) const
 		{
-			static_assert(size == 4);
+			static_assert(size == MAX_VS_LIGHTS);
 			return GetLights(lights, size);
 		}
 

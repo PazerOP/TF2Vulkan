@@ -14,16 +14,11 @@ namespace TF2Vulkan
 
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name);
 		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const ISpecConstLayout& layout);
+		IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name, const SpecConstLayoutCreateInfo& ci);
 
-		template<typename TInfo, typename TBuffer> IShaderGroup& FindOrCreateShaderGroup(
-			ShaderType type, const char* name, const BaseSpecConstLayout<TInfo, TBuffer>& layout);
+		virtual const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutCreateInfo& ci) = 0;
 
-		template<typename TInfo, typename TBuffer> const ISpecConstLayout& FindOrCreateSpecConstLayout(
-			const BaseSpecConstLayout<TInfo, TBuffer>& info);
-
-	protected:
-		virtual const ISpecConstLayout& FindOrCreateSpecConstLayout(const SpecConstLayoutEntry* entries, size_t count) = 0;
-
+	private:
 		virtual IShaderGroup& FindOrCreateShaderGroup(ShaderType type, const char* name,
 			const ISpecConstLayout* layout) = 0;
 	};
@@ -43,17 +38,9 @@ namespace TF2Vulkan
 		return FindOrCreateShaderGroup(type, name, nullptr);
 	}
 
-	template<typename TInfo, typename TBuffer>
-	inline const ISpecConstLayout& IShaderNextFactory::FindOrCreateSpecConstLayout(
-		const BaseSpecConstLayout<TInfo, TBuffer>& info)
-	{
-		return FindOrCreateSpecConstLayout(info.data(), info.size());
-	}
-
-	template<typename TInfo, typename TBuffer>
 	inline IShaderGroup& IShaderNextFactory::FindOrCreateShaderGroup(ShaderType type,
-		const char* name, const BaseSpecConstLayout<TInfo, TBuffer>& layout)
+		const char* name, const SpecConstLayoutCreateInfo& ci)
 	{
-		return FindOrCreateShaderGroup(type, name, FindOrCreateSpecConstLayout(layout));
+		return FindOrCreateShaderGroup(type, name, FindOrCreateSpecConstLayout(ci));
 	}
 }

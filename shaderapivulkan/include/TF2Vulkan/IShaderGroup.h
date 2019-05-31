@@ -37,19 +37,12 @@ namespace TF2Vulkan
 		virtual UniformBufferIndex FindUniformBuffer(const std::string_view& name) const = 0;
 		UniformBufferIndex FindUniformBuffer(UniformBufferStandardType type) const;
 
-		const IShaderInstance& FindOrCreateInstance()
-		{
-			return FindOrCreateInstance(nullptr, 0);
-		}
-
-		template<typename TBuffer>
-		const IShaderInstance& FindOrCreateInstance(const BaseSpecConstBuffer<TBuffer>& buffer)
-		{
-			return FindOrCreateInstance(buffer.data(), buffer.size());
-		}
-
-	private:
 		virtual IShaderInstance& FindOrCreateInstance(const void* specConstBuf, size_t specConstBufSize) = 0;
+		const IShaderInstance& FindOrCreateInstance() { return FindOrCreateInstance(nullptr, 0); }
+		template<typename T> const IShaderInstance& FindOrCreateInstance(const T& specConstBuf)
+		{
+			return FindOrCreateInstance(&specConstBuf, sizeof(specConstBuf));
+		}
 	};
 
 	inline UniformBufferIndex IShaderGroup::FindUniformBuffer(UniformBufferStandardType type) const

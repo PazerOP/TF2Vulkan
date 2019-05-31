@@ -2,6 +2,8 @@
 
 #include "ShaderComponents/BaseShaderComponent.h"
 #include "ShaderParamNext.h"
+#include "shaders/UniformBufConstructs/TextureTransform.h"
+#include "TF2Vulkan/ISpecConstLayout.h"
 
 #include <TF2Vulkan/Util/SafeConvert.h>
 
@@ -9,6 +11,11 @@
 
 namespace TF2Vulkan{ namespace Shaders
 {
+	struct BumpmapUniforms
+	{
+		TextureTransform m_BumpTransform;
+	};
+
 	struct BumpmapParams
 	{
 		NSHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader1_normal", "bump map");
@@ -17,10 +24,16 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(BUMPFRAME, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $bumpmap");
 		NSHADER_PARAM(BUMPTRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$bumpmap texcoord transform");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const
 		{
 			if (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined())
 				SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
+		}
+		void PreDraw(IMaterialVar** params, BumpmapUniforms* uniformBuf, void* specConstBuf) const
+		{
+			uniformBuf->m_BumpTransform = TextureTransform(params[BUMPTRANSFORM]->GetMatrixValue());
 		}
 	};
 
@@ -29,7 +42,37 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(COMPRESS, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "compression wrinklemap");
 		NSHADER_PARAM(STRETCH, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "expansion wrinklemap");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
+	};
+
+	struct AlphaTestParams
+	{
+		NSHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "");
+		NSHADER_PARAM(VERTEXALPHATEST, SHADER_PARAM_TYPE_INTEGER, "0", "");
+
+	private:
+		template<typename... TGroups> friend class ShaderParams;
+		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
+	};
+
+	struct DepthBlendParams
+	{
+		NSHADER_PARAM(DEPTHBLEND, SHADER_PARAM_TYPE_INTEGER, "0", "fade at intersection boundaries.");
+		NSHADER_PARAM(DEPTHBLENDSCALE, SHADER_PARAM_TYPE_FLOAT, "50.0", "Amplify or reduce DEPTHBLEND fading. Lower values make harder edges.");
+
+	private:
+		template<typename... TGroups> friend class ShaderParams;
+		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
+	};
+
+	struct EnvMapUniforms
+	{
+		TextureTransform m_EnvMapMaskTransform;
 	};
 
 	struct EnvMapParams
@@ -44,6 +87,8 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(ENVMAPSATURATION, SHADER_PARAM_TYPE_FLOAT, "1.0", "saturation 0 == greyscale 1 == normal");
 		NSHADER_PARAM(ENVMAPFRESNEL, SHADER_PARAM_TYPE_FLOAT, "0", "Degree to which Fresnel should be applied to env map");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const
 		{
 			if (IS_FLAG_SET(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK))
@@ -52,34 +97,97 @@ namespace TF2Vulkan{ namespace Shaders
 				CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
 			}
 		}
+		void PreDraw(IMaterialVar** params, EnvMapUniforms* uniformBuf, void* specConstBuf) const
+		{
+			uniformBuf->m_EnvMapMaskTransform = TextureTransform(params[ENVMAPMASKTRANSFORM]->GetMatrixValue());
+		}
 	};
 
-	struct PhongParams
+	namespace Phong
 	{
-		NSHADER_PARAM(PHONG, SHADER_PARAM_TYPE_BOOL, "0", "enables phong lighting");
-		NSHADER_PARAM(PHONGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "5.0", "Phong exponent for local specular lights");
-		NSHADER_PARAM(PHONGTINT, SHADER_PARAM_TYPE_VEC3, "5.0", "Phong tint for local specular lights");
-		NSHADER_PARAM(PHONGALBEDOTINT, SHADER_PARAM_TYPE_BOOL, "1.0", "Apply tint by albedo (controlled by spec exponent texture");
-		NSHADER_PARAM(INVERTPHONGMASK, SHADER_PARAM_TYPE_INTEGER, "0", "invert the phong mask (0=full phong, 1=no phong)");
-		NSHADER_PARAM(BASEMAPALPHAPHONGMASK, SHADER_PARAM_TYPE_INTEGER, "0", "indicates that there is no normal map and that the phong mask is in base alpha");
-		NSHADER_PARAM(PHONGWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "warp the specular term");
-		NSHADER_PARAM(PHONGFRESNELRANGES, SHADER_PARAM_TYPE_VEC3, "[0  0.5  1]", "Parameters for remapping fresnel output");
-		NSHADER_PARAM(PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)");
-		NSHADER_PARAM(PHONGEXPONENTTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "Phong Exponent map");
-		NSHADER_PARAM(PHONGEXPONENTFACTOR, SHADER_PARAM_TYPE_FLOAT, "0.0", "When using a phong exponent texture, this will be multiplied by the 0..1 that comes out of the texture.");
+		struct SpecConstBuf
+		{
+			bool32 PHONG;
+		};
+		template<typename T> struct SpecConstLayout
+		{
+			SPEC_CONST_BUF_ENTRY(T, PHONG);
+		};
 
-		void InitParamGroup(IMaterialVar** params) const {}
-	};
+		struct UniformBuf
+		{
+			float3 m_PhongTint;
+			float1 m_PhongExponent;
+		};
 
-	struct RimlightParams
+		struct Params
+		{
+			NSHADER_PARAM(PHONG, SHADER_PARAM_TYPE_BOOL, "0", "enables phong lighting");
+			NSHADER_PARAM(PHONGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "5.0", "Phong exponent for local specular lights");
+			NSHADER_PARAM(PHONGTINT, SHADER_PARAM_TYPE_VEC3, "[1 1 1]", "Phong tint for local specular lights");
+			NSHADER_PARAM(PHONGALBEDOTINT, SHADER_PARAM_TYPE_BOOL, "1", "Apply tint by albedo (controlled by spec exponent texture");
+			NSHADER_PARAM(INVERTPHONGMASK, SHADER_PARAM_TYPE_INTEGER, "0", "invert the phong mask (0=full phong, 1=no phong)");
+			NSHADER_PARAM(BASEMAPALPHAPHONGMASK, SHADER_PARAM_TYPE_INTEGER, "0", "indicates that there is no normal map and that the phong mask is in base alpha");
+			NSHADER_PARAM(PHONGWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "warp the specular term");
+			NSHADER_PARAM(PHONGFRESNELRANGES, SHADER_PARAM_TYPE_VEC3, "[0 0.5 1]", "Parameters for remapping fresnel output");
+			NSHADER_PARAM(PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)");
+			NSHADER_PARAM(PHONGEXPONENTTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "Phong Exponent map");
+			NSHADER_PARAM(PHONGEXPONENTFACTOR, SHADER_PARAM_TYPE_FLOAT, "0.0", "When using a phong exponent texture, this will be multiplied by the 0..1 that comes out of the texture.");
+
+		private:
+			template<typename... TGroups> friend class ShaderParams;
+			void InitParamGroup(IMaterialVar** params) const {}
+			void PreDraw(IMaterialVar** params, UniformBuf* uniformBuf, SpecConstBuf* specConstBuf) const
+			{
+				if (specConstBuf->PHONG = params[PHONG]->GetBoolValue())
+				{
+					uniformBuf->m_PhongExponent = params[PHONGEXPONENT]->GetFloatValue();
+					uniformBuf->m_PhongTint.SetFrom(params[PHONGTINT]->GetVecValue());
+				}
+			}
+		};
+	}
+
+	namespace Rimlight
 	{
-		NSHADER_PARAM(RIMLIGHT, SHADER_PARAM_TYPE_BOOL, "0", "enables rim lighting");
-		NSHADER_PARAM(RIMLIGHTEXPONENT, SHADER_PARAM_TYPE_FLOAT, "4.0", "Exponent for rim lights");
-		NSHADER_PARAM(RIMLIGHTBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Boost for rim lights");
-		NSHADER_PARAM(RIMMASK, SHADER_PARAM_TYPE_BOOL, "0", "Indicates whether or not to use alpha channel of exponent texture to mask the rim term");
+		struct SpecConstBuf
+		{
+			bool32 RIMLIGHT;
+			bool32 RIMLIGHTMASK;
+		};
+		template<typename T> struct SpecConstLayout
+		{
+			SPEC_CONST_BUF_ENTRY(T, RIMLIGHT);
+			SPEC_CONST_BUF_ENTRY(T, RIMLIGHTMASK);
+		};
 
-		void InitParamGroup(IMaterialVar** params) const {}
-	};
+		struct UniformBuf
+		{
+			float1 m_RimlightExponent;
+			float1 m_RimlightBoost;
+		};
+
+		struct Params
+		{
+			NSHADER_PARAM(RIMLIGHT, SHADER_PARAM_TYPE_BOOL, "0", "enables rim lighting");
+			NSHADER_PARAM(RIMLIGHTEXPONENT, SHADER_PARAM_TYPE_FLOAT, "4.0", "Exponent for rim lights");
+			NSHADER_PARAM(RIMLIGHTBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Boost for rim lights");
+			NSHADER_PARAM(RIMMASK, SHADER_PARAM_TYPE_BOOL, "0", "Indicates whether or not to use alpha channel of exponent texture to mask the rim term");
+
+		private:
+			template<typename... TGroups> friend class ShaderParams;
+			void InitParamGroup(IMaterialVar** params) const {}
+			void PreDraw(IMaterialVar** params, UniformBuf* uniformBuf, SpecConstBuf* specConstBuf) const
+			{
+				if (specConstBuf->RIMLIGHT = params[RIMLIGHT]->GetBoolValue())
+				{
+					specConstBuf->RIMLIGHTMASK = params[RIMMASK]->GetBoolValue();
+					uniformBuf->m_RimlightExponent = params[RIMLIGHTEXPONENT]->GetFloatValue();
+					uniformBuf->m_RimlightBoost = params[RIMLIGHTBOOST]->GetFloatValue();
+				}
+			}
+		};
+	}
 
 	struct SelfillumParams
 	{
@@ -89,7 +197,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(SELFILLUMFRESNELMINMAXEXP, SHADER_PARAM_TYPE_VEC3, "[0 1 1]", "Self illum fresnel min, max, exp");
 		NSHADER_PARAM(SELFILLUMMASK, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "If we bind a texture here, it overrides base alpha (if any) for self illum");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct DetailParams
@@ -101,8 +212,12 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(DETAILBLENDFACTOR, SHADER_PARAM_TYPE_FLOAT, "1", "blend amount for detail texture.");
 		NSHADER_PARAM(DETAILTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "detail texture tint");
 		NSHADER_PARAM(DETAILTEXTURETRANSFORM, SHADER_PARAM_TYPE_MATRIX, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$detail texcoord transform");
+		NSHADER_PARAM(SEPARATEDETAILUVS, SHADER_PARAM_TYPE_BOOL, "0", "Use texcoord1 for detail texture");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct EmissiveScrollParams
@@ -116,7 +231,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(EMISSIVEBLENDFLOWTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "flow map");
 		NSHADER_PARAM(TIME, SHADER_PARAM_TYPE_FLOAT, "0.0", "Needs CurrentTime Proxy");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct WeaponSheenParams
@@ -133,7 +251,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(SHEENMAPMASKDIRECTION, SHADER_PARAM_TYPE_INTEGER, "0", "The direction the sheen should move (length direction of weapon) XYZ, 0,1,2");
 		NSHADER_PARAM(SHEENINDEX, SHADER_PARAM_TYPE_INTEGER, "0", "Index of the Effect Type (Color Additive, Override etc...)");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct SeamlessScaleParams
@@ -142,7 +263,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(SEAMLESS_DETAIL, SHADER_PARAM_TYPE_BOOL, "0", "where to apply seamless mapping to the detail texture.");
 		NSHADER_PARAM(SEAMLESS_SCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "the scale for the seamless mapping. # of repetions of texture per inch.");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct CloakParams
@@ -152,7 +276,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(CLOAKCOLORTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1 1]", "Cloak color tint");
 		NSHADER_PARAM(REFRACTAMOUNT, SHADER_PARAM_TYPE_FLOAT, "2", "");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct FleshParams
@@ -178,7 +305,10 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(FLESHGLOSSBRIGHTNESS, SHADER_PARAM_TYPE_FLOAT, "0.66", "Flesh gloss brightness");
 		NSHADER_PARAM(FLESHSCROLLSPEED, SHADER_PARAM_TYPE_FLOAT, "1.0", "Flesh scroll speed");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
 	struct DistanceAlphaParams
@@ -208,6 +338,9 @@ namespace TF2Vulkan{ namespace Shaders
 		NSHADER_PARAM(OUTLINEEND1, SHADER_PARAM_TYPE_FLOAT, "0.0", "outer end value for outline");
 		NSHADER_PARAM(SCALEOUTLINESOFTNESSBASEDONSCREENRES, SHADER_PARAM_TYPE_BOOL, "0", "Scale the size of the soft part of the outline based upon resolution. 1024x768 = nominal.");
 
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 } }

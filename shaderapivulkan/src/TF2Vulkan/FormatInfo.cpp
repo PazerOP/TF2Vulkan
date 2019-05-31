@@ -8,32 +8,70 @@
 #undef min
 #undef max
 
+// TODO: Ensure all switches are complete
+//#pragma warning(default : 4062)
+//#pragma warning(1 : 4062)
+
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::FormatInfo;
 
-#define VK_FMT_CASE(base, interpretation) case vk::Format::e ## base ## interpretation :
+#define VK_FMT_CASE(base, interpretation, ...) case vk::Format::e ## base ## interpretation ## __VA_ARGS__ :
 
-#define VK_FMT_CASE_ALL(base) \
-	VK_FMT_CASE(base, Unorm) \
-	VK_FMT_CASE(base, Snorm) \
-	VK_FMT_CASE(base, Uscaled) \
-	VK_FMT_CASE(base, Sscaled) \
-	VK_FMT_CASE(base, Uint) \
-	VK_FMT_CASE(base, Sint)
+#define VK_FMT_CASE_UNORM(base, ...) VK_FMT_CASE(base, Unorm, __VA_ARGS__)
+#define VK_FMT_CASE_SNORM(base, ...) VK_FMT_CASE(base, Snorm, __VA_ARGS__)
+#define VK_FMT_CASE_NORM(base, ...) \
+	VK_FMT_CASE_UNORM(base, __VA_ARGS__) \
+	VK_FMT_CASE_SNORM(base, __VA_ARGS__)
 
-#define VK_FMT_CASE_ALL_SRGB(base) \
-	VK_FMT_CASE_ALL(base) \
-	VK_FMT_CASE(base, Srgb)
+#define VK_FMT_CASE_USCALED(base, ...) VK_FMT_CASE(base, Uscaled, __VA_ARGS__)
+#define VK_FMT_CASE_SSCALED(base, ...) VK_FMT_CASE(base, Sscaled, __VA_ARGS__)
+#define VK_FMT_CASE_SCALED(base, ...) \
+	VK_FMT_CASE_USCALED(base, __VA_ARGS__) \
+	VK_FMT_CASE_SSCALED(base, __VA_ARGS__)
 
-#define VK_FMT_CASE_ALL_FLOAT(base) \
-	VK_FMT_CASE_ALL(base) \
-	VK_FMT_CASE(base, Sfloat)
+#define VK_FMT_CASE_UINT(base, ...) VK_FMT_CASE(base, Uint, __VA_ARGS__)
+#define VK_FMT_CASE_SINT(base, ...) VK_FMT_CASE(base, Sint, __VA_ARGS__)
+#define VK_FMT_CASE_INT(base, ...) \
+	VK_FMT_CASE_UINT(base, __VA_ARGS__) \
+	VK_FMT_CASE_SINT(base, __VA_ARGS__)
+
+#define VK_FMT_CASE_UFLOAT(base, ...) VK_FMT_CASE(base, Ufloat, __VA_ARGS__)
+#define VK_FMT_CASE_SFLOAT(base, ...) VK_FMT_CASE(base, Sfloat, __VA_ARGS__)
+#define VK_FMT_CASE_FLOAT(base, ...) \
+	VK_FMT_CASE_UFLOAT(base, __VA_ARGS__) \
+	VK_FMT_CASE_SFLOAT(base, __VA_ARGS__)
+
+#define VK_FMT_CASE_SRGB(base, ...) VK_FMT_CASE(base, Srgb, __VA_ARGS__)
+
+#define VK_FMT_CASE_NORM_SCALED_INT(base, ...) \
+	VK_FMT_CASE_NORM(base, __VA_ARGS__) \
+	VK_FMT_CASE_SCALED(base, __VA_ARGS__) \
+	VK_FMT_CASE_INT(base, __VA_ARGS__)
+
+#define VK_FMT_CASE_SCALED_INT(base, ...) \
+	VK_FMT_CASE_SCALED(base, __VA_ARGS__) \
+	VK_FMT_CASE_INT(base, __VA_ARGS__)
+
+#define VK_FMT_CASE_NORM_SCALED_INT_SRGB(base, ...) \
+	VK_FMT_CASE_NORM_SCALED_INT(base, __VA_ARGS__) \
+	VK_FMT_CASE(base, Srgb, __VA_ARGS__)
+
+#define VK_FMT_CASE_NORM_SCALED_INT_SFLOAT(base, ...) \
+	VK_FMT_CASE_NORM_SCALED_INT(base, __VA_ARGS__) \
+	VK_FMT_CASE_SFLOAT(base, __VA_ARGS__)
+
+#define VK_FMT_CASE_SCALED_INT_SFLOAT(base, ...) \
+	VK_FMT_CASE_SCALED_INT(base, __VA_ARGS__) \
+	VK_FMT_CASE_SFLOAT(base, __VA_ARGS__)
+
+#define VK_FMT_CASE_INT_SFLOAT(base, ...) \
+	VK_FMT_CASE_INT(base, __VA_ARGS__) \
+	VK_FMT_CASE_SFLOAT(base, __VA_ARGS__)
 
 vk::Format FormatInfo::ConvertImageFormat(ImageFormat format)
 {
 	switch (format)
 	{
-	default: assert(!"Unknown format");
 	case IMAGE_FORMAT_UNKNOWN:
 	case IMAGE_FORMAT_UVLX8888:
 	case IMAGE_FORMAT_P8:
@@ -101,14 +139,24 @@ vk::Format FormatInfo::ConvertImageFormat(ImageFormat format)
 	case IMAGE_FORMAT_ATI_DST16:         return vk::Format::eD16Unorm;
 	case IMAGE_FORMAT_NV_DST24:
 	case IMAGE_FORMAT_ATI_DST24:         return vk::Format::eD24UnormS8Uint;
+
+		// Defeat warning C4062
+	case NUM_IMAGE_FORMATS: break;
 	}
+
+	assert(!"Unknown format");
+	return vk::Format::eUndefined;
 }
 
 ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 {
 	switch (format)
 	{
-	default: assert(!"Unknown format");
+	case vk::Format::eR4G4UnormPack8:
+	case vk::Format::eR4G4B4A4UnormPack16:
+	case vk::Format::eB5G6R5UnormPack16:
+		assert(!"Unsupported format");
+
 	case vk::Format::eUndefined:            return IMAGE_FORMAT_UNKNOWN;
 
 		// R
@@ -118,6 +166,7 @@ ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 		// RG
 
 		// RGB
+	case vk::Format::eR5G6B5UnormPack16:    return IMAGE_FORMAT_RGB565;
 
 		// BGR
 
@@ -132,16 +181,24 @@ ImageFormat FormatInfo::ConvertImageFormat(vk::Format format)
 
 		// BGRA
 	case vk::Format::eB8G8R8A8Unorm:        return IMAGE_FORMAT_BGRA8888;
+	case vk::Format::eB4G4R4A4UnormPack16:  return IMAGE_FORMAT_BGRA4444;
 
 		// DXT1
-	case vk::Format::eBc1RgbaSrgbBlock:
+	case vk::Format::eBc1RgbSrgbBlock:
 	case vk::Format::eBc1RgbUnormBlock:     return IMAGE_FORMAT_DXT1;
+	case vk::Format::eBc1RgbaSrgbBlock:
+	case vk::Format::eBc1RgbaUnormBlock:    return IMAGE_FORMAT_DXT1_ONEBITALPHA;
 
 		// DXT3
+	case vk::Format::eBc2SrgbBlock:
+	case vk::Format::eBc2UnormBlock:        return IMAGE_FORMAT_DXT3;
 
 		// DXT5
 	case vk::Format::eBc3UnormBlock:        return IMAGE_FORMAT_DXT5;
 	}
+
+	assert(!"Unknown format");
+	return IMAGE_FORMAT_UNKNOWN;
 }
 
 ImageFormat FormatInfo::RemoveRuntimeFlags(ImageFormat format)
@@ -385,41 +442,49 @@ vk::Extent2D FormatInfo::GetBlockSize(vk::Format format)
 	case vk::Format::eBc3UnormBlock:
 		return vk::Extent2D(4, 4);
 
-	default:
-		assert(!"Unknown format");
+	case vk::Format::eAstc5x4SrgbBlock:
+	case vk::Format::eAstc5x4UnormBlock:
+		return vk::Extent2D(5, 4);
 
-		VK_FMT_CASE_ALL_SRGB(R8);
-		VK_FMT_CASE_ALL_SRGB(R8G8);
-		VK_FMT_CASE_ALL_SRGB(R8G8B8);
-		VK_FMT_CASE_ALL_SRGB(R8G8B8A8);
-		VK_FMT_CASE_ALL_SRGB(B8G8R8);
-		VK_FMT_CASE_ALL_SRGB(B8G8R8A8);
-		VK_FMT_CASE_ALL_FLOAT(R16G16B16A16);
+	case vk::Format::eAstc5x5SrgbBlock:
+	case vk::Format::eAstc5x5UnormBlock:
+		return vk::Extent2D(5, 5);
+
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8A8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8A8);
+		VK_FMT_CASE_NORM_SCALED_INT_SFLOAT(R16G16B16A16);
 
 	case vk::Format::eD24UnormS8Uint:
 		return vk::Extent2D(1, 1);
 	}
+
+	assert(!"Unknown format");
+	return vk::Extent2D(1, 1);
 }
 
 size_t FormatInfo::GetPixelSize(vk::Format format)
 {
 	switch (format)
 	{
-		VK_FMT_CASE_ALL_SRGB(R8)
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8);
 			return 1;
 
-		VK_FMT_CASE_ALL_SRGB(R8G8)
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8);
 			return 2;
 
-		VK_FMT_CASE_ALL_SRGB(B8G8R8)
-		VK_FMT_CASE_ALL_SRGB(R8G8B8)
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8);
 			return 3;
 
-		VK_FMT_CASE_ALL_SRGB(B8G8R8A8)
-		VK_FMT_CASE_ALL_SRGB(R8G8B8A8)
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8A8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8A8);
 			return 4;
 
-		VK_FMT_CASE_ALL_FLOAT(R16G16B16A16)
+		VK_FMT_CASE_NORM_SCALED_INT_SFLOAT(R16G16B16A16);
 			return 8;
 	}
 
@@ -559,22 +624,16 @@ vk::ImageAspectFlags FormatInfo::GetAspects(const vk::Format& format)
 	case vk::Format::eB5G5R5A1UnormPack16:
 	case vk::Format::eA1R5G5B5UnormPack16:
 
-		VK_FMT_CASE_ALL_SRGB(R8);
-		VK_FMT_CASE_ALL_SRGB(R8G8);
-		VK_FMT_CASE_ALL_SRGB(R8G8B8);
-		VK_FMT_CASE_ALL_SRGB(R8G8B8A8);
-		VK_FMT_CASE_ALL_SRGB(B8G8R8);
-		VK_FMT_CASE_ALL_SRGB(B8G8R8A8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8A8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8A8);
 
-	case vk::Format::eA8B8G8R8UnormPack32:
-	case vk::Format::eA8B8G8R8SnormPack32:
-	case vk::Format::eA8B8G8R8UscaledPack32:
-	case vk::Format::eA8B8G8R8SscaledPack32:
-	case vk::Format::eA8B8G8R8UintPack32:
-	case vk::Format::eA8B8G8R8SintPack32:
-	case vk::Format::eA8B8G8R8SrgbPack32:
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(A8B8G8R8, Pack32);
 
-		VK_FMT_CASE_ALL_FLOAT(R16G16B16A16);
+		VK_FMT_CASE_NORM_SCALED_INT_SFLOAT(R16G16B16A16);
 
 	case vk::Format::eBc1RgbUnormBlock:
 	case vk::Format::eBc1RgbSrgbBlock:
@@ -683,13 +742,19 @@ bool FormatInfo::IsCompressed(vk::Format format)
 {
 	switch (format)
 	{
-	default:
-		assert(!"Unknown/unsupported format");
-
 	case vk::Format::eUndefined:
 
-		VK_FMT_CASE_ALL_SRGB(R8G8B8A8);
-		VK_FMT_CASE_ALL_SRGB(B8G8R8A8);
+		VK_FMT_CASE_INT_SFLOAT(R32);
+		VK_FMT_CASE_INT_SFLOAT(R32G32);
+		VK_FMT_CASE_INT_SFLOAT(R32G32B32);
+		VK_FMT_CASE_INT_SFLOAT(R32G32B32A32);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(R8G8B8A8);
+		VK_FMT_CASE_NORM_SCALED_INT_SRGB(B8G8R8A8);
+		VK_FMT_CASE_INT_SFLOAT(R64);
+		VK_FMT_CASE_INT_SFLOAT(R64G64);
+		VK_FMT_CASE_INT_SFLOAT(R64G64B64);
+		VK_FMT_CASE_INT_SFLOAT(R64G64B64A64);
+	case vk::Format::eG12X4B12X4G12X4R12X4422Unorm4Pack16:
 
 		return false;
 
@@ -707,6 +772,9 @@ bool FormatInfo::IsCompressed(vk::Format format)
 	case vk::Format::eBc5SnormBlock:
 		return true;
 	}
+
+	assert(!"Unknown/unsupported format");
+	return false;
 }
 
 bool FormatInfo::HasHardwareSupport(ImageFormat format, FormatUsage usage, bool filtering)

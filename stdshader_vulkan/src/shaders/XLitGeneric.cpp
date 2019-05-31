@@ -30,10 +30,7 @@ inline namespace XLitGeneric
 
 	struct CustomParams
 	{
-		NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
-		NSHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "");
-		NSHADER_PARAM(VERTEXALPHATEST, SHADER_PARAM_TYPE_INTEGER, "0", "");
-		NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0");
+		//NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
 		NSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine");
 
 		// Debugging term for visualizing ambient data on its own
@@ -41,28 +38,45 @@ inline namespace XLitGeneric
 
 		NSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term");
 
-		NSHADER_PARAM(SEPARATEDETAILUVS, SHADER_PARAM_TYPE_BOOL, "0", "Use texcoord1 for detail texture");
 		NSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.");
-		NSHADER_PARAM(DEPTHBLEND, SHADER_PARAM_TYPE_INTEGER, "0", "fade at intersection boundaries. Only supported without bumpmaps");
-		NSHADER_PARAM(DEPTHBLENDSCALE, SHADER_PARAM_TYPE_FLOAT, "50.0", "Amplify or reduce DEPTHBLEND fading. Lower values make harder edges.");
+		NSHADER_PARAM(GAMMACOLORREAD, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of color texture read.");
 
 		NSHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation");
 		NSHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
 
 		NSHADER_PARAM(HDRCOLORSCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "hdr color scale");
-		NSHADER_PARAM(RECEIVEFLASHLIGHT, SHADER_PARAM_TYPE_INTEGER, "0", "Forces this material to receive flashlights.");
-		NSHADER_PARAM(GAMMACOLORREAD, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of color texture read.");
 
+		NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0");
+		NSHADER_PARAM(RECEIVEFLASHLIGHT, SHADER_PARAM_TYPE_INTEGER, "0", "Forces this material to receive flashlights.");
+
+	private:
+		template<typename... TGroups> friend class ShaderParams;
 		void InitParamGroup(IMaterialVar** params) const {}
+		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
 	};
 
-	using Params = ShaderParams<CustomParams, BumpmapParams, WrinkleParams, EnvMapParams, PhongParams, RimlightParams, SelfillumParams, DetailParams, EmissiveScrollParams, WeaponSheenParams, SeamlessScaleParams, CloakParams, FleshParams, DistanceAlphaParams>;
+	using Params = ShaderParams<
+		AlphaTestParams,
+		BumpmapParams,
+		DepthBlendParams,
+		WrinkleParams,
+		EnvMapParams,
+		Phong::Params,
+		Rimlight::Params,
+		SelfillumParams,
+		DetailParams,
+		EmissiveScrollParams,
+		WeaponSheenParams,
+		SeamlessScaleParams,
+		CloakParams,
+		FleshParams,
+		DistanceAlphaParams,
+		CustomParams>;
 
-	struct UniformBuf final
+	struct UniformBuf final : EnvMapUniforms, BumpmapUniforms, Phong::UniformBuf, Rimlight::UniformBuf
 	{
 		TextureTransform m_BaseTextureTransform;
 		TextureTransform m_DetailTransform;
-		TextureTransform m_BumpTransform;
 
 		float1 m_CloakFactor;
 		float1 m_RefractAmount;
@@ -77,7 +91,7 @@ inline namespace XLitGeneric
 		float m_VertexAlpha;
 	};
 
-	struct SpecConstBuf final : BaseSpecConstBuffer<SpecConstBuf>
+	struct SpecConstBufCustom
 	{
 		bool32 VERTEXCOLOR;
 		bool32 SKINNING;
@@ -94,23 +108,33 @@ inline namespace XLitGeneric
 		bool32 NORMALMAPPING;
 	};
 
-	struct SpecConstLayout final : BaseSpecConstLayout<SpecConstLayout, SpecConstBuf>
+	using SpecConstBuf = ShaderSpecConstBufs<
+		Phong::SpecConstBuf,
+		Rimlight::SpecConstBuf,
+		SpecConstBufCustom>;
+
+	template<typename T>
+	struct SpecConstLayoutCustom
 	{
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, VERTEXCOLOR);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, SKINNING);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, COMPRESSED_VERTS);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DIFFUSELIGHTING);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, GAMMA_CONVERT_VERTEX_COLOR);
+		SPEC_CONST_BUF_ENTRY(T, VERTEXCOLOR);
+		SPEC_CONST_BUF_ENTRY(T, SKINNING);
+		SPEC_CONST_BUF_ENTRY(T, COMPRESSED_VERTS);
+		SPEC_CONST_BUF_ENTRY(T, DIFFUSELIGHTING);
+		SPEC_CONST_BUF_ENTRY(T, GAMMA_CONVERT_VERTEX_COLOR);
 
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, AMBIENT_LIGHT);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, DYNAMIC_LIGHT);
+		SPEC_CONST_BUF_ENTRY(T, AMBIENT_LIGHT);
+		SPEC_CONST_BUF_ENTRY(T, DYNAMIC_LIGHT);
 
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, TEXACTIVE_BASETEXTURE);
+		SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BASETEXTURE);
 
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, TEXACTIVE_BUMPMAP);
-		SPEC_CONST_BUF_ENTRY(SpecConstBuf, NORMALMAPPING);
+		SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BUMPMAP);
+		SPEC_CONST_BUF_ENTRY(T, NORMALMAPPING);
+	};
 
-	} static constexpr s_SpecConstLayout;
+	static constexpr ShaderSpecConstLayouts<SpecConstBuf,
+		Phong::SpecConstLayout<SpecConstBuf>,
+		Rimlight::SpecConstLayout<SpecConstBuf>,
+		SpecConstLayoutCustom<SpecConstBuf>> s_SpecConstLayout;
 
 	enum class DerivedShaderType
 	{
@@ -141,7 +165,6 @@ inline namespace XLitGeneric
 
 	private:
 		void InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const;
-		void InitParamsSkin(IMaterialVar** params) const;
 		void InitParamsCloakBlendedPass(IMaterialVar** params) const;
 		void InitParamsWeaponSheenPass(IMaterialVar** params) const;
 		void InitParamsEmissiveScrollBlendedPass(IMaterialVar** params) const;
@@ -537,6 +560,8 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 	if (const auto dynamic = params.dynamic)
 	{
+		PreDraw(params.matvars, drawParams.m_Uniforms, drawParams.m_SpecConsts);
+
 		drawParams.m_SpecConsts.COMPRESSED_VERTS = params.compression;
 		drawParams.m_SpecConsts.SKINNING = dynamic->GetCurrentNumBones() > 0;
 
@@ -612,13 +637,6 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
 	}
 
-	// Write over $basetexture with $info.m_nBumpmap if we are going to be using diffuse normal mapping.
-	if (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined() && params[ALBEDO]->IsDefined() &&
-		params[BASETEXTURE]->IsDefined())
-	{
-		params[BASETEXTURE]->SetStringValue(params[ALBEDO]->GetStringValue());
-	}
-
 	// This shader can be used with hw skinning
 	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 
@@ -686,55 +704,6 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 	// If mat_specular 0, then get rid of envmap
 	if (!g_pConfig->UseSpecular() && params[ENVMAP]->IsDefined() && params[BASETEXTURE]->IsDefined())
 		params[ENVMAP]->SetUndefined();
-}
-
-void Shader::InitParamsSkin(IMaterialVar** params) const
-{
-	LOG_FUNC();
-
-	if (g_pHardwareConfig->SupportsBorderColor())
-	{
-		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight_border");
-	}
-	else
-	{
-		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
-	}
-
-	// Write over $basetexture with $info.m_nBumpmap if we are going to be using diffuse normal mapping.
-	if (g_pConfig->UseBumpmapping() &&
-		params[BUMPMAP]->IsDefined() &&
-		params[ALBEDO]->IsDefined() &&
-		params[BASETEXTURE]->IsDefined())
-	{
-		params[BASETEXTURE]->SetStringValue(params[ALBEDO]->GetStringValue());
-	}
-
-	// This shader can be used with hw skinning
-	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
-	SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
-
-	// No texture means no env mask in base alpha
-	if (!params[BASETEXTURE]->IsDefined())
-		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
-
-	// If in decal mode, no debug override...
-	if (IS_FLAG_SET(MATERIAL_VAR_DECAL))
-		SET_FLAGS(MATERIAL_VAR_NO_DEBUG_OVERRIDE);
-
-	// Lots of reasons to want tangent space, since we bind a flat normal map in many cases where we don't have a bump map
-	bool bBump = g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsDefined();
-	bool bEnvMap = params[ENVMAP]->IsDefined();
-	bool bDiffuseWarp = params[LIGHTWARPTEXTURE]->IsDefined();
-	bool bPhong = params[PHONG]->IsDefined();
-	if (bBump || bEnvMap || bDiffuseWarp || bPhong)
-	{
-		SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
-	}
-	else
-	{
-		CLEAR_FLAGS(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
-	}
 }
 
 void Shader::InitParamsCloakBlendedPass(IMaterialVar** params) const
@@ -824,10 +793,10 @@ void Shader::InitShaderSkin(IMaterialVar** params)
 			LoadBumpMap(BUMPMAP);
 			SET_FLAGS2(MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL);
 
-			if (params[COMPRESS]->IsDefined() && params[STRETCH]->IsDefined())
+			if (params[BUMPCOMPRESS]->IsDefined() && params[BUMPSTRETCH]->IsDefined())
 			{
-				LoadTexture(COMPRESS);
-				LoadTexture(STRETCH);
+				LoadTexture(BUMPCOMPRESS);
+				LoadTexture(BUMPSTRETCH);
 			}
 		}
 	}

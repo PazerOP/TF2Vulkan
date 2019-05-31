@@ -34,6 +34,7 @@ namespace TF2Vulkan
 		SpecConstType m_Type;
 		size_t m_Offset;
 
+		bool operator!=(const SpecConstLayoutEntry& other) const noexcept { return !operator==(other); }
 		bool operator==(const SpecConstLayoutEntry& other) const noexcept
 		{
 			return
@@ -43,56 +44,11 @@ namespace TF2Vulkan
 		}
 	};
 
-	template<typename TBuffer>
-	struct BaseSpecConstBuffer
+	struct SpecConstLayoutCreateInfo final
 	{
-		constexpr BaseSpecConstBuffer()
-		{
-			static_assert(std::has_unique_object_representations_v<TBuffer>,
-				"Buffer must have no padding, so it can be memcmp'd");
-		}
-
-		const void* data() const { return reinterpret_cast<const void*>(this); }
-		static constexpr size_t size()
-		{
-			static_assert(sizeof(TBuffer) % 4 == 0);
-			return sizeof(TBuffer);
-		}
+		const SpecConstLayoutEntry* m_Entries = nullptr;
+		size_t m_EntryCount = 0;
 	};
-
-	template<typename TInfo, typename TBuffer>
-	struct BaseSpecConstLayout
-	{
-		constexpr BaseSpecConstLayout()
-		{
-			static_assert(std::is_base_of_v<BaseSpecConstBuffer<TBuffer>, TBuffer>,
-				"TBuffer must inherit from BaseSpecConstBuffer<TBuffer>");
-
-			static_assert((sizeof(TInfo) / sizeof(SpecConstLayoutEntry)) == sizeof(TBuffer) / 4,
-				"Mismatching element count for info struct and buffer struct");
-		}
-
-		static constexpr size_t size()
-		{
-			static_assert(sizeof(TInfo) % sizeof(SpecConstLayoutEntry) == 0);
-			return sizeof(TInfo) / sizeof(SpecConstLayoutEntry);
-		}
-		const SpecConstLayoutEntry* data() const
-		{
-			return reinterpret_cast<const SpecConstLayoutEntry*>(this);
-		}
-		const SpecConstLayoutEntry& operator[](size_t i) const
-		{
-			assert(i < size());
-			return *(data() + i);
-		}
-
-		auto begin() const { return data(); }
-		auto end() const { return data() + size(); }
-	};
-
-#define SPEC_CONST_BUF_ENTRY(type, name) \
-	::TF2Vulkan::SpecConstLayoutEntry name{ #name, GetSpecConstType<decltype(type::name)>(), offsetof(type, name) }
 
 	class ISpecConstLayout
 	{
@@ -100,6 +56,9 @@ namespace TF2Vulkan
 		virtual const SpecConstLayoutEntry* GetEntries(size_t& count) const = 0;
 		virtual size_t GetBufferSize() const = 0;
 	};
+
+#define SPEC_CONST_BUF_ENTRY(type, name) \
+	::TF2Vulkan::SpecConstLayoutEntry name{ #name, GetSpecConstType<decltype(type::name)>(), offsetof(type, name) }
 }
 
 STD_HASH_DEFINITION(TF2Vulkan::SpecConstLayoutEntry,

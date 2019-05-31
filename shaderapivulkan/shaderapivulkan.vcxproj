@@ -94,6 +94,7 @@
   <ItemGroup>
     <ClInclude Include="include\TF2Vulkan\AlignedTypes.h" />
     <ClInclude Include="include\TF2Vulkan\DataFormat.h" />
+    <ClInclude Include="include\TF2Vulkan\FogParams.h" />
     <ClInclude Include="include\TF2Vulkan\LogicalFogParams.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderGroup.h" />
     <ClInclude Include="include\TF2Vulkan\IShaderNextFactory.h" />
@@ -137,7 +138,6 @@
     <ClInclude Include="include\TF2Vulkan\VertexFormat.h" />
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.h" />
     <ClInclude Include="src\TF2Vulkan\vk_mem_alloc.hpp" />
-    <ClInclude Include="src\TF2Vulkan\VulkanBuffer.h" />
     <ClInclude Include="src\interface\internal\IVulkanCommandBuffer.h" />
     <ClInclude Include="src\TF2Vulkan\VulkanCommandBufferBase.h" />
     <ClInclude Include="src\TF2Vulkan\VulkanFactories.h" />
@@ -179,7 +179,6 @@
     <ClCompile Include="src\TF2Vulkan\shaders\VulkanShaderManager.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerVulkan.cpp" />
     <ClCompile Include="src\TF2Vulkan\VBAllocTracker.cpp" />
-    <ClCompile Include="src\TF2Vulkan\VulkanBuffer.cpp" />
     <ClCompile Include="src\TF2Vulkan\ResourceBlob.cpp" />
     <ClCompile Include="src\TF2Vulkan\VulkanFactories.cpp" />
     <ClCompile Include="src\TF2Vulkan\StateManagerStatic.cpp" />
