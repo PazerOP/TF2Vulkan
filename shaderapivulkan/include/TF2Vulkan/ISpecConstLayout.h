@@ -12,6 +12,7 @@ namespace TF2Vulkan
 	{
 		Bool,
 		Int,
+		UInt,
 		Float,
 	};
 
@@ -22,6 +23,8 @@ namespace TF2Vulkan
 			return SpecConstType::Bool;
 		else if constexpr (std::is_same_v<T, Shaders::int1>)
 			return SpecConstType::Int;
+		else if constexpr (std::is_same_v<T, Shaders::uint1>)
+			return SpecConstType::UInt;
 		else if constexpr (std::is_same_v<T, Shaders::float1>)
 			return SpecConstType::Float;
 		else

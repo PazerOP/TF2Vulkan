@@ -103,6 +103,7 @@
     <ClInclude Include="include\TF2Vulkan\IShaderShadowNext.h" />
     <ClInclude Include="include\TF2Vulkan\ISpecConstLayout.h" />
     <ClInclude Include="include\TF2Vulkan\IBufferPool.h" />
+    <ClInclude Include="include\TF2Vulkan\ShaderTextureBinder.h" />
     <ClInclude Include="include\TF2Vulkan\TextureSubrect.h" />
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
@@ -112,6 +113,7 @@
     <ClInclude Include="src\interface\internal\IStateManagerDynamic.h" />
     <ClInclude Include="src\interface\internal\IBufferPoolInternal.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
+    <ClInclude Include="src\interface\ITextureInternal.h" />
     <ClInclude Include="src\TF2Vulkan\BufferPool.h" />
     <ClInclude Include="src\TF2Vulkan\Exceptions.h" />
     <ClInclude Include="src\TF2Vulkan\FormatConverter.h" />

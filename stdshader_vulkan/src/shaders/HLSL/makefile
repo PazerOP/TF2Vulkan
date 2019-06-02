@@ -1,10 +1,9 @@
 # DirectXShaderCompiler
-# SHADER_COMPILER:=dxc.exe
-# COMPILER_ARGS:=-spirv -E main -WX -fspv-debug=line -fspv-reflect -No -fvk-s-shift 100 0 -fvk-t-shift 200 0
-# COMPILER_ARGS_VERT:=-T vs_6_0 -fvk-invert-y
-# COMPILER_ARGS_FRAG:=-T ps_6_0
-# COMPILER_ARGS_TARGET:=-Fo
-
+SHADER_COMPILER:=dxc_git.exe
+COMPILER_ARGS:=-spirv -E main -WX -fspv-debug=line -fspv-reflect -No -fvk-s-shift 100 0 -fvk-t-shift 200 0
+COMPILER_ARGS_VERT:=-T vs_6_0 -fvk-invert-y
+COMPILER_ARGS_FRAG:=-T ps_6_0
+COMPILER_ARGS_TARGET:=-Fo
 
 # glslc
 # SHADER_COMPILER:=glslc.exe
@@ -14,11 +13,11 @@
 # COMPILER_ARGS_TARGET:= -o
 
 # glslangValidator
-SHADER_COMPILER:=glslangValidator.exe
-COMPILER_ARGS:= -fhlsl_functionality1 --shift-sampler-binding 100 --shift-texture-binding 200 --invert-y -V -e main
-COMPILER_ARGS_VERT:=
-COMPILER_ARGS_FRAG:=
-COMPILER_ARGS_TARGET:= -o
+# SHADER_COMPILER:=glslangValidator.exe
+# COMPILER_ARGS:= -fhlsl_functionality1 --shift-sampler-binding 100 --shift-texture-binding 200 --invert-y -V -e main
+# COMPILER_ARGS_VERT:=
+# COMPILER_ARGS_FRAG:=
+# COMPILER_ARGS_TARGET:= -o
 
 SPIRV_VAL:=spirv-val.exe
 SPIRV_DIS:=spirv-dis.exe

@@ -91,24 +91,24 @@ namespace TF2Vulkan{ namespace Shaders
 		bool IsRegistered() { return m_Instance.GetNumParams(); }
 	};
 
-	template<typename T, typename TParams = ShaderParams<>, ShaderFlags_t FLAGS = ShaderFlags_t(0)>
-	class ShaderNext : public TParams, public BaseShaderNext
+	template<typename T, typename TComponents = ShaderComponents<>, ShaderFlags_t FLAGS = ShaderFlags_t(0)>
+	class ShaderNext : public TComponents, public BaseShaderNext
 	{
 	protected:
-		static_assert(is_shader_params_v<TParams>);
+		static_assert(is_shader_components_v<TComponents>);
 
 		using BaseClass = BaseShaderNext;
-		using Params = TParams;
+		using Components = TComponents;
 
 	public:
-		ShaderNext() : BaseShaderNext(TParams::ParamsBase(), TParams::ParamsCount)
+		ShaderNext() : BaseShaderNext(TComponents::ParamsBase(), TComponents::PARAMS_COUNT)
 		{
 		}
 
 		void InitShaderParams(IMaterialVar** ppParams, const char* pMaterialName) override
 		{
 			BaseClass::InitShaderParams(ppParams, pMaterialName);
-			TParams::InitParamGroups(ppParams);
+			TComponents::InitParamGroups(ppParams);
 		}
 
 		using InstanceRegister = DefaultInstanceRegister<T>;

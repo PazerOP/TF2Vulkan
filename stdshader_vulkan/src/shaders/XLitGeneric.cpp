@@ -17,10 +17,18 @@
 #include <shaderlib/cshader.h>
 #include <shaderlib/ShaderDLL.h>
 
+#include "ShaderComponents/Bumpmap.h"
+#include "ShaderComponents/Detail.h"
+#include "ShaderComponents/Phong.h"
+#include "ShaderComponents/Rimlight.h"
+#include "ShaderComponents/SelfIllum.h"
+#include "ShaderComponents/WeaponSheen.h"
+
 #include <vector>
 
 using namespace TF2Vulkan;
 using namespace TF2Vulkan::Shaders;
+using namespace TF2Vulkan::Shaders::Components;
 
 inline namespace XLitGeneric
 {
@@ -28,113 +36,105 @@ inline namespace XLitGeneric
 	static constexpr float4 DEFAULT_CLOAK_COLOR_TINT{ 1, 1, 1, 1 };
 	static constexpr float1 DEFAULT_REFRACT_AMOUNT = 0.1f;
 
-	struct CustomParams
+	struct XLitGenericComponent
 	{
-		//NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
-		NSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine");
+		struct SpecConstBuf
+		{
+			bool32 VERTEXCOLOR;
+			bool32 SKINNING;
+			bool32 COMPRESSED_VERTS;
+			bool32 DIFFUSELIGHTING;
+			bool32 GAMMA_CONVERT_VERTEX_COLOR;
 
-		// Debugging term for visualizing ambient data on its own
-		NSHADER_PARAM(AMBIENTONLY, SHADER_PARAM_TYPE_INTEGER, "0", "Control drawing of non-ambient light ()");
+			bool32 AMBIENT_LIGHT;
+			bool32 DYNAMIC_LIGHT;
 
-		NSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term");
+			bool32 TEXACTIVE_BASETEXTURE;
 
-		NSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.");
-		NSHADER_PARAM(GAMMACOLORREAD, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of color texture read.");
+			bool32 TEXACTIVE_BUMPMAP;
+			bool32 NORMALMAPPING;
+		};
+		template<typename T>
+		struct SpecConstLayout
+		{
+			SPEC_CONST_BUF_ENTRY(T, VERTEXCOLOR);
+			SPEC_CONST_BUF_ENTRY(T, SKINNING);
+			SPEC_CONST_BUF_ENTRY(T, COMPRESSED_VERTS);
+			SPEC_CONST_BUF_ENTRY(T, DIFFUSELIGHTING);
+			SPEC_CONST_BUF_ENTRY(T, GAMMA_CONVERT_VERTEX_COLOR);
 
-		NSHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation");
-		NSHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
+			SPEC_CONST_BUF_ENTRY(T, AMBIENT_LIGHT);
+			SPEC_CONST_BUF_ENTRY(T, DYNAMIC_LIGHT);
 
-		NSHADER_PARAM(HDRCOLORSCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "hdr color scale");
+			SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BASETEXTURE);
 
-		NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0");
-		NSHADER_PARAM(RECEIVEFLASHLIGHT, SHADER_PARAM_TYPE_INTEGER, "0", "Forces this material to receive flashlights.");
+			SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BUMPMAP);
+			SPEC_CONST_BUF_ENTRY(T, NORMALMAPPING);
+		};
 
-	private:
-		template<typename... TGroups> friend class ShaderParams;
-		void InitParamGroup(IMaterialVar** params) const {}
-		void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
+		struct UniformBuf
+		{
+			TextureTransform m_BaseTextureTransform;
+			TextureTransform m_DetailTransform;
+
+			float1 m_CloakFactor;
+			float1 m_RefractAmount;
+			float4 m_RefractColorTint;
+			float4x2 m_ViewProjR01;
+
+			float4 m_MorphSubrect;
+			float3 m_MorphTargetTextureDim;
+			float m_SeamlessScale;
+			float4x4 m_FlashlightWorldToTexture;
+
+			float m_VertexAlpha;
+		};
+
+		struct Params
+		{
+			//NSHADER_PARAM(ALBEDO, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "albedo (Base texture with no baked lighting)");
+			NSHADER_PARAM(LIGHTMAP, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "lightmap texture--will be bound by the engine");
+
+			// Debugging term for visualizing ambient data on its own
+			NSHADER_PARAM(AMBIENTONLY, SHADER_PARAM_TYPE_INTEGER, "0", "Control drawing of non-ambient light ()");
+
+			NSHADER_PARAM(LIGHTWARPTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "1D ramp texture for tinting scalar diffuse term");
+
+			NSHADER_PARAM(LINEARWRITE, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of shader results.");
+			NSHADER_PARAM(GAMMACOLORREAD, SHADER_PARAM_TYPE_INTEGER, "0", "Disables SRGB conversion of color texture read.");
+
+			NSHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation");
+			NSHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
+
+			NSHADER_PARAM(HDRCOLORSCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "hdr color scale");
+
+			NSHADER_PARAM(FLASHLIGHTNOLAMBERT, SHADER_PARAM_TYPE_BOOL, "0", "Flashlight pass sets N.L=1.0");
+			NSHADER_PARAM(RECEIVEFLASHLIGHT, SHADER_PARAM_TYPE_INTEGER, "0", "Forces this material to receive flashlights.");
+
+		private:
+			template<typename... TGroups> friend class ShaderComponents;
+			void InitParamGroup(IMaterialVar** params) const {}
+			void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
+		};
 	};
 
-	using Params = ShaderParams<
-		AlphaTestParams,
-		BumpmapParams,
-		DepthBlendParams,
-		WrinkleParams,
-		EnvMapParams,
-		Phong::Params,
-		Rimlight::Params,
-		SelfillumParams,
-		DetailParams,
-		EmissiveScrollParams,
-		WeaponSheenParams,
-		SeamlessScaleParams,
-		CloakParams,
-		FleshParams,
-		DistanceAlphaParams,
-		CustomParams>;
-
-	struct UniformBuf final : EnvMapUniforms, BumpmapUniforms, Phong::UniformBuf, Rimlight::UniformBuf
-	{
-		TextureTransform m_BaseTextureTransform;
-		TextureTransform m_DetailTransform;
-
-		float1 m_CloakFactor;
-		float1 m_RefractAmount;
-		float4 m_RefractColorTint;
-		float4x2 m_ViewProjR01;
-
-		float4 m_MorphSubrect;
-		float3 m_MorphTargetTextureDim;
-		float m_SeamlessScale;
-		float4x4 m_FlashlightWorldToTexture;
-
-		float m_VertexAlpha;
-	};
-
-	struct SpecConstBufCustom
-	{
-		bool32 VERTEXCOLOR;
-		bool32 SKINNING;
-		bool32 COMPRESSED_VERTS;
-		bool32 DIFFUSELIGHTING;
-		bool32 GAMMA_CONVERT_VERTEX_COLOR;
-
-		bool32 AMBIENT_LIGHT;
-		bool32 DYNAMIC_LIGHT;
-
-		bool32 TEXACTIVE_BASETEXTURE;
-
-		bool32 TEXACTIVE_BUMPMAP;
-		bool32 NORMALMAPPING;
-	};
-
-	using SpecConstBuf = ShaderSpecConstBufs<
-		Phong::SpecConstBuf,
-		Rimlight::SpecConstBuf,
-		SpecConstBufCustom>;
-
-	template<typename T>
-	struct SpecConstLayoutCustom
-	{
-		SPEC_CONST_BUF_ENTRY(T, VERTEXCOLOR);
-		SPEC_CONST_BUF_ENTRY(T, SKINNING);
-		SPEC_CONST_BUF_ENTRY(T, COMPRESSED_VERTS);
-		SPEC_CONST_BUF_ENTRY(T, DIFFUSELIGHTING);
-		SPEC_CONST_BUF_ENTRY(T, GAMMA_CONVERT_VERTEX_COLOR);
-
-		SPEC_CONST_BUF_ENTRY(T, AMBIENT_LIGHT);
-		SPEC_CONST_BUF_ENTRY(T, DYNAMIC_LIGHT);
-
-		SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BASETEXTURE);
-
-		SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BUMPMAP);
-		SPEC_CONST_BUF_ENTRY(T, NORMALMAPPING);
-	};
-
-	static constexpr ShaderSpecConstLayouts<SpecConstBuf,
-		Phong::SpecConstLayout<SpecConstBuf>,
-		Rimlight::SpecConstLayout<SpecConstBuf>,
-		SpecConstLayoutCustom<SpecConstBuf>> s_SpecConstLayout;
+	using XLitGenericComponents = ShaderComponents <
+		//Components::AlphaTest,
+		Components::Bumpmap,
+		//Components::DepthBlend,
+		//Components::Wrinkle,
+		//Components::EnvMap,
+		//Components::Phong,
+		//Components::Rimlight,
+		//Components::SelfIllum,
+		Components::Detail,
+		//Components::EmissiveScroll,
+		//Components::WeaponSheen,
+		//Components::SeamlessScale,
+		//Components::Cloak,
+		//Components::Flesh,
+		//Components::DistanceAlpha,
+		XLitGenericComponent>;
 
 	enum class DerivedShaderType
 	{
@@ -146,7 +146,7 @@ inline namespace XLitGeneric
 		EyeRefract
 	};
 
-	class Shader : public ShaderNext<Shader, Params>
+	class Shader : public ShaderNext<Shader, XLitGenericComponents>
 	{
 	public:
 		explicit Shader(DerivedShaderType derivedType) : m_DerivedType(derivedType) {}
@@ -164,12 +164,6 @@ inline namespace XLitGeneric
 		virtual bool SupportsCompressedVertices() const { return true; }
 
 	private:
-		void InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const;
-		void InitParamsCloakBlendedPass(IMaterialVar** params) const;
-		void InitParamsWeaponSheenPass(IMaterialVar** params) const;
-		void InitParamsEmissiveScrollBlendedPass(IMaterialVar** params) const;
-		void InitParamsFleshInteriorBlendedPass(IMaterialVar** params) const;
-
 		void InitShaderVertexLitGeneric(IMaterialVar** params);
 		void InitShaderSkin(IMaterialVar** params);
 		void InitShaderCloakBlendedPass(IMaterialVar** params);
@@ -187,10 +181,8 @@ inline namespace XLitGeneric
 			VertexFormat m_Format;
 			ShaderDataCommon m_UniformsCommon{};
 			VSModelMatrices m_ModelMatrices{};
-			UniformBuf m_Uniforms{};
+			UniformBuf m_Uniforms;
 
-			bool m_UsingBaseTexture = false;
-			bool m_UsingRefraction = false;
 			bool m_SRGBWrite = true;
 		};
 
@@ -303,330 +295,6 @@ void Shader::OnInitShaderParams(IMaterialVar** params, const char* materialName)
 {
 	LOG_FUNC();
 
-#if false
-	std::vector<const char*> paramNames;
-	for (int i = 0; i < GetNumParams(); i++)
-	{
-		IMaterialVar& p = *params[i];
-		paramNames.push_back(p.GetName());
-	}
-#endif
-
-	InitParamsVertexLitGeneric(params, materialName);
-
-	// Cloak Pass
-	if (!params[CLOAKPASSENABLED]->IsDefined())
-	{
-		params[CLOAKPASSENABLED]->SetIntValue(0);
-	}
-	else if (params[CLOAKPASSENABLED]->GetIntValue())
-	{
-		InitParamsCloakBlendedPass(params);
-	}
-
-	// Sheen Pass
-	if (!params[SHEENPASSENABLED]->IsDefined())
-	{
-		params[SHEENPASSENABLED]->SetIntValue(0);
-	}
-	else if (params[SHEENPASSENABLED]->GetIntValue())
-	{
-		InitParamsWeaponSheenPass(params);
-	}
-
-	// Emissive Scroll Pass
-	if (!params[EMISSIVEBLENDENABLED]->IsDefined())
-	{
-		params[EMISSIVEBLENDENABLED]->SetIntValue(0);
-	}
-	else if (params[EMISSIVEBLENDENABLED]->GetIntValue())
-	{
-		InitParamsEmissiveScrollBlendedPass(params);
-	}
-
-	// Flesh Interior Pass
-	if (!params[FLESHINTERIORENABLED]->IsDefined())
-	{
-		params[FLESHINTERIORENABLED]->SetIntValue(0);
-	}
-	else if (params[FLESHINTERIORENABLED]->GetIntValue())
-	{
-		InitParamsFleshInteriorBlendedPass(params);
-	}
-}
-
-void Shader::OnInitShaderInstance(IMaterialVar** params, IShaderInit* shaderInit,
-	const char* materialName)
-{
-	InitShaderVertexLitGeneric(params);
-
-	// Cloak Pass
-	if (params[CLOAKPASSENABLED]->GetIntValue())
-		InitShaderCloakBlendedPass(params);
-
-	// TODO : Only do this if we're in range of the camera
-	// Weapon Sheen
-	if (params[SHEENPASSENABLED]->GetIntValue())
-		InitShaderWeaponSheenPass(params);
-
-	// Emissive Scroll Pass
-	if (params[EMISSIVEBLENDENABLED]->GetIntValue())
-		InitShaderEmissiveScrollBlendedPass(params);
-
-	// Flesh Interior Pass
-	if (params[FLESHINTERIORENABLED]->GetIntValue())
-		InitShaderFleshInteriorBlendedPass(params);
-}
-
-bool Shader::CloakBlendedPassIsFullyOpaque(IMaterialVar** params) const
-{
-	// TODO: Figure out if this is more complicated
-	return params[CLOAKFACTOR]->GetFloatValue() >= 0.9995f;
-}
-
-bool Shader::ShouldDrawMaterialSheen(IMaterialVar** params) const
-{
-	// TODO: Is this more complicated?
-	return !!params[SHEENPASSENABLED]->GetIntValue();
-}
-
-void Shader::DrawWeaponSheenPass(DrawParams& params)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void Shader::DrawCloakBlendedPass(DrawParams& params)
-{
-	const bool bBumpMapping = (!g_pConfig->UseBumpmapping()) || !params[BUMPMAP]->IsTexture() ? 0 : 1;
-
-	params.m_UsingRefraction = true;
-
-	if (const auto shadow = params.shadow)
-	{
-		// Reset shadow state manually since we're drawing from two materials
-		//SetInitialShadowState();
-
-		// Set stream format (note that this shader supports compression)
-		params.m_Format.AddFlags(VertexFormatFlags::Position | VertexFormatFlags::Normal);
-
-		if (SupportsCompressedVertices())
-			params.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
-
-		// Textures
-
-		//pShaderShadow->EnableSRGBWrite(true);
-
-		// Blending
-		//EnableAlphaBlending(SHADER_BLEND_SRC_ALPHA, SHADER_BLEND_ONE_MINUS_SRC_ALPHA);
-		//pShaderShadow->EnableAlphaWrites(false);
-
-		// !!! We need to turn this back on because EnableAlphaBlending() above disables it!
-		//pShaderShadow->EnableDepthWrites(true);
-	}
-
-	if (const auto dynamic = params.dynamic)
-	{
-		// Reset render state manually since we're drawing from two materials
-		//pShaderAPI->SetDefaultState();
-
-		//pShader->SetHWMorphVertexShaderState(VERTEX_SHADER_SHADER_SPECIFIC_CONST_6, VERTEX_SHADER_SHADER_SPECIFIC_CONST_7, SHADER_VERTEXTEXTURE_SAMPLER0);
-
-		params.m_Uniforms.m_CloakFactor = params[CLOAKFACTOR]->GetFloatValue();
-		params.m_Uniforms.m_RefractAmount = params[REFRACTAMOUNT]->GetFloatValue();
-		params.m_Uniforms.m_RefractColorTint.SetFrom(params[CLOAKCOLORTINT]->GetVecValue());
-
-		// Set c0 and c1 to contain first two rows of ViewProj matrix
-		VMatrix mView, mProj;
-		dynamic->GetMatrix(MATERIAL_VIEW, mView);
-		dynamic->GetMatrix(MATERIAL_PROJECTION, mProj);
-		VMatrix mViewProj = mView * mProj;
-		mViewProj = mViewProj.Transpose3x3();
-		params.m_Uniforms.m_ViewProjR01 = MatrixFromVMatrix<4, 2>(mViewProj);
-	}
-}
-
-void Shader::DrawEmissiveScrollBlendedPass(DrawParams& params)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void Shader::DrawFleshInteriorBlendedPass(DrawParams& params)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-BlendType_t Shader::EvaluateBlendRequirements() const
-{
-	LOG_FUNC();
-
-	bool isTranslucent = IsAlphaModulating();
-
-	const auto& textureVar = BASETEXTURE;
-	const bool isBaseTexture = true;
-	const auto& detailTextureVar = DETAIL;
-
-	// Or we've got a vertex alpha
-	isTranslucent = isTranslucent || (CurrentMaterialVarFlags() & MATERIAL_VAR_VERTEXALPHA);
-
-	// Or we've got a texture alpha (for blending or alpha test)
-	isTranslucent = isTranslucent || (TextureIsTranslucent(textureVar, isBaseTexture) &&
-		!(CurrentMaterialVarFlags() & MATERIAL_VAR_ALPHATEST));
-
-	if ((detailTextureVar != -1) && (!isTranslucent))
-	{
-		isTranslucent = TextureIsTranslucent(detailTextureVar, isBaseTexture);
-	}
-
-	if (CurrentMaterialVarFlags() & MATERIAL_VAR_ADDITIVE)
-	{
-		return isTranslucent ? BT_BLENDADD : BT_ADD;	// Additive
-	}
-	else
-	{
-		return isTranslucent ? BT_BLEND : BT_NONE;		// Normal blending
-	}
-}
-
-void Shader::OnDrawElements(const OnDrawElementsParams& params)
-{
-	LOG_FUNC();
-
-	DrawParams drawParams(params);
-
-	const bool bVertexLitGeneric = IsVertexLit();
-	const bool hasDiffuseLighting = drawParams.m_SpecConsts.DIFFUSELIGHTING = bVertexLitGeneric;
-	const bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST);
-	const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
-	const bool bIsAdditive = CShader_IsFlagSet(params.matvars, MATERIAL_VAR_ADDITIVE);
-	const bool bHasFlashlight = false;
-	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsTexture());
-	drawParams.m_SpecConsts.NORMALMAPPING = bHasBump;
-
-	const bool bHasVertexColor = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);
-	const bool bHasVertexAlpha = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXALPHA);
-	drawParams.m_SpecConsts.VERTEXCOLOR = bHasVertexColor || bHasVertexAlpha;
-
-	const bool bSeamlessBase = params[SEAMLESS_BASE]->GetBoolValue();
-	const bool bSeamlessDetail = params[SEAMLESS_DETAIL]->GetBoolValue();
-	const bool bHasEnvmap = !bHasFlashlight && params[ENVMAP]->IsTexture();
-	const bool bHasNormal = IsPC() || bVertexLitGeneric || bHasEnvmap || bHasFlashlight || bSeamlessBase || bSeamlessDetail;
-
-	const bool bSRGBWrite = !params[LINEARWRITE]->GetBoolValue();
-	drawParams.m_SpecConsts.GAMMA_CONVERT_VERTEX_COLOR = !(!bSRGBWrite && bHasVertexColor);
-
-	static constexpr auto SAMPLER_BASETEXTURE = SHADER_SAMPLER0;
-	static constexpr auto SAMPLER_BUMPMAP = SHADER_SAMPLER1;
-	static constexpr auto SAMPLER_REFRACT = SHADER_SAMPLER2;
-
-	if (const auto shadow = params.shadow)
-	{
-		shadow->SetShaders(m_VSShader, m_PSShader);
-
-		// Alpha blending
-		SetBlendingShadowState(EvaluateBlendRequirements());
-
-		drawParams.m_Format.AddFlags(VertexFormatFlags::Position);
-
-		if (SupportsCompressedVertices())
-			drawParams.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
-
-		if (drawParams.m_SpecConsts.VERTEXCOLOR)
-			drawParams.m_Format.AddFlags(VertexFormatFlags::Color);
-
-		if (bHasNormal)
-			drawParams.m_Format.AddFlags(VertexFormatFlags::Normal);
-
-		if (params[BASETEXTURE]->IsTexture())
-			drawParams.m_Format.AddTexCoord();
-
-		{
-			int texCoordSizes[8];
-			drawParams.m_Format.GetTexCoordSizes(texCoordSizes);
-			params.shadow->VertexShaderVertexFormat((unsigned int)drawParams.m_Format.m_Flags,
-				drawParams.m_Format.GetTexCoordCount(), texCoordSizes, drawParams.m_Format.m_UserDataSize);
-		}
-
-		if (bHasBaseTexture)
-			shadow->EnableSRGBRead(SAMPLER_BASETEXTURE, true);
-
-		if (drawParams.m_UsingRefraction)
-			shadow->EnableSRGBRead(SAMPLER_REFRACT, true);
-
-		if (bHasBump)
-			shadow->EnableSRGBRead(SAMPLER_BUMPMAP, false);
-
-		shadow->EnableSRGBWrite(bSRGBWrite);
-	}
-
-	if (const auto dynamic = params.dynamic)
-	{
-		PreDraw(params.matvars, drawParams.m_Uniforms, drawParams.m_SpecConsts);
-
-		drawParams.m_SpecConsts.COMPRESSED_VERTS = params.compression;
-		drawParams.m_SpecConsts.SKINNING = dynamic->GetCurrentNumBones() > 0;
-
-		auto& common = drawParams.m_UniformsCommon;
-		auto& modelMats = drawParams.m_ModelMatrices;
-		auto& custom = drawParams.m_Uniforms;
-		dynamic->GetWorldSpaceCameraPosition(common.m_EyePos);
-
-		if (bVertexLitGeneric)
-		{
-			drawParams.m_SpecConsts.DYNAMIC_LIGHT = true;
-			LoadLights(common);
-
-			drawParams.m_SpecConsts.AMBIENT_LIGHT = (common.m_AmbientCube != AmbientLightCube());
-		}
-
-		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;
-
-		// Base Matrices
-		{
-			VMatrix model, view, proj;
-			dynamic->GetMatrix(MATERIAL_MODEL, model);
-			dynamic->GetMatrix(MATERIAL_VIEW, view);
-			dynamic->GetMatrix(MATERIAL_PROJECTION, proj);
-
-			common.m_ViewProj = view * proj;
-			common.m_ModelViewProj = (model * common.m_ViewProj).Transpose();
-			common.m_ViewProj = common.m_ViewProj.Transpose();
-		}
-
-		// Model matrices
-		dynamic->LoadBoneMatrices(modelMats);
-
-		if (bHasBaseTexture)
-		{
-			BindTexture(SAMPLER_BASETEXTURE, BASETEXTURE, FRAME);
-			drawParams.m_Uniforms.m_BaseTextureTransform = TextureTransform(params[BASETEXTURETRANSFORM]->GetMatrixValue());
-		}
-
-		if (drawParams.m_UsingRefraction)
-			dynamic->BindStandardTexture(SAMPLER_REFRACT, TEXTURE_FRAME_BUFFER_FULL_TEXTURE_0);
-
-		if (bHasBump)
-		{
-			BindTexture(SAMPLER_BUMPMAP, BUMPMAP, BUMPFRAME);
-			drawParams.m_Uniforms.m_BumpTransform = TextureTransform(params[BUMPTRANSFORM]->GetMatrixValue());
-		}
-
-		// Update data and bind uniform buffers
-		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_Uniforms), m_UniformBufferIndex);
-		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_UniformsCommon), m_UBufCommonIndex);
-		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
-
-		// Set
-		params.dynamic->SetVertexShader(m_VSShader->FindOrCreateInstance(drawParams.m_SpecConsts));
-		params.dynamic->SetPixelShader(m_PSShader->FindOrCreateInstance(drawParams.m_SpecConsts));
-	}
-
-	Draw();
-}
-
-void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* materialName) const
-{
-	LOG_FUNC();
-
 	// FLASHLIGHTFIXME: Do ShaderAPI::BindFlashlightTexture
 	if (g_pHardwareConfig->SupportsBorderColor())
 	{
@@ -685,6 +353,7 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 
 	const bool hasNormalMapAlphaEnvmapMask = IS_FLAG_SET(MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK);
 
+#if false
 	if (IS_FLAG_SET(MATERIAL_VAR_BASEALPHAENVMAPMASK) && params[BUMPMAP]->IsDefined() && !hasNormalMapAlphaEnvmapMask)
 	{
 		Warning("material %s has a normal map and $basealphaenvmapmask.  Must use $normalmapalphaenvmapmask to get specular.\n\n", materialName);
@@ -704,224 +373,178 @@ void Shader::InitParamsVertexLitGeneric(IMaterialVar** params, const char* mater
 	// If mat_specular 0, then get rid of envmap
 	if (!g_pConfig->UseSpecular() && params[ENVMAP]->IsDefined() && params[BASETEXTURE]->IsDefined())
 		params[ENVMAP]->SetUndefined();
+#endif
 }
 
-void Shader::InitParamsCloakBlendedPass(IMaterialVar** params) const
+void Shader::OnInitShaderInstance(IMaterialVar** params, IShaderInit* shaderInit,
+	const char* materialName)
+{
+}
+
+BlendType_t Shader::EvaluateBlendRequirements() const
 {
 	LOG_FUNC();
 
-	// Set material flags
-	SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
-	SET_FLAGS(MATERIAL_VAR_MODEL);
-	SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);
+	bool isTranslucent = IsAlphaModulating();
 
-	// Set material parameter default values
-	// TODO: These don't match the ShaderParamNext defaults
-	//InitFloatParam(REFRACTAMOUNT, params, DEFAULT_REFRACT_AMOUNT);
-}
+	const auto& textureVar = BASETEXTURE;
+	const bool isBaseTexture = true;
+	const auto& detailTextureVar = DETAIL;
 
-void Shader::InitParamsWeaponSheenPass(IMaterialVar** params) const
-{
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
-}
+	// Or we've got a vertex alpha
+	isTranslucent = isTranslucent || (CurrentMaterialVarFlags() & MATERIAL_VAR_VERTEXALPHA);
 
-void Shader::InitParamsEmissiveScrollBlendedPass(IMaterialVar** params) const
-{
-	NOT_IMPLEMENTED_FUNC();
-}
+	// Or we've got a texture alpha (for blending or alpha test)
+	isTranslucent = isTranslucent || (TextureIsTranslucent(textureVar, isBaseTexture) &&
+		!(CurrentMaterialVarFlags() & MATERIAL_VAR_ALPHATEST));
 
-void Shader::InitParamsFleshInteriorBlendedPass(IMaterialVar** params) const
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void Shader::InitShaderSkin(IMaterialVar** params)
-{
-	LOG_FUNC();
-
-	LoadTexture(FLASHLIGHTTEXTURE, TEXTUREFLAGS_SRGB);
-
-	bool bIsBaseTextureTranslucent = false;
-	if (params[BASETEXTURE]->IsDefined())
+	if ((detailTextureVar != -1) && (!isTranslucent))
 	{
-		LoadTexture(BASETEXTURE, TEXTUREFLAGS_SRGB);
-
-		if (params[BASETEXTURE]->GetTextureValue()->IsTranslucent())
-			bIsBaseTextureTranslucent = true;
-
-		if (params[COMPRESS]->IsDefined() && params[STRETCH]->IsDefined())
-		{
-			LoadTexture(COMPRESS, TEXTUREFLAGS_SRGB);
-			LoadTexture(STRETCH, TEXTUREFLAGS_SRGB);
-		}
+		isTranslucent = TextureIsTranslucent(detailTextureVar, isBaseTexture);
 	}
 
-	bool bHasSelfIllumMask = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) && params[SELFILLUMMASK]->IsDefined();
-
-	// No alpha channel in any of the textures? No self illum or envmapmask
-	if (!bIsBaseTextureTranslucent)
+	if (CurrentMaterialVarFlags() & MATERIAL_VAR_ADDITIVE)
 	{
-		bool bHasSelfIllumFresnel = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) && (params[SELFILLUMFRESNEL]->GetIntValue() != 0);
-
-		// Can still be self illum with no base alpha if using one of these alternate modes
-		if (!bHasSelfIllumFresnel && !bHasSelfIllumMask)
-			CLEAR_FLAGS(MATERIAL_VAR_SELFILLUM);
-
-		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
+		return isTranslucent ? BT_BLENDADD : BT_ADD;	// Additive
 	}
-
-	if (params[PHONG]->IsDefined())
+	else
 	{
-		LoadTexture(PHONGEXPONENTTEXTURE);
-		LoadTexture(LIGHTWARPTEXTURE);
-		LoadTexture(PHONGWARPTEXTURE);
+		return isTranslucent ? BT_BLEND : BT_NONE;		// Normal blending
 	}
-
-	if (params[DETAIL]->IsDefined())
-	{
-		int nDetailBlendMode = params[DETAILBLENDMODE]->GetIntValue();
-		if (nDetailBlendMode == 0) // Mod2X
-			LoadTexture(DETAIL);
-		else
-			LoadTexture(DETAIL, TEXTUREFLAGS_SRGB);
-	}
-
-	if (g_pConfig->UseBumpmapping())
-	{
-		if (params[BUMPMAP]->IsDefined())
-		{
-			LoadBumpMap(BUMPMAP);
-			SET_FLAGS2(MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL);
-
-			if (params[BUMPCOMPRESS]->IsDefined() && params[BUMPSTRETCH]->IsDefined())
-			{
-				LoadTexture(BUMPCOMPRESS);
-				LoadTexture(BUMPSTRETCH);
-			}
-		}
-	}
-
-	if (params[ENVMAP]->IsDefined())
-		LoadCubeMap(ENVMAP, g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0);
-
-	if (bHasSelfIllumMask)
-		LoadTexture(SELFILLUMMASK);
 }
 
-void Shader::InitShaderVertexLitGeneric(IMaterialVar** params)
+void Shader::OnDrawElements(const OnDrawElementsParams& params)
 {
 	LOG_FUNC();
 
-	// both detailed and bumped = needs skin shader (for now)
-	bool bNeedsSkinBecauseOfDetail = false;
+	DrawParams drawParams(params);
 
-	//bool bHasBump = ( info.m_nBumpmap != -1 ) && params[info.m_nBumpmap]->IsTexture();
-	//if ( bHasBump )
-	//{
-	//	if (  ( info.m_nDetail != -1 ) && params[info.m_nDetail]->IsDefined() )
-	//		bNeedsSkinBecauseOfDetail = true;
-	//}
+	const bool bVertexLitGeneric = IsVertexLit();
+	const bool hasDiffuseLighting = drawParams.m_SpecConsts.DIFFUSELIGHTING = bVertexLitGeneric;
+	const bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST);
+	const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
+	const bool bIsAdditive = CShader_IsFlagSet(params.matvars, MATERIAL_VAR_ADDITIVE);
+	const bool bHasFlashlight = false;
+	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsTexture());
+	drawParams.m_SpecConsts.NORMALMAPPING = bHasBump;
 
-	if (bNeedsSkinBecauseOfDetail || (params[PHONG]->GetIntValue() && g_pHardwareConfig->SupportsPixelShaders_2_b()))
-		return InitShaderSkin(params);
+	const bool bHasVertexColor = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);
+	const bool bHasVertexAlpha = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXALPHA);
+	drawParams.m_SpecConsts.VERTEXCOLOR = bHasVertexColor || bHasVertexAlpha;
 
-	LoadTexture(FLASHLIGHTTEXTURE, TEXTUREFLAGS_SRGB);
+	//const bool bSeamlessBase = params[SEAMLESS_BASE]->GetBoolValue();
+	//const bool bSeamlessDetail = params[SEAMLESS_DETAIL]->GetBoolValue();
+	//const bool bHasEnvmap = !bHasFlashlight && params[ENVMAP]->IsTexture();
+	const bool bHasNormal = IsPC();// || bVertexLitGeneric || bHasEnvmap || bHasFlashlight || bSeamlessBase || bSeamlessDetail;
 
-	bool bIsBaseTextureTranslucent = false;
-	if (params[BASETEXTURE]->IsDefined())
+	const bool bSRGBWrite = !params[LINEARWRITE]->GetBoolValue();
+	drawParams.m_SpecConsts.GAMMA_CONVERT_VERTEX_COLOR = !(!bSRGBWrite && bHasVertexColor);
+
+	static constexpr auto SAMPLER_BASETEXTURE = SHADER_SAMPLER0;
+	static constexpr auto SAMPLER_BUMPMAP = SHADER_SAMPLER1;
+	static constexpr auto SAMPLER_REFRACT = SHADER_SAMPLER2;
+
+	if (const auto shadow = params.shadow)
 	{
-		LoadTexture(BASETEXTURE, (params[GAMMACOLORREAD]->GetIntValue() == 1) ? 0 : TEXTUREFLAGS_SRGB);
+		shadow->SetShaders(m_VSShader, m_PSShader);
 
-		if (params[BASETEXTURE]->GetTextureValue()->IsTranslucent())
-			bIsBaseTextureTranslucent = true;
-	}
+		// Alpha blending
+		SetBlendingShadowState(EvaluateBlendRequirements());
 
-	bool bHasSelfIllumMask = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) && params[SELFILLUMMASK]->IsDefined();
+		drawParams.m_Format.AddFlags(VertexFormatFlags::Position);
 
-	// No alpha channel in any of the textures? No self illum or envmapmask
-	if (!bIsBaseTextureTranslucent)
-	{
-		bool bHasSelfIllumFresnel = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) && (params[SELFILLUMFRESNEL]->GetIntValue() != 0);
+		if (SupportsCompressedVertices())
+			drawParams.m_Format.AddFlags(VertexFormatFlags::Meta_Compressed);
 
-		// Can still be self illum with no base alpha if using one of these alternate modes
-		if (!bHasSelfIllumFresnel && !bHasSelfIllumMask)
-			CLEAR_FLAGS(MATERIAL_VAR_SELFILLUM);
+		if (drawParams.m_SpecConsts.VERTEXCOLOR)
+			drawParams.m_Format.AddFlags(VertexFormatFlags::Color);
 
-		CLEAR_FLAGS(MATERIAL_VAR_BASEALPHAENVMAPMASK);
-	}
+		if (bHasNormal)
+			drawParams.m_Format.AddFlags(VertexFormatFlags::Normal);
 
-	if (params[DETAIL]->IsDefined())
-	{
-		int nDetailBlendMode = (DETAILBLENDMODE == -1) ? 0 : params[DETAILBLENDMODE]->GetIntValue();
+		if (params[BASETEXTURE]->IsTexture())
+			drawParams.m_Format.AddTexCoord();
 
-		if (nDetailBlendMode == 0) //Mod2X
-			LoadTexture(DETAIL);
-		else
-			LoadTexture(DETAIL, TEXTUREFLAGS_SRGB);
-	}
-
-	if (g_pConfig->UseBumpmapping())
-	{
-		if (params[BUMPMAP]->IsDefined())
 		{
-			LoadBumpMap(BUMPMAP);
-			SET_FLAGS2(MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL);
+			int texCoordSizes[8];
+			drawParams.m_Format.GetTexCoordSizes(texCoordSizes);
+			params.shadow->VertexShaderVertexFormat((unsigned int)drawParams.m_Format.m_Flags,
+				drawParams.m_Format.GetTexCoordCount(), texCoordSizes, drawParams.m_Format.m_UserDataSize);
 		}
-		else if (params[LIGHTWARPTEXTURE]->IsDefined())
+
+		if (bHasBaseTexture)
+			shadow->EnableSRGBRead(SAMPLER_BASETEXTURE, true);
+
+		//if (drawParams.m_UsingRefraction)
+		//	shadow->EnableSRGBRead(SAMPLER_REFRACT, true);
+
+		if (bHasBump)
+			shadow->EnableSRGBRead(SAMPLER_BUMPMAP, false);
+
+		shadow->EnableSRGBWrite(bSRGBWrite);
+	}
+
+	if (const auto dynamic = params.dynamic)
+	{
+		PreDraw(params.matvars, drawParams.m_Uniforms, drawParams.m_SpecConsts);
+
+		drawParams.m_SpecConsts.COMPRESSED_VERTS = params.compression;
+		drawParams.m_SpecConsts.SKINNING = dynamic->GetCurrentNumBones() > 0;
+
+		auto& common = drawParams.m_UniformsCommon;
+		auto& modelMats = drawParams.m_ModelMatrices;
+		auto& custom = drawParams.m_Uniforms;
+		dynamic->GetWorldSpaceCameraPosition(common.m_EyePos);
+
+		if (bVertexLitGeneric)
 		{
-			SET_FLAGS2(MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL);
+			drawParams.m_SpecConsts.DYNAMIC_LIGHT = true;
+			LoadLights(common);
+
+			drawParams.m_SpecConsts.AMBIENT_LIGHT = (common.m_AmbientCube != AmbientLightCube());
 		}
+
+		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;
+
+		// Base Matrices
+		{
+			VMatrix model, view, proj;
+			dynamic->GetMatrix(MATERIAL_MODEL, model);
+			dynamic->GetMatrix(MATERIAL_VIEW, view);
+			dynamic->GetMatrix(MATERIAL_PROJECTION, proj);
+
+			common.m_ViewProj = view * proj;
+			common.m_ModelViewProj = (model * common.m_ViewProj).Transpose();
+			common.m_ViewProj = common.m_ViewProj.Transpose();
+		}
+
+		// Model matrices
+		dynamic->LoadBoneMatrices(modelMats);
+
+		if (bHasBaseTexture)
+		{
+			BindTexture(SAMPLER_BASETEXTURE, BASETEXTURE, FRAME);
+			drawParams.m_Uniforms.m_BaseTextureTransform = TextureTransform(params[BASETEXTURETRANSFORM]->GetMatrixValue());
+		}
+
+		//if (drawParams.m_UsingRefraction)
+		//	dynamic->BindStandardTexture(SAMPLER_REFRACT, TEXTURE_FRAME_BUFFER_FULL_TEXTURE_0);
+
+		if (bHasBump)
+		{
+			BindTexture(SAMPLER_BUMPMAP, BUMPMAP, BUMPFRAME);
+			drawParams.m_Uniforms.m_BumpTransform = TextureTransform(params[BUMPTRANSFORM]->GetMatrixValue());
+		}
+
+		// Update data and bind uniform buffers
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_Uniforms), m_UniformBufferIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_UniformsCommon), m_UBufCommonIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
+
+		// Set
+		params.dynamic->SetVertexShader(m_VSShader->FindOrCreateInstance(drawParams.m_SpecConsts));
+		params.dynamic->SetPixelShader(m_PSShader->FindOrCreateInstance(drawParams.m_SpecConsts));
 	}
 
-	// Don't alpha test if the alpha channel is used for other purposes
-	if (IS_FLAG_SET(MATERIAL_VAR_SELFILLUM) || IS_FLAG_SET(MATERIAL_VAR_BASEALPHAENVMAPMASK))
-	{
-		CLEAR_FLAGS(MATERIAL_VAR_ALPHATEST);
-	}
-
-	if (params[ENVMAP]->IsDefined())
-	{
-		if (!IS_FLAG_SET(MATERIAL_VAR_ENVMAPSPHERE))
-			LoadCubeMap(ENVMAP, g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0);
-		else
-			LoadTexture(ENVMAP, g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0);
-
-		if (!g_pHardwareConfig->SupportsCubeMaps())
-			SET_FLAGS(MATERIAL_VAR_ENVMAPSPHERE);
-	}
-
-	if (params[ENVMAPMASK]->IsDefined())
-		LoadTexture(ENVMAPMASK);
-
-	if (params[LIGHTWARPTEXTURE]->IsDefined())
-		LoadTexture(LIGHTWARPTEXTURE);
-
-	if (bHasSelfIllumMask)
-		LoadTexture(SELFILLUMMASK);
-}
-
-void Shader::InitShaderCloakBlendedPass(IMaterialVar** params)
-{
-	LOG_FUNC();
-
-	if (g_pConfig->UseBumpmapping())
-	{
-		//LoadBumpMap(BUMPMAP);
-		LoadTexture(BUMPMAP); // FIXME: Is this a bug in valve's code? Should this be LoadBumpMap?
-	}
-}
-
-void Shader::InitShaderWeaponSheenPass(IMaterialVar** params)
-{
-	NOT_IMPLEMENTED_FUNC_NOBREAK();
-}
-
-void Shader::InitShaderEmissiveScrollBlendedPass(IMaterialVar** params)
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
-void Shader::InitShaderFleshInteriorBlendedPass(IMaterialVar** params)
-{
-	NOT_IMPLEMENTED_FUNC();
+	Draw();
 }

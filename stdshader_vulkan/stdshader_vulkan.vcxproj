@@ -98,8 +98,15 @@
     <ClInclude Include="src\shaders\BaseShaderNext.h" />
     <ClInclude Include="src\shaders\CommonSpecConstLayout.h" />
     <ClInclude Include="src\shaders\ParamGroups.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\AlphaTest.h" />
     <ClInclude Include="src\shaders\ShaderComponents\BaseShaderComponent.h" />
     <ClInclude Include="src\shaders\ShaderComponents\BaseSpecConsts.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\Bumpmap.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\Detail.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\Phong.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\Rimlight.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\SelfIllum.h" />
+    <ClInclude Include="src\shaders\ShaderComponents\WeaponSheen.h" />
     <ClInclude Include="src\shaders\ShaderParamNext.h" />
     <ClInclude Include="src\shaders\UniformBufConstructs\TextureTransform.h" />
   </ItemGroup>

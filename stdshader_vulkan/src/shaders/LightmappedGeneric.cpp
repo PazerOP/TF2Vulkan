@@ -16,9 +16,9 @@ inline namespace SHADER_NAME
 	{
 	};
 
-	using Params = ShaderParams<>;// /*CustomParamGroup, */DetailParams, SelfillumParams, BumpmapParams, SeamlessScaleParams>;
+	using Components = ShaderComponents<>;// /*CustomParamGroup, */DetailParams, SelfillumParams, BumpmapParams, SeamlessScaleParams>;
 
-	class Shader final : public ShaderNext<Shader, Params>
+	class Shader final : public ShaderNext<Shader>
 	{
 	public:
 		const char* GetName() const override { return V_STRINGIFY(SHADER_NAME); }

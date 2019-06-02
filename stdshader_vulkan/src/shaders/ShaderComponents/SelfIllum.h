@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BaseShaderComponent.h"
+#include <shaderlib/cshader.h>
 
 namespace TF2Vulkan{ namespace Shaders{ namespace Components
 {
@@ -35,12 +36,30 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 			NSHADER_PARAM(SELFILLUMMASK, SHADER_PARAM_TYPE_TEXTURE, "shadertest/BaseTexture", "If we bind a texture here, it overrides base alpha (if any) for self illum");
 
 		private:
-			template<typename... TGroups> friend class ShaderParams;
-			void InitParamGroup(IMaterialVar** params) const {}
+			template<typename... TGroups> friend class ShaderComponents;
+
+			void InitParamGroup(IMaterialVar** params) const
+			{
+				if (!IS_FLAG_SET(MATERIAL_VAR_SELFILLUM))
+					params[SELFILLUMFRESNEL]->SetBoolValue(false);
+			}
+
 			void PreDraw(IMaterialVar** params, UniformBuf* uniformBuf, SpecConstBuf* specConstBuf) const
 			{
-				if ()
+				if (specConstBuf->SELFILLUM = IS_FLAG_SET(MATERIAL_VAR_SELFILLUM))
+				{
+					uniformBuf->m_SelfIllumEnvMapMaskAlpha = params[SELFILLUM_ENVMAPMASK_ALPHA]->GetFloatValue();
+
+					if (specConstBuf->SELFILLUMFRESNEL = params[SELFILLUMFRESNEL]->GetBoolValue())
+					{
+						float settings[3];
+						params[SELFILLUMFRESNELMINMAXEXP]->GetVecValue(settings, std::size(settings));
+						uniformBuf->m_SelfIllumFresnelMin = settings[0];
+						uniformBuf->m_SelfIllumFresnelMax = settings[1];
+						uniformBuf->m_SelfIllumFresnelExp = settings[2];
+					}
+				}
 			}
 		};
-	}
+	};
 } } }

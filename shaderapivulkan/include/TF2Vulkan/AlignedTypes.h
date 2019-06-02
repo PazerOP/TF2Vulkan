@@ -54,6 +54,15 @@ namespace TF2Vulkan{ namespace Shaders
 		};
 		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 3, alignment>
 		{
+			constexpr vector_storage() : x{}, y{}, z{}
+			{
+				// vec3s must be aligned to 16 bytes, but we can't use alignas because
+				// then MSVC makes the whole thing take 16 bytes rather than 12. We
+				// still need to be able to pack [float3, float1] into 16 bytes.
+				assert(uintptr_t(this) % (sizeof(T) * 4) == 0);
+			}
+			constexpr vector_storage(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
+
 			T x;
 			T y;
 			T z;
@@ -79,7 +88,7 @@ namespace TF2Vulkan{ namespace Shaders
 		using BaseType = detail::vector_storage<T, size, alignment>;
 
 		template<typename TArg, typename... TInit>
-		static constexpr BaseType InitBaseType(const TArg& arg1, const TInit&... args)
+		static constexpr BaseType InitBaseType(const TArg& arg1, const TInit& ... args)
 		{
 			constexpr bool BROADCAST = sizeof...(TInit) == 0 && size > 1;
 			constexpr bool DIRECT_INIT = (size - 1) == sizeof...(TInit);
@@ -465,6 +474,29 @@ inline auto operator-(const TLhs& lhs, const TF2Vulkan::Shaders::vector<TRhs, el
 		retVal[i] = lhs - rhs[i];
 
 	return retVal;
+}
+
+#ifndef __INTELLISENSE__
+template<typename T>
+inline auto operator<=>(const T& lhs, const TF2Vulkan::Shaders::vector<T, 1> & rhs)
+{
+	return lhs <=> rhs.x;
+}
+template<typename T>
+inline auto operator<=>(const TF2Vulkan::Shaders::vector<T, 1>& lhs, const T& rhs)
+{
+	return lhs.x <=> rhs;
+}
+#endif
+template<typename T>
+inline auto operator!=(const T& lhs, const TF2Vulkan::Shaders::vector<T, 1> & rhs)
+{
+	return lhs != rhs.x;
+}
+template<typename T>
+inline auto operator!=(const TF2Vulkan::Shaders::vector<T, 1> & lhs, const T& rhs)
+{
+	return lhs.x != rhs;
 }
 
 namespace TF2Vulkan{ namespace Shaders{ namespace detail
