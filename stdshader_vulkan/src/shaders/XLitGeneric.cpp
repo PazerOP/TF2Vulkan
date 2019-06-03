@@ -36,10 +36,48 @@ inline namespace XLitGeneric
 	static constexpr float4 DEFAULT_CLOAK_COLOR_TINT{ 1, 1, 1, 1 };
 	static constexpr float1 DEFAULT_REFRACT_AMOUNT = 0.1f;
 
+	struct BaseTextureComponent
+	{
+		struct SpecConstBuf
+		{
+			uint1 TEXINDEX_BASETEXTURE;
+		};
+		template<typename T> struct SpecConstLayout
+		{
+			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_BASETEXTURE);
+		};
+		struct UniformBuf
+		{
+			TextureTransform m_BaseTextureTransform;
+		};
+		struct Params
+		{
+		private:
+			template<typename... TGroups> friend class TF2Vulkan::Shaders::ShaderComponents;
+			void InitParamGroup(IMaterialVar** params) const {}
+			void PreDraw(IMaterialVar** params, UniformBuf* uniformBuf, SpecConstBuf* specConstBuf, ShaderTextureBinder& tb) const
+			{
+				if (params[BASETEXTURE]->IsTexture())
+				{
+					tb.AddBinding(params[BASETEXTURE]->GetTextureValue(), specConstBuf->TEXINDEX_BASETEXTURE);
+					uniformBuf->m_BaseTextureTransform = TextureTransform(params[BASETEXTURETRANSFORM]->GetMatrixValue());
+				}
+			}
+			void LoadResources(IMaterialVar** params, IShaderInit& init, const char* materialName, const char* texGroupName) const
+			{
+				if (params[BASETEXTURE]->IsDefined())
+					init.LoadTexture(params[BASETEXTURE], texGroupName);
+			}
+		};
+	};
+
 	struct XLitGenericComponent
 	{
 		struct SpecConstBuf
 		{
+			uint1 TEXTURE_COUNT;
+			uint1 SAMPLER_COUNT;
+
 			bool32 VERTEXCOLOR;
 			bool32 SKINNING;
 			bool32 COMPRESSED_VERTS;
@@ -48,15 +86,13 @@ inline namespace XLitGeneric
 
 			bool32 AMBIENT_LIGHT;
 			bool32 DYNAMIC_LIGHT;
-
-			bool32 TEXACTIVE_BASETEXTURE;
-
-			bool32 TEXACTIVE_BUMPMAP;
-			bool32 NORMALMAPPING;
 		};
 		template<typename T>
 		struct SpecConstLayout
 		{
+			SPEC_CONST_BUF_ENTRY(T, TEXTURE_COUNT);
+			SPEC_CONST_BUF_ENTRY(T, SAMPLER_COUNT);
+
 			SPEC_CONST_BUF_ENTRY(T, VERTEXCOLOR);
 			SPEC_CONST_BUF_ENTRY(T, SKINNING);
 			SPEC_CONST_BUF_ENTRY(T, COMPRESSED_VERTS);
@@ -65,18 +101,10 @@ inline namespace XLitGeneric
 
 			SPEC_CONST_BUF_ENTRY(T, AMBIENT_LIGHT);
 			SPEC_CONST_BUF_ENTRY(T, DYNAMIC_LIGHT);
-
-			SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BASETEXTURE);
-
-			SPEC_CONST_BUF_ENTRY(T, TEXACTIVE_BUMPMAP);
-			SPEC_CONST_BUF_ENTRY(T, NORMALMAPPING);
 		};
 
 		struct UniformBuf
 		{
-			TextureTransform m_BaseTextureTransform;
-			TextureTransform m_DetailTransform;
-
 			float1 m_CloakFactor;
 			float1 m_RefractAmount;
 			float4 m_RefractColorTint;
@@ -114,11 +142,12 @@ inline namespace XLitGeneric
 		private:
 			template<typename... TGroups> friend class ShaderComponents;
 			void InitParamGroup(IMaterialVar** params) const {}
-			void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf) const {}
+			void PreDraw(IMaterialVar** params, void* uniformBuf, void* specConstBuf, ShaderTextureBinder& tb) const {}
+			void LoadResources(IMaterialVar** params, IShaderInit& init, const char* materialName, const char* texGroupName) const {}
 		};
 	};
 
-	using XLitGenericComponents = ShaderComponents <
+	using XLitGenericComponents = ShaderComponents<
 		//Components::AlphaTest,
 		Components::Bumpmap,
 		//Components::DepthBlend,
@@ -134,6 +163,7 @@ inline namespace XLitGeneric
 		//Components::Cloak,
 		//Components::Flesh,
 		//Components::DistanceAlpha,
+		BaseTextureComponent,
 		XLitGenericComponent>;
 
 	enum class DerivedShaderType
@@ -164,13 +194,6 @@ inline namespace XLitGeneric
 		virtual bool SupportsCompressedVertices() const { return true; }
 
 	private:
-		void InitShaderVertexLitGeneric(IMaterialVar** params);
-		void InitShaderSkin(IMaterialVar** params);
-		void InitShaderCloakBlendedPass(IMaterialVar** params);
-		void InitShaderWeaponSheenPass(IMaterialVar** params);
-		void InitShaderEmissiveScrollBlendedPass(IMaterialVar** params);
-		void InitShaderFleshInteriorBlendedPass(IMaterialVar** params);
-
 		BlendType_t EvaluateBlendRequirements() const;
 
 		struct DrawParams : OnDrawElementsParams
@@ -182,19 +205,10 @@ inline namespace XLitGeneric
 			ShaderDataCommon m_UniformsCommon{};
 			VSModelMatrices m_ModelMatrices{};
 			UniformBuf m_Uniforms;
+			ShaderTextureBinder m_TextureBinder;
 
 			bool m_SRGBWrite = true;
 		};
-
-		void SetupPhong(DrawParams& params) { NOT_IMPLEMENTED_FUNC(); }
-		void DrawVertexLitGeneric(DrawParams& params);
-		void DrawWeaponSheenPass(DrawParams& params);
-		void DrawCloakBlendedPass(DrawParams& params);
-		void DrawEmissiveScrollBlendedPass(DrawParams& params);
-		void DrawFleshInteriorBlendedPass(DrawParams& params);
-
-		bool CloakBlendedPassIsFullyOpaque(IMaterialVar** params) const;
-		bool ShouldDrawMaterialSheen(IMaterialVar** params) const;
 
 		IShaderGroup* m_PSShader = nullptr;
 		IShaderGroup* m_VSShader = nullptr;
@@ -422,11 +436,11 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	const bool bVertexLitGeneric = IsVertexLit();
 	const bool hasDiffuseLighting = drawParams.m_SpecConsts.DIFFUSELIGHTING = bVertexLitGeneric;
 	const bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST);
-	const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
+	//const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
 	const bool bIsAdditive = CShader_IsFlagSet(params.matvars, MATERIAL_VAR_ADDITIVE);
 	const bool bHasFlashlight = false;
-	const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsTexture());
-	drawParams.m_SpecConsts.NORMALMAPPING = bHasBump;
+	//const bool bHasBump = drawParams.m_SpecConsts.TEXACTIVE_BUMPMAP = (g_pConfig->UseBumpmapping() && params[BUMPMAP]->IsTexture());
+	//drawParams.m_SpecConsts.NORMALMAPPING = bHasBump;
 
 	const bool bHasVertexColor = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXCOLOR);
 	const bool bHasVertexAlpha = !bVertexLitGeneric && IS_FLAG_SET(MATERIAL_VAR_VERTEXALPHA);
@@ -440,9 +454,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 	const bool bSRGBWrite = !params[LINEARWRITE]->GetBoolValue();
 	drawParams.m_SpecConsts.GAMMA_CONVERT_VERTEX_COLOR = !(!bSRGBWrite && bHasVertexColor);
 
-	static constexpr auto SAMPLER_BASETEXTURE = SHADER_SAMPLER0;
-	static constexpr auto SAMPLER_BUMPMAP = SHADER_SAMPLER1;
-	static constexpr auto SAMPLER_REFRACT = SHADER_SAMPLER2;
+	//static constexpr auto SAMPLER_BASETEXTURE = SHADER_SAMPLER0;
+	//static constexpr auto SAMPLER_BUMPMAP = SHADER_SAMPLER1;
+	//static constexpr auto SAMPLER_REFRACT = SHADER_SAMPLER2;
 
 	if (const auto shadow = params.shadow)
 	{
@@ -472,21 +486,21 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 				drawParams.m_Format.GetTexCoordCount(), texCoordSizes, drawParams.m_Format.m_UserDataSize);
 		}
 
-		if (bHasBaseTexture)
-			shadow->EnableSRGBRead(SAMPLER_BASETEXTURE, true);
+		//if (bHasBaseTexture)
+		//	shadow->EnableSRGBRead(SAMPLER_BASETEXTURE, true);
 
 		//if (drawParams.m_UsingRefraction)
 		//	shadow->EnableSRGBRead(SAMPLER_REFRACT, true);
 
-		if (bHasBump)
-			shadow->EnableSRGBRead(SAMPLER_BUMPMAP, false);
+		//if (bHasBump)
+		//	shadow->EnableSRGBRead(SAMPLER_BUMPMAP, false);
 
 		shadow->EnableSRGBWrite(bSRGBWrite);
 	}
 
 	if (const auto dynamic = params.dynamic)
 	{
-		PreDraw(params.matvars, drawParams.m_Uniforms, drawParams.m_SpecConsts);
+		PreDraw(params.matvars, drawParams.m_Uniforms, drawParams.m_SpecConsts, drawParams.m_TextureBinder);
 
 		drawParams.m_SpecConsts.COMPRESSED_VERTS = params.compression;
 		drawParams.m_SpecConsts.SKINNING = dynamic->GetCurrentNumBones() > 0;
@@ -521,19 +535,18 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		// Model matrices
 		dynamic->LoadBoneMatrices(modelMats);
 
-		if (bHasBaseTexture)
-		{
-			BindTexture(SAMPLER_BASETEXTURE, BASETEXTURE, FRAME);
-			drawParams.m_Uniforms.m_BaseTextureTransform = TextureTransform(params[BASETEXTURETRANSFORM]->GetMatrixValue());
-		}
-
 		//if (drawParams.m_UsingRefraction)
 		//	dynamic->BindStandardTexture(SAMPLER_REFRACT, TEXTURE_FRAME_BUFFER_FULL_TEXTURE_0);
 
-		if (bHasBump)
+		// Bind textures
 		{
-			BindTexture(SAMPLER_BUMPMAP, BUMPMAP, BUMPFRAME);
-			drawParams.m_Uniforms.m_BumpTransform = TextureTransform(params[BUMPTRANSFORM]->GetMatrixValue());
+			uint32_t& texCount = drawParams.m_SpecConsts.TEXTURE_COUNT;
+			texCount = 1;
+			for (auto& tex : drawParams.m_TextureBinder)
+			{
+				BindTexture(Sampler_t(SHADER_SAMPLER0 + texCount), tex.m_Texture);
+				texCount++;
+			}
 		}
 
 		// Update data and bind uniform buffers

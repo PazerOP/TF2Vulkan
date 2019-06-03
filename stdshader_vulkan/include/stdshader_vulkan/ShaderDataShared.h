@@ -5,11 +5,13 @@
 #include <TF2Vulkan/AlignedTypes.h>
 #include <TF2Vulkan/Util/Macros.h>
 #include <TF2Vulkan/Util/std_compare.h>
+
 namespace TF2Vulkan{ namespace Shaders
 {
 #define FLOAT3_ARRAY(name, size) float3_aligned name[size];
 #else
 #define FLOAT3_ARRAY(name, size) float3 name[size]
+#define constexpr const
 #endif // __cplusplus
 
 	struct LightInfo
@@ -88,6 +90,13 @@ namespace TF2Vulkan{ namespace Shaders
 		float1 maxDensity;
 		float1 OORange;
 	};
+
+	static constexpr uint1 BINDING_CBUF_SHADERCOMMON = 0;
+	static constexpr uint1 BINDING_CBUF_SHADERCUSTOM = 1;
+	static constexpr uint1 BINDING_CBUF_VSMODELMATRICES = 2;
+	static constexpr uint1 BINDING_TEX2D = 3;
+	static constexpr uint1 BINDING_TEX3D = 4;
+	static constexpr uint1 BINDING_SAMPLERS = 5;
 
 #ifdef __cplusplus
 } }

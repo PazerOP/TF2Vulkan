@@ -10,13 +10,13 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 	{
 		struct SpecConstBuf
 		{
-			bool32 DETAIL;
+			uint1 TEXINDEX_DETAIL;
 			uint1 DETAILBLENDMODE;
 			bool32 SEPARATEDETAILUVS;
 		};
 		template<typename T> struct SpecConstLayout
 		{
-			SPEC_CONST_BUF_ENTRY(T, DETAIL);
+			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_DETAIL);
 			SPEC_CONST_BUF_ENTRY(T, DETAILBLENDMODE);
 			SPEC_CONST_BUF_ENTRY(T, SEPARATEDETAILUVS);
 		};
@@ -52,16 +52,26 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 				}
 			}
 
-			void PreDraw(IMaterialVar** params, UniformBuf* uniformBuf, SpecConstBuf* specConstBuf) const
+			void PreDraw(IMaterialVar** params, UniformBuf* uniformBuf, SpecConstBuf* specConstBuf, ShaderTextureBinder& tb) const
 			{
-				if (specConstBuf->DETAIL = params[DETAIL]->IsDefined())
+				if (params[DETAIL]->IsTexture())
 				{
+					tb.AddBinding(params[DETAIL]->GetTextureValue(), specConstBuf->TEXINDEX_DETAIL);
+
 					uniformBuf->m_DetailScale = params[DETAILSCALE]->GetFloatValue();
 					specConstBuf->DETAILBLENDMODE = params[DETAILBLENDMODE]->GetIntValue();
 					uniformBuf->m_DetailBlendFactor = params[DETAILBLENDFACTOR]->GetFloatValue();
 					uniformBuf->m_DetailTint.SetFrom(params[DETAILBLENDFACTOR]->GetVecValue());
 					uniformBuf->m_DetailTextureTransform = TextureTransform(params[DETAILTEXTURETRANSFORM]->GetMatrixValue());
 					specConstBuf->SEPARATEDETAILUVS = params[SEPARATEDETAILUVS]->GetBoolValue();
+				}
+			}
+
+			void LoadResources(IMaterialVar** params, IShaderInit& init, const char* materialName, const char* texGroupName) const
+			{
+				if (params[DETAIL]->IsDefined())
+				{
+					init.LoadTexture(params[DETAIL], texGroupName);
 				}
 			}
 		};

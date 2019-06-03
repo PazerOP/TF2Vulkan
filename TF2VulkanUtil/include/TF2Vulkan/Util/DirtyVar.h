@@ -87,22 +87,15 @@ namespace Util
 		}
 	}
 
-	template<typename T, typename T2, typename TIndex, size_t size>
+	/*template<typename T, typename T2, typename TIndex, size_t size>
 	inline void SetDirtyVar(T(&targetArray)[size], const TIndex& index, const T2& newVal, bool& dirtyVar)
 	{
-		size_t realIndex = Util::SafeConvert<size_t>(index);
-		if (realIndex >= size)
-		{
-			assert(!"Invalid index");
-			return;
-		}
-
-		return SetDirtyVar(targetArray[realIndex], newVal, dirtyVar);
-	}
-
-	template<typename T, typename T2, typename TIndex, size_t size>
-	inline void SetDirtyVar(std::array<T, size>& targetArray, const TIndex& index, const T2& newVal, bool& dirtyVar)
+		return SetDirtyVar(Util::at(targetArray, index), newVal, dirtyVar);
+	}*/
+	template<typename T, typename T2, typename TIndex>
+	inline auto SetDirtyVar(T& container, const TIndex& index, const T2& newVal, bool& dirtyVar) ->
+		decltype(Util::at(container, Util::SafeConvert<size_t>(index)), void())
 	{
-		return SetDirtyVar(targetArray.at(Util::SafeConvert<size_t>(index)), newVal, dirtyVar);
+		return SetDirtyVar(Util::at(container, Util::SafeConvert<size_t>(index)), newVal, dirtyVar);
 	}
 }

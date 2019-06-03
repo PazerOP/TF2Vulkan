@@ -85,8 +85,25 @@ namespace Util
 #ifdef __INTELLISENSE__
 
 #else
+#if false
 		template<size_type otherMaxSize, typename ResultType = Util::threeway_compare_result_t<T>,
 		typename = std::enable_if_t<Util::is_ordering_v<ResultType>>>
+		ResultType operator<=>(const InPlaceVector<T, otherMaxSize>& other) const noexcept
+		{
+			if (auto result = size() <=> other.size(); !std::is_eq(result))
+				return result;
+
+			for (size_t i = 0; i < size(); i++)
+			{
+				auto result = operator[](i) <=> other[i];
+				if (!std::is_eq(result))
+					return result;
+			}
+
+			return Util::strongest_equal_v<ResultType>;
+		}
+#endif
+		template<size_type otherMaxSize, typename ResultType = Util::threeway_compare_result_t<T>>
 		ResultType operator<=>(const InPlaceVector<T, otherMaxSize>& other) const noexcept
 		{
 			if (auto result = size() <=> other.size(); !std::is_eq(result))
@@ -214,8 +231,8 @@ namespace Util
 				throw std::out_of_range("Exceeded capacity");
 		}
 
-		std::aligned_storage_t<sizeof(T[maxSize]), alignof(T[maxSize])> m_Storage;
 		size_type m_Elements = 0;
+		std::aligned_storage_t<sizeof(T[maxSize]), alignof(T[maxSize])> m_Storage;
 	};
 }
 

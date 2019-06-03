@@ -63,6 +63,20 @@ namespace Util
 	{
 		return ::Util::hash_combine({ ::Util::hash_value(first), ::Util::hash_value(args)... });
 	}
+
+	template<typename T, size_t size>
+	inline constexpr auto& at(T(&array)[size], size_t i)
+	{
+		if (i >= size)
+			throw std::out_of_range("Attempted to access element beyond the end of a C-style array");
+
+		return array[i];
+	}
+	template<typename T>
+	inline constexpr auto at(T& container, size_t i) -> decltype(container.at(i))
+	{
+		return container.at(i);
+	}
 }
 
 #define STD_HASH_DEFINITION(type, ...) \

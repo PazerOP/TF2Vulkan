@@ -105,10 +105,16 @@ namespace TF2Vulkan{ namespace Shaders
 		{
 		}
 
-		void InitShaderParams(IMaterialVar** ppParams, const char* pMaterialName) override
+		void InitShaderParams(IMaterialVar** ppParams, const char* pMaterialName) override final
 		{
 			BaseClass::InitShaderParams(ppParams, pMaterialName);
 			TComponents::InitParamGroups(ppParams);
+		}
+
+		void InitShaderInstance(IMaterialVar** params, IShaderInit* init, const char* materialName, const char* texGroupName) override final
+		{
+			BaseClass::InitShaderInstance(params, init, materialName, texGroupName);
+			TComponents::LoadParamGroupResources(params, *init, materialName, texGroupName);
 		}
 
 		using InstanceRegister = DefaultInstanceRegister<T>;

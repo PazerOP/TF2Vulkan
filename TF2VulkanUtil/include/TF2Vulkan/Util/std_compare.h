@@ -25,23 +25,21 @@ namespace Util
 	{
 		template<typename T> constexpr auto strongest_equal_impl()
 		{
-			if constexpr (
-				std::is_same_v<T, std::weak_equality> ||
-				std::is_same_v<T, std::partial_ordering> ||
-				std::is_same_v<T, std::weak_ordering>)
-			{
-				return T::equivalent;
-			}
-			else if constexpr (
-				std::is_same_v<T, std::strong_ordering> ||
-				std::is_same_v<T, std::strong_equality>)
-			{
-				return T::equal;
-			}
+			// Can't use std::is_same_v because of an incorrect MSVC STL implementation
+			// that returns std::_Strong_ordering instead of std::strong_ordering (and
+			// similar for all other builtin types)
+			if constexpr (std::is_convertible_v<T, std::strong_ordering>)
+				return std::strong_ordering::equal;
+			else if constexpr (std::is_convertible_v<T, std::strong_equality>)
+				return std::strong_equality::equal;
+			else if constexpr (std::is_convertible_v<T, std::partial_ordering>)
+				return std::partial_ordering::equivalent;
+			else if constexpr (std::is_convertible_v<T, std::weak_ordering>)
+				return std::weak_ordering::equivalent;
+			else if constexpr (std::is_convertible_v<T, std::weak_equality>)
+				return std::weak_equality::equivalent;
 			else
-			{
 				static_assert(false, "Invalid type");
-			}
 		}
 
 		template<typename T> constexpr bool is_ordering_impl()

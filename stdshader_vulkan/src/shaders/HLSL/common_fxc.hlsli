@@ -27,15 +27,24 @@
 [[vk::constant_id(18)]] const bool DIFFUSELIGHTING = false;
 [[vk::constant_id(19)]] const bool SELFILLUM = false;
 
-static const int SPEC_CONST_ID_BASE = 20;
+[[vk::constant_id(20)]] const uint TEXTURE2D_COUNT = 1;
+[[vk::constant_id(21)]] const uint SAMPLER_COUNT = 1;
 
-static const int BINDING_CBUF_SHADERCOMMON = 0;
-static const int BINDING_CBUF_SHADERCUSTOM = 1;
-static const int BINDING_CBUF_VSMODELMATRICES = 2;
+static const uint SPEC_CONST_ID_BASE = 22;
+
+[[vk::binding(BINDING_TEX2D)]] Texture2D g_Textures2D[TEXTURE2D_COUNT];
+[[vk::binding(BINDING_SAMPLERS)]] SamplerState g_Samplers[SAMPLER_COUNT];
 
 static const float cOverbright = 2.0f;
 static const float cOOOverbright = 1.0f / cOverbright;
 static const float cOneThird = 1.0f / 3.0f;
+
+#define DEFINE_TEX2D(baseSpecConstIndex, nameCaps) \
+	[[vk::constant_id(SPEC_CONST_ID_BASE + baseSpecConstIndex + 0)]] const uint TEXINDEX_ ## nameCaps = 0; \
+	[[vk::constant_id(SPEC_CONST_ID_BASE + baseSpecConstIndex + 1)]] const uint SMPINDEX_ ## nameCaps = 0; \
+	static const bool TEXACTIVE_ ## nameCaps ## TEXTURE = (TEXINDEX_ ## nameCaps) > 0; \
+	static const Texture2D nameCaps ## TEXTURE = g_Textures2D[TEXINDEX_ ## nameCaps]; \
+	static const SamplerState nameCaps ## TEXTURE_SAMPLER = g_Samplers[SMPINDEX_ ## nameCaps];
 
 [[vk::binding(BINDING_CBUF_SHADERCOMMON)]] cbuffer ShaderCommonConstants
 {

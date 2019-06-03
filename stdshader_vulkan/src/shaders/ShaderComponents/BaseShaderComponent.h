@@ -184,12 +184,17 @@ namespace TF2Vulkan{ namespace Shaders
 
 	private:
 		template<typename T, typename TParams, ShaderFlags_t FLAGS> friend class ShaderNext;
-		void InitParamGroups(IMaterialVar** params)
+		void InitParamGroups(IMaterialVar** params) const
 		{
 			(TComponents::Params::InitParamGroup(params), ...);
 			(detail::LastDitchInitParams(params,
-				reinterpret_cast<ShaderParamNext*>(static_cast<typename TComponents::Params*>(this)),
+				reinterpret_cast<const ShaderParamNext*>(static_cast<const typename TComponents::Params*>(this)),
 				sizeof(typename TComponents::Params) / sizeof(ShaderParamNext)), ...);
+		}
+
+		void LoadParamGroupResources(IMaterialVar** params, IShaderInit& init, const char* materialName, const char* texGroupName) const
+		{
+			(TComponents::Params::LoadResources(params, init, materialName, texGroupName), ...);
 		}
 	};
 

@@ -296,6 +296,9 @@ void ShadowStateManager::EnableSRGBWrite(bool enable)
 
 void ShadowStateManager::EnableSRGBRead(Sampler_t sampler, bool enable)
 {
+	NOT_IMPLEMENTED_FUNC_NOBREAK();
+	return;
+#if false
 	LOG_FUNC();
 	ENSURE(sampler >= Sampler_t(0) && sampler < Sampler_t(std::size(m_State.m_PSSamplers)));
 	auto& s = m_State.m_PSSamplers[sampler];
@@ -304,6 +307,7 @@ void ShadowStateManager::EnableSRGBRead(Sampler_t sampler, bool enable)
 		s.m_SRGBRead = enable;
 		m_Dirty = true;
 	}
+#endif
 }
 
 void ShadowStateManager::EnableVertexBlend(bool enable)

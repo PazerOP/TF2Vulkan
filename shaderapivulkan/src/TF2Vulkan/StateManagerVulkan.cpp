@@ -77,6 +77,8 @@ namespace
 
 		const IShaderGroupInternal* m_VSShaderGroup;
 		const IShaderGroupInternal* m_PSShaderGroup;
+		uint32_t m_Texture2DCount = 0;
+		uint32_t m_SamplerCount = 0;
 	};
 }
 
@@ -221,7 +223,7 @@ namespace
 
 		const DescriptorSetLayout* m_Layout = nullptr;
 		std::array<UBRef, 8> m_UniformBuffers;
-		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures = {};
+		Util::InPlaceVector<ShaderAPITextureHandle_t, MAX_SHADER_TEXTURE_BINDINGS> m_BoundTextures = {};
 	};
 }
 
@@ -343,6 +345,8 @@ namespace
 
 	struct ShaderStageCreateInfo
 	{
+		ShaderStageCreateInfo(const IShaderInstanceInternal& shader, vk::ShaderStageFlagBits type);
+
 		const IVulkanShader* m_Shader = nullptr;
 
 		vk::SpecializationInfo m_SpecializationInfo;
@@ -452,75 +456,41 @@ const DescriptorSetLayout& StateManagerVulkan::FindOrCreateDescriptorSetLayout(c
 	return m_StatesToDescSetLayouts.try_emplace(key, key).first->second;
 }
 
-static ShaderStageCreateInfo CreateStageInfo(
-	const IShaderInstanceInternal& shader, vk::ShaderStageFlagBits type)
+ShaderStageCreateInfo::ShaderStageCreateInfo(
+	const IShaderInstanceInternal& shader, vk::ShaderStageFlagBits type) :
+	m_Shader(&shader.GetGroup().GetVulkanShader())
 {
-	ShaderStageCreateInfo retVal;
+	shader.GetSpecializationInfo(m_SpecializationInfo);
 
-	auto& ci = retVal.m_CreateInfo;
-
-	retVal.m_Shader = &shader.GetGroup().GetVulkanShader();
-
-	shader.GetSpecializationInfo(retVal.m_SpecializationInfo);
-
+	auto& ci = m_CreateInfo;
 	ci.stage = type;
-	ci.module = retVal.m_Shader->GetModule();
+	ci.module = m_Shader->GetModule();
 	ci.pName = "main"; // Shader entry point
-	ci.pSpecializationInfo = &retVal.m_SpecializationInfo;
-
-	return retVal;
+	ci.pSpecializationInfo = &m_SpecializationInfo;
 }
 
-static void CreateBindings(DescriptorSetLayout& layout, const IShaderGroupInternal& shader)
+void ShaderStageCreateInfo::FixupPointers()
 {
-	const auto& reflectionData = shader.GetVulkanShader().GetReflectionData();
-
-	auto& bindings = layout.m_Bindings;
-
-	const auto TryAddBinding = [&bindings](uint32_t binding, vk::DescriptorType type, vk::ShaderStageFlags stages)
-	{
-		bool found = false;
-
-		for (auto& existingBinding : bindings)
-		{
-			if (existingBinding.binding != binding ||
-				existingBinding.descriptorType != type)
-			{
-				continue;
-			}
-
-			existingBinding.stageFlags |= stages;
-			found = true;
-		}
-
-		if (!found)
-		{
-			auto& newBinding = bindings.emplace_back();
-			newBinding.binding = binding;
-			newBinding.descriptorCount = 1;
-			newBinding.descriptorType = type;
-			newBinding.stageFlags = stages;
-		}
-	};
-
-	// Samplers
-	for (const auto& samplerIn : reflectionData.m_Samplers)
-		TryAddBinding(samplerIn.m_Binding, vk::DescriptorType::eSampler, reflectionData.m_ShaderStage);
-
-	// Textures
-	for (const auto& textureIn : reflectionData.m_Textures)
-		TryAddBinding(textureIn.m_Binding, vk::DescriptorType::eSampledImage, reflectionData.m_ShaderStage);
-
-	// Constant buffers
-	for (const auto& cbufIn : reflectionData.m_UniformBuffers)
-		TryAddBinding(cbufIn.m_Binding, vk::DescriptorType::eUniformBufferDynamic, reflectionData.m_ShaderStage);
+	m_CreateInfo.pSpecializationInfo = &m_SpecializationInfo;
 }
 
 DescriptorSetLayout::DescriptorSetLayout(const DescriptorSetLayoutKey& key)
 {
+	const auto CreateBinding = [this](vk::DescriptorType type, uint32_t count, uint32_t binding)
+	{
+		auto& newEntry = m_Bindings.emplace_back();
+		newEntry.binding = binding;
+		newEntry.descriptorType = type;
+		newEntry.descriptorCount = count;
+		newEntry.stageFlags = vk::ShaderStageFlagBits::eAllGraphics;
+	};
+
 	// Bindings
-	CreateBindings(*this, *key.m_VSShaderGroup);
-	CreateBindings(*this, *key.m_PSShaderGroup);
+	if (key.m_Texture2DCount > 0)
+		CreateBinding(vk::DescriptorType::eSampledImage, key.m_Texture2DCount, TF2Vulkan::Shaders::BINDING_TEX2D);
+
+	if (key.m_SamplerCount > 0)
+		CreateBinding(vk::DescriptorType::eSampler, key.m_SamplerCount, TF2Vulkan::Shaders::BINDING_SAMPLERS);
 
 	// Descriptor set layout
 	{
@@ -528,7 +498,8 @@ DescriptorSetLayout::DescriptorSetLayout(const DescriptorSetLayoutKey& key)
 		AttachVector(ci.pBindings, ci.bindingCount, m_Bindings);
 
 		m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci);
-		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX", Util::hash_value(key));
+		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX (%u t2d, %u s)",
+			Util::hash_value(key), key.m_Texture2DCount, key.m_SamplerCount);
 	}
 }
 
@@ -734,8 +705,8 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 	// Shader stage create info(s)
 	{
 		auto& cis = m_ShaderStageCIs;
-		cis.emplace_back(CreateStageInfo(*key.m_VSShaderInstance, vk::ShaderStageFlagBits::eVertex));
-		cis.emplace_back(CreateStageInfo(*key.m_PSShaderInstance, vk::ShaderStageFlagBits::eFragment));
+		cis.emplace_back(*key.m_VSShaderInstance, vk::ShaderStageFlagBits::eVertex);
+		cis.emplace_back(*key.m_PSShaderInstance, vk::ShaderStageFlagBits::eFragment);
 	}
 
 	// Vertex input state create info
@@ -1420,12 +1391,6 @@ FramebufferKey::FramebufferKey(const RenderPass& rp) :
 	//	m_OMColorRTs[0] = TryFindTexture(0);
 }
 
-void ShaderStageCreateInfo::FixupPointers()
-{
-	auto& specInfo = m_SpecializationInfo;
-	m_CreateInfo.pSpecializationInfo = &specInfo;
-}
-
 void Pipeline::FixupPointers()
 {
 	for (auto& ci : m_ShaderStageCIs)
@@ -1476,6 +1441,8 @@ DescriptorSetKey::DescriptorSetKey(const DescriptorSetLayout& layout, const Logi
 DescriptorSetLayoutKey::DescriptorSetLayoutKey(const LogicalShadowState& staticState,
 	const LogicalDynamicState& dynamicState) :
 	m_VSShaderGroup(staticState.m_VSShader),
-	m_PSShaderGroup(staticState.m_PSShader)
+	m_PSShaderGroup(staticState.m_PSShader),
+	m_Texture2DCount(dynamicState.m_BoundTextures.size()),
+	m_SamplerCount(staticState.m_PSSamplers.size())
 {
 }

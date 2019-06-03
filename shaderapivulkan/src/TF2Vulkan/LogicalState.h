@@ -5,6 +5,7 @@
 #include <TF2Vulkan/VertexFormat.h>
 #include <TF2Vulkan/IBufferPool.h>
 #include "TF2Vulkan/FogParams.h"
+#include "TF2Vulkan/ShaderTextureBinder.h"
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
@@ -78,7 +79,7 @@ namespace TF2Vulkan
 		std::array<int, MAX_INT_RENDER_PARMS> m_RenderParamsInt;
 		std::array<float, MAX_FLOAT_RENDER_PARMS> m_RenderParamsFloat;
 
-		std::array<ShaderAPITextureHandle_t, 16> m_BoundTextures{};
+		Util::InPlaceVector<ShaderAPITextureHandle_t, MAX_SHADER_TEXTURE_BINDINGS> m_BoundTextures{};
 
 		uint_fast8_t m_BoneCount = 0;
 		Shaders::VSModelMatrices m_BoneMatrices;
@@ -110,7 +111,7 @@ namespace TF2Vulkan
 
 		// Pixel shader settings
 		const IShaderGroupInternal* m_PSShader = nullptr;
-		std::array<Sampler, 16> m_PSSamplers;
+		Util::InPlaceVector<Sampler, MAX_SHADER_TEXTURE_BINDINGS> m_PSSamplers;
 
 		// Depth settings
 		ShaderDepthFunc_t m_DepthCompareFunc = SHADER_DEPTHFUNC_NEARER;

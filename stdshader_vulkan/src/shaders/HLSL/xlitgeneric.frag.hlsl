@@ -144,7 +144,7 @@ float4 main(PS_INPUT i) : SV_TARGET
 
 	float4 baseTextureColor = (float4)1;
 	if (TEXACTIVE_BASETEXTURE)
-		baseTextureColor = BaseTexture.Sample(BaseTextureSampler, i.baseTexCoord.xy);
+		baseTextureColor = BASETEXTURE.Sample(BASETEXTURE_SAMPLER, i.baseTexCoord.xy);
 
 	if (NORMALMAPPING)
 		UpdateWorldNormalFromNormalMap(i.worldSpaceNormal, i.baseTexCoord.xy, i.worldSpaceTangent.xyz, i.worldSpaceBinormal);

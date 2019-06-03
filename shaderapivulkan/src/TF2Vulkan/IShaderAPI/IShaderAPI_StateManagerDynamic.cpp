@@ -163,6 +163,10 @@ void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITex
 	LOG_FUNC();
 	auto texDbgName = textureHandle ? GetTexture(textureHandle).GetDebugName() : "<NULL>";
 	TF2VULKAN_PIX_MARKER("BindTexture %.*s @ SHADER_SAMPLER%i", PRINTF_SV(texDbgName), sampler);
+
+	if (Util::SafeConvert<size_t>(sampler) >= m_State.m_BoundTextures.size())
+		m_State.m_BoundTextures.resize(sampler + 1);
+
 	Util::SetDirtyVar(m_State.m_BoundTextures, sampler, textureHandle, m_Dirty);
 }
 

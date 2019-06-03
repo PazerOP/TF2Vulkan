@@ -58,31 +58,50 @@ struct VS_TO_PS_INTERSTAGE_DATA
 #endif
 
 [[vk::constant_id(SPEC_CONST_ID_BASE + 1)]] const bool AMBIENT_LIGHT = false;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 2)]] const bool TEXACTIVE_BASETEXTURE = false;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const bool TEXACTIVE_BUMPMAP = false;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 4)]] const bool TEXACTIVE_LIGHTWARP = false;
 
-#if false // TODO: Array-based textures
-[[vk::constant_id(SPEC_CONST_ID_BASE + 5)]] const uint TEXTURE_COUNT = 1;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 6)]] const uint SAMPLER_COUNT = 1;
+#if 1 // TODO: Array-based textures
+//[[vk::constant_id(SPEC_CONST_ID_BASE + 7)]]  const uint TEXINDEX_BASETEXTURE = 0;
+//[[vk::constant_id(SPEC_CONST_ID_BASE + 8)]]  const uint SMPINDEX_BASETEXTURE = 0;
 
-[[vk::constant_id(SPEC_CONST_ID_BASE + 7)]] const uint TEXINDEX_BASE = 0;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 8)]] const uint SMPINDEX_BASE = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 9)]]  const uint TEXINDEX_BUMPMAP = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 10)]] const uint SMPINDEX_BUMPMAP = 0;
 
-[[vk::binding(100)]] Texture2D g_Textures[TEXTURE_COUNT];
-[[vk::binding(100)]] SamplerState g_Samplers[SAMPLER_COUNT];
+[[vk::constant_id(SPEC_CONST_ID_BASE + 11)]] const uint TEXINDEX_MORPH = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 12)]] const uint SMPINDEX_MORPH = 0;
+
+[[vk::constant_id(SPEC_CONST_ID_BASE + 13)]] const uint TEXINDEX_LIGHTWARP = 0;
+[[vk::constant_id(SPEC_CONST_ID_BASE + 14)]] const uint SMPINDEX_LIGHTWARP = 0;
+
+//#define BaseTexture g_Textures2D[TEXINDEX_BASETEXTURE]
+//#define BaseTextureSampler g_Samplers[SMPINDEX_BASETEXTURE]
+DEFINE_TEX2D(2, BASE);
+
+#define BumpMapTexture g_Textures2D[TEXINDEX_BUMPMAP]
+#define BumpMapTextureSampler g_Samplers[SMPINDEX_BUMPMAP]
+
+#define morphTexture g_Textures2D[TEXINDEX_MORPH]
+#define morphSampler g_Samplers[SMPINDEX_MORPH]
+
+#define LightWarpTexture g_Textures2D[TEXINDEX_LIGHTWARP]
+#define LightWarpTextureSampler g_Samplers[SMPINDEX_LIGHTWARP]
+
+//#define TEXACTIVE_BASETEXTURE (TEXINDEX_BASETEXTURE > 0)
+#define TEXACTIVE_BUMPMAP (TEXINDEX_BUMPMAP > 0)
+#define TEXACTIVE_MORPH (TEXINDEX_MORPH > 0)
+#define TEXACTIVE_LIGHTWARP (TEXINDEX_LIGHTWARP > 0)
+
+#else
+// Texture2D BaseTexture : register(t0);
+// SamplerState BaseTextureSampler : register(s0);
+
+// Texture2D BumpMapTexture : register(t1);
+// SamplerState BumpMapTextureSampler : register(s1);
+
+// Texture2D morphTexture : register(t2);
+// SamplerState morphSampler : register(s2);
+
+// Texture2D LightWarpTexture : register(t3);
+// SamplerState LightWarpTextureSampler : register(s3);
 #endif
-
-Texture2D BaseTexture : register(t0);
-SamplerState BaseTextureSampler : register(s0);
-
-Texture2D BumpMapTexture : register(t1);
-SamplerState BumpMapTextureSampler : register(s1);
-
-Texture2D morphTexture : register(t2);
-SamplerState morphSampler : register(s2);
-
-Texture2D LightWarpTexture : register(t3);
-SamplerState LightWarpTextureSampler : register(s3);
 
 #endif // XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD
