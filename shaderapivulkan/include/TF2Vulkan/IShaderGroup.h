@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ISpecConstLayout.h"
+#include "stdshader_vulkan/ShaderDataShared.h"
 
 namespace TF2Vulkan
 {
@@ -13,17 +14,14 @@ namespace TF2Vulkan
 	enum class UniformBufferIndex : uint_fast8_t
 	{
 		Invalid = uint_fast8_t(-1),
+
+		ShaderCommon = TF2Vulkan::Shaders::BINDING_CBUF_SHADERCOMMON.x,
+		ShaderCustom = TF2Vulkan::Shaders::BINDING_CBUF_SHADERCUSTOM.x,
+		VSModelMatrices = TF2Vulkan::Shaders::BINDING_CBUF_VSMODELMATRICES.x,
 	};
 	enum class TextureIndex : uint_fast16_t
 	{
 		Invalid = uint_fast16_t(-1),
-	};
-
-	enum class UniformBufferStandardType : uint_fast8_t
-	{
-		VSModelMatrices,
-		ShaderCommon,
-		ShaderCustom,
 	};
 
 	class IShaderInstance;
@@ -35,7 +33,6 @@ namespace TF2Vulkan
 		virtual ShaderType GetShaderType() const = 0;
 
 		virtual UniformBufferIndex FindUniformBuffer(const std::string_view& name) const = 0;
-		UniformBufferIndex FindUniformBuffer(UniformBufferStandardType type) const;
 
 		virtual IShaderInstance& FindOrCreateInstance(const void* specConstBuf, size_t specConstBufSize) = 0;
 		const IShaderInstance& FindOrCreateInstance() { return FindOrCreateInstance(nullptr, 0); }
@@ -44,17 +41,4 @@ namespace TF2Vulkan
 			return FindOrCreateInstance(&specConstBuf, sizeof(specConstBuf));
 		}
 	};
-
-	inline UniformBufferIndex IShaderGroup::FindUniformBuffer(UniformBufferStandardType type) const
-	{
-		switch (type)
-		{
-		case UniformBufferStandardType::VSModelMatrices: return FindUniformBuffer("VertexShaderModelMatrices");
-		case UniformBufferStandardType::ShaderCommon:    return FindUniformBuffer("ShaderCommonConstants");
-		case UniformBufferStandardType::ShaderCustom:    return FindUniformBuffer("ShaderCustomConstants");
-		}
-
-		assert(!"Unknown UniformBufferStandardType");
-		return UniformBufferIndex::Invalid;
-	}
 }

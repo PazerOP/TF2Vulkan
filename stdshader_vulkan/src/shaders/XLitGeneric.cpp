@@ -152,6 +152,11 @@ inline namespace XLitGeneric
 		BaseTextureComponent,
 		XLitGenericComponent>;
 
+	CHECK_OFFSET(XLitGenericComponents::UniformBuf, m_BumpTransform, 0);
+	CHECK_OFFSET(XLitGenericComponents::UniformBuf, m_DetailTint, 32);
+	CHECK_OFFSET(XLitGenericComponents::UniformBuf, m_BaseTextureTransform, 96);
+	CHECK_OFFSET(XLitGenericComponents::UniformBuf, m_VertexAlpha, 128);
+
 	enum class DerivedShaderType
 	{
 		VertexLitGeneric,
@@ -200,9 +205,6 @@ inline namespace XLitGeneric
 		IShaderGroup* m_VSShader = nullptr;
 
 		IBufferPool* m_UniformBufPool = nullptr;
-		UniformBufferIndex m_UBufCommonIndex = UniformBufferIndex::Invalid;
-		UniformBufferIndex m_UBufModelMatricesIndex = UniformBufferIndex::Invalid;
-		UniformBufferIndex m_UniformBufferIndex = UniformBufferIndex::Invalid;
 
 		DerivedShaderType m_DerivedType;
 	};
@@ -286,9 +288,6 @@ void Shader::OnInitShader(IShaderNextFactory& instanceMgr)
 	m_PSShader = &instanceMgr.FindOrCreateShaderGroup(ShaderType::Pixel, "xlitgeneric_ps", s_SpecConstLayout);
 
 	m_UniformBufPool = &instanceMgr.GetUniformBufferPool();
-	m_UBufCommonIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::ShaderCommon);
-	m_UBufModelMatricesIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::VSModelMatrices);
-	m_UniformBufferIndex = m_VSShader->FindUniformBuffer(UniformBufferStandardType::ShaderCustom);
 }
 
 void Shader::OnInitShaderParams(IMaterialVar** params, const char* materialName)
@@ -530,9 +529,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 			drawParams.m_SpecConsts.SAMPLER_COUNT);
 
 		// Update data and bind uniform buffers
-		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_Uniforms), m_UniformBufferIndex);
-		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_UniformsCommon), m_UBufCommonIndex);
-		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_ModelMatrices), m_UBufModelMatricesIndex);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_Uniforms), UniformBufferIndex::ShaderCustom);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_UniformsCommon), UniformBufferIndex::ShaderCommon);
+		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_ModelMatrices), UniformBufferIndex::VSModelMatrices);
 
 		// Set
 		params.dynamic->SetVertexShader(m_VSShader->FindOrCreateInstance(drawParams.m_SpecConsts));

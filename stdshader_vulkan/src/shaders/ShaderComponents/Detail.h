@@ -31,6 +31,11 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 			float1 m_DetailBlendFactor;
 		};
 
+		CHECK_OFFSET(UniformBuf, m_DetailTint, 0);
+		CHECK_OFFSET(UniformBuf, m_DetailScale, 12);
+		CHECK_OFFSET(UniformBuf, m_DetailTextureTransform, 16);
+		CHECK_OFFSET(UniformBuf, m_DetailBlendFactor, 48);
+
 		struct Params
 		{
 			NSHADER_PARAM(DETAIL, SHADER_PARAM_TYPE_TEXTURE, "shadertest/detail", "detail texture");

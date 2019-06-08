@@ -393,6 +393,7 @@ static vk::UniqueDevice CreateDevice(vk::PhysicalDevice& adapter, QueueFamilies&
 
 	vk::PhysicalDeviceFeatures features;
 	features.samplerAnisotropy = true;
+	features.fillModeNonSolid = true;
 	createInfo.pEnabledFeatures = &features;
 
 	return adapter.createDeviceUnique(createInfo, s_AllocationCallbacks);

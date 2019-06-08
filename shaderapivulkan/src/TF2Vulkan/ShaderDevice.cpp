@@ -125,7 +125,7 @@ namespace
 		vma::UniqueAllocator& GetVulkanAllocator() override;
 
 		IVulkanQueue& GetGraphicsQueue() override;
-		Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() override;
+		Util::CheckedPtr<IVulkanQueue> GetTransferQueue() override;
 
 		const vk::Buffer& GetDummyUniformBuffer() const override { return m_Data.m_DummyUniformBuffer.GetBuffer(); }
 		const vk::Buffer& GetDummyVertexBuffer() const override { return m_Data.m_DummyVertexBuffer.GetBuffer(); }
@@ -596,7 +596,7 @@ IVulkanQueue& ShaderDevice::GetGraphicsQueue()
 	return m_Data.m_GraphicsQueue;
 }
 
-Util::CheckedPtr<const IVulkanQueue> ShaderDevice::GetTransferQueue()
+Util::CheckedPtr<IVulkanQueue> ShaderDevice::GetTransferQueue()
 {
 	assert(m_Data.m_Device);
 	auto& queue = m_Data.m_TransferQueue;

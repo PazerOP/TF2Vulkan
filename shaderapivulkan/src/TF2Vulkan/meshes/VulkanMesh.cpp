@@ -137,7 +137,17 @@ void VulkanGPUBuffer::CommitModifications(const VulkanGPUBuffer::ModifyData& mod
 		.setSrcOffset(entry.GetOffset())
 		.setDstOffset(modification.m_DataOffset);
 
-	cmdBuf.copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
+	if (auto transfer = g_ShaderDevice.GetTransferQueue())
+	{
+		auto transferCmdBuf = transfer->CreateCmdBufferAndBegin();
+		transferCmdBuf->copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
+		transferCmdBuf->Submit();
+	}
+	else
+	{
+		cmdBuf.TryEndRenderPass();
+		cmdBuf.copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
+	}
 }
 
 VulkanMesh::VulkanMesh(const VertexFormat& fmt, bool isDynamic) :

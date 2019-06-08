@@ -155,6 +155,6 @@ float4 main(PS_INPUT i) : SV_TARGET
 	}
 
 	const float3 finalColor = LinearToGamma(diffuseColor.rgb) * baseTextureColor.rgb;
-	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, g_fVertexAlpha);
+	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, cCustom.xlit.vertexAlpha);
 	return float4(finalColor, finalAlpha);
 }

@@ -11,7 +11,7 @@ struct DetailUniforms
 	float3 tint;
 	float1 scale;
 	float4 texCoordTransform[2];
-	float1 m_DetailBlendFactor;
+	float1 blendFactor;
 };
 
 struct BaseUniforms

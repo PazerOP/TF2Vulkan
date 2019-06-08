@@ -71,6 +71,7 @@ VS_OUTPUT main(const VS_INPUT v)
 	}
 	else
 	{
+#if 0 // TODO
 		if (NORMALMAPPING)
 		{
 			ApplyMorph(TEXINDEX_MORPH, SMPINDEX_MORPH, cMorphTargetTextureDim, cMorphSubrect,
@@ -81,6 +82,7 @@ VS_OUTPUT main(const VS_INPUT v)
 			ApplyMorph(TEXINDEX_MORPH, SMPINDEX_MORPH, cMorphTargetTextureDim, cMorphSubrect,
 				v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal);
 		}
+#endif
 	}
 
 	// Perform skinning
@@ -139,27 +141,29 @@ VS_OUTPUT main(const VS_INPUT v)
 		o.color = float4(DoLighting(o.worldSpacePos, o.worldSpaceNormal, v.vSpecular, STATIC_LIGHT_VERTEX, DYNAMIC_LIGHT, HALFLAMBERT), 1);
 	}
 
-	if (SEAMLESS_BASE)
-		o.baseTexCoord.xyz = SEAMLESS_SCALE * v.vPos.xyz;
-	else
+	// TODO
+	//if (SEAMLESS_BASE)
+	//	o.baseTexCoord.xyz = SEAMLESS_SCALE * v.vPos.xyz;
+	//else
 	{
 		// Base texture coordinates
-		o.baseTexCoord.x = dot(v.vTexCoord0, cBaseTexCoordTransform[0]);
-		o.baseTexCoord.y = dot(v.vTexCoord0, cBaseTexCoordTransform[1]);
+		o.baseTexCoord.x = dot(v.vTexCoord0, cCustom.base.texCoordTransform[0]);
+		o.baseTexCoord.y = dot(v.vTexCoord0, cCustom.base.texCoordTransform[1]);
 	}
 
-	if (SEAMLESS_DETAIL)
-	{
+	// TODO
+	//if (SEAMLESS_DETAIL)
+	//{
 		// FIXME: detail texcoord as a 2d xform doesn't make much sense here, so I just do enough so
 		// that scale works. More smartness could allow 3d xform.
-		o.detailTexCoord.xyz = (SEAMLESS_SCALE * cDetailTexCoordTransform[0].x) * v.vPos.xyz;
-	}
-	else
+	//	o.detailTexCoord.xyz = (SEAMLESS_SCALE * cCustom.base.texCoordTransform[0].x) * v.vPos.xyz;
+	//}
+	//else
 	{
 		// Detail texture coordinates
 		// FIXME: This shouldn't have to be computed all the time.
-		o.detailTexCoord.x = dot(v.vTexCoord0, cDetailTexCoordTransform[0]);
-		o.detailTexCoord.y = dot(v.vTexCoord0, cDetailTexCoordTransform[1]);
+		o.detailTexCoord.x = dot(v.vTexCoord0, cCustom.base.texCoordTransform[0]);
+		o.detailTexCoord.y = dot(v.vTexCoord0, cCustom.base.texCoordTransform[1]);
 	}
 
 	// Light attenuation

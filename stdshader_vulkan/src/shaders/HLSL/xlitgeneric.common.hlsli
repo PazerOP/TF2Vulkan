@@ -3,26 +3,6 @@
 
 #include "ShaderComponentData.hlsli"
 
-[[vk::binding(BINDING_CBUF_SHADERCUSTOM)]] cbuffer ShaderCustomConstants
-{
-	float4 cBaseTexCoordTransform[2];
-	float4 cDetailTexCoordTransform[2];
-	float4 cBumpTexCoordTransform[2];
-
-	float g_CloakFactor;
-	float g_RefractAmount;
-	float4 g_RefractColorTint;
-
-	float4x2 g_ViewProjR01;
-
-	float4 cMorphSubrect;
-	float3 cMorphTargetTextureDim;
-	float cSeamlessScale;
-	float4x4 g_FlashlightWorldToTexture;
-
-	float g_fVertexAlpha;
-};
-
 struct XLitGenericUniforms
 {
 	BumpmapUniforms bump;

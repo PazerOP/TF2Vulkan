@@ -18,12 +18,13 @@ namespace TF2Vulkan{ namespace Shaders
 	template<typename... TComponents>
 	class ShaderComponents : public TComponents::Params...
 	{
-	protected:
+	public:
 		struct UniformBuf final : TComponents::UniformBuf...
 		{
 
 		};
 
+	protected:
 		struct SpecConstBuf final : BaseSpecConstBuf, TComponents::SpecConstBuf...
 		{
 

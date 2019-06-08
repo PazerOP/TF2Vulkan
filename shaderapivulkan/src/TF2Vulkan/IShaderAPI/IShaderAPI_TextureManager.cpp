@@ -158,6 +158,7 @@ ShaderAPITextureHandle_t IShaderAPI_TextureManager::CreateTexture(int width, int
 	if (flags & TEXTURE_CREATE_SYSMEM)
 	{
 		factory.SetAllowMapping();
+		createInfo.usage |= vk::ImageUsageFlagBits::eSampled;
 	}
 	else
 	{

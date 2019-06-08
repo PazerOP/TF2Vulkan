@@ -41,9 +41,8 @@ namespace TF2Vulkan
 		virtual vma::UniqueAllocator & GetVulkanAllocator() = 0;
 		virtual const vk::DispatchLoaderDynamic & GetDynamicDispatch() const = 0;
 
-		virtual IVulkanQueue & GetGraphicsQueue() = 0;
-
-		virtual Util::CheckedPtr<const IVulkanQueue> GetTransferQueue() = 0;
+		virtual IVulkanQueue& GetGraphicsQueue() = 0;
+		virtual Util::CheckedPtr<IVulkanQueue> GetTransferQueue() = 0;
 
 		virtual const vk::Buffer& GetDummyUniformBuffer() const = 0;
 		virtual const vk::Buffer& GetDummyVertexBuffer() const = 0;
