@@ -1,5 +1,8 @@
 #pragma once
 
+#undef min
+#undef max
+
 #include <algorithm>
 
 namespace Util{ namespace algorithm
@@ -82,5 +85,18 @@ namespace Util{ namespace algorithm
 	inline void copy(const T& src, T2& dest)
 	{
 		std::copy(std::begin(src), std::end(src), dest);
+	}
+
+	template<typename T1, typename T2>
+	inline constexpr auto max(const T1& t1, const T2& t2)
+	{
+		using CT = std::common_type_t<T1, T2>;
+		return std::max<CT>(CT(t1), CT(t2));
+	}
+	template<typename T1, typename T2>
+	inline constexpr auto min(const T1& t1, const T2& t2)
+	{
+		using CT = std::common_type_t<T1, T2>;
+		return std::min<CT>(CT(t1), CT(t2));
 	}
 } }

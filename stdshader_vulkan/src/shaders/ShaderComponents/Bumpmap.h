@@ -11,15 +11,21 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 	{
 		struct SpecConstBuf
 		{
-			uint1 TEXINDEX_BUMPMAP;
-			uint1 TEXINDEX_BUMPCOMPRESS;
-			uint1 TEXINDEX_BUMPSTRETCH;
+			int1 TEXINDEX_BUMPMAP = TEX_DEFAULT_COLOR_FLATNORMAL;
+			uint1 SMPINDEX_BUMPMAP;
+			int1 TEXINDEX_BUMPCOMPRESS = TEX_DEFAULT_COLOR_BLACK;
+			uint1 SMPINDEX_BUMPCOMPRESS;
+			int1 TEXINDEX_BUMPSTRETCH = TEX_DEFAULT_COLOR_BLACK;
+			uint1 SMPINDEX_BUMPSTRETCH;
 		};
 		template<typename T> struct SpecConstLayout
 		{
 			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_BUMPMAP);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_BUMPMAP);
 			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_BUMPCOMPRESS);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_BUMPCOMPRESS);
 			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_BUMPSTRETCH);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_BUMPSTRETCH);
 		};
 
 		struct UniformBuf
@@ -54,13 +60,13 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 			{
 				if (params[BUMPMAP]->IsTexture())
 				{
-					tb.AddBinding(params[BUMPMAP]->GetTextureValue(), specConstBuf->TEXINDEX_BUMPMAP);
+					tb.AddBinding(*params[BUMPMAP]->GetTextureValue(), specConstBuf->TEXINDEX_BUMPMAP, specConstBuf->SMPINDEX_BUMPMAP);
 					uniformBuf->m_BumpTransform = TextureTransform(params[BUMPTRANSFORM]->GetMatrixValue());
 
 					if (params[BUMPCOMPRESS]->IsTexture() && params[BUMPSTRETCH]->IsTexture())
 					{
-						tb.AddBinding(params[BUMPCOMPRESS]->GetTextureValue(), specConstBuf->TEXINDEX_BUMPCOMPRESS);
-						tb.AddBinding(params[BUMPSTRETCH]->GetTextureValue(), specConstBuf->TEXINDEX_BUMPSTRETCH);
+						tb.AddBinding(*params[BUMPCOMPRESS]->GetTextureValue(), specConstBuf->TEXINDEX_BUMPCOMPRESS, specConstBuf->SMPINDEX_BUMPCOMPRESS);
+						tb.AddBinding(*params[BUMPSTRETCH]->GetTextureValue(), specConstBuf->TEXINDEX_BUMPSTRETCH, specConstBuf->SMPINDEX_BUMPCOMPRESS);
 					}
 				}
 			}

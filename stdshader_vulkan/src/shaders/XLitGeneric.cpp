@@ -40,11 +40,13 @@ inline namespace XLitGeneric
 	{
 		struct SpecConstBuf
 		{
-			uint1 TEXINDEX_BASETEXTURE;
+			int1 TEXINDEX_BASETEXTURE = TEX_DEFAULT_COLOR_WHITE;
+			uint1 SMPINDEX_BASETEXTURE = 0;
 		};
 		template<typename T> struct SpecConstLayout
 		{
 			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_BASETEXTURE);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_BASETEXTURE);
 		};
 		struct UniformBuf
 		{
@@ -59,7 +61,7 @@ inline namespace XLitGeneric
 			{
 				if (params[BASETEXTURE]->IsTexture())
 				{
-					tb.AddBinding(params[BASETEXTURE]->GetTextureValue(), specConstBuf->TEXINDEX_BASETEXTURE);
+					tb.AddBinding(*params[BASETEXTURE]->GetTextureValue(), specConstBuf->TEXINDEX_BASETEXTURE, specConstBuf->SMPINDEX_BASETEXTURE);
 					uniformBuf->m_BaseTextureTransform = TextureTransform(params[BASETEXTURETRANSFORM]->GetMatrixValue());
 				}
 			}
@@ -75,9 +77,6 @@ inline namespace XLitGeneric
 	{
 		struct SpecConstBuf
 		{
-			uint1 TEXTURE_COUNT;
-			uint1 SAMPLER_COUNT;
-
 			bool32 VERTEXCOLOR;
 			bool32 SKINNING;
 			bool32 COMPRESSED_VERTS;
@@ -90,9 +89,6 @@ inline namespace XLitGeneric
 		template<typename T>
 		struct SpecConstLayout
 		{
-			SPEC_CONST_BUF_ENTRY(T, TEXTURE_COUNT);
-			SPEC_CONST_BUF_ENTRY(T, SAMPLER_COUNT);
-
 			SPEC_CONST_BUF_ENTRY(T, VERTEXCOLOR);
 			SPEC_CONST_BUF_ENTRY(T, SKINNING);
 			SPEC_CONST_BUF_ENTRY(T, COMPRESSED_VERTS);
@@ -105,16 +101,6 @@ inline namespace XLitGeneric
 
 		struct UniformBuf
 		{
-			float1 m_CloakFactor;
-			float1 m_RefractAmount;
-			float4 m_RefractColorTint;
-			float4x2 m_ViewProjR01;
-
-			float4 m_MorphSubrect;
-			float3 m_MorphTargetTextureDim;
-			float m_SeamlessScale;
-			float4x4 m_FlashlightWorldToTexture;
-
 			float m_VertexAlpha;
 		};
 
@@ -539,15 +525,9 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 		//	dynamic->BindStandardTexture(SAMPLER_REFRACT, TEXTURE_FRAME_BUFFER_FULL_TEXTURE_0);
 
 		// Bind textures
-		{
-			uint32_t& texCount = drawParams.m_SpecConsts.TEXTURE_COUNT;
-			texCount = 1;
-			for (auto& tex : drawParams.m_TextureBinder)
-			{
-				BindTexture(Sampler_t(SHADER_SAMPLER0 + texCount), tex.m_Texture);
-				texCount++;
-			}
-		}
+		BindResources(drawParams.m_TextureBinder,
+			drawParams.m_SpecConsts.TEXTURE2D_COUNT,
+			drawParams.m_SpecConsts.SAMPLER_COUNT);
 
 		// Update data and bind uniform buffers
 		params.dynamic->BindUniformBuffer(m_UniformBufPool->Create(drawParams.m_Uniforms), m_UniformBufferIndex);

@@ -30,7 +30,7 @@
 [[vk::constant_id(20)]] const uint TEXTURE2D_COUNT = 1;
 [[vk::constant_id(21)]] const uint SAMPLER_COUNT = 1;
 
-static const uint SPEC_CONST_ID_BASE = 22;
+static const int SPEC_CONST_ID_BASE = 22;
 
 [[vk::binding(BINDING_TEX2D)]] Texture2D g_Textures2D[TEXTURE2D_COUNT];
 [[vk::binding(BINDING_SAMPLERS)]] SamplerState g_Samplers[SAMPLER_COUNT];
@@ -39,12 +39,45 @@ static const float cOverbright = 2.0f;
 static const float cOOOverbright = 1.0f / cOverbright;
 static const float cOneThird = 1.0f / 3.0f;
 
-#define DEFINE_TEX2D(baseSpecConstIndex, nameCaps) \
-	[[vk::constant_id(SPEC_CONST_ID_BASE + baseSpecConstIndex + 0)]] const uint TEXINDEX_ ## nameCaps = 0; \
-	[[vk::constant_id(SPEC_CONST_ID_BASE + baseSpecConstIndex + 1)]] const uint SMPINDEX_ ## nameCaps = 0; \
-	static const bool TEXACTIVE_ ## nameCaps ## TEXTURE = (TEXINDEX_ ## nameCaps) > 0; \
-	static const Texture2D nameCaps ## TEXTURE = g_Textures2D[TEXINDEX_ ## nameCaps]; \
-	static const SamplerState nameCaps ## TEXTURE_SAMPLER = g_Samplers[SMPINDEX_ ## nameCaps];
+#define DEFINE_TEX2D(baseSpecConstIndex, nameCaps, defaultColorIndex) \
+	[[vk::constant_id(SPEC_CONST_ID_BASE + baseSpecConstIndex + 0)]] const int TEXINDEX_ ## nameCaps = defaultColorIndex; \
+	[[vk::constant_id(SPEC_CONST_ID_BASE + baseSpecConstIndex + 1)]] const int SMPINDEX_ ## nameCaps = -1;
+
+static bool IsTextureActive(int index) { return index >= 0; }
+
+float4 GetTexDefaultColor(int invalidTexIndex)
+{
+	return TEX_DEFAULT_COLORS[-(invalidTexIndex + 1)];
+}
+
+float4 SampleTex2D(int texIndex, int smpIndex, float2 texCoord)
+{
+	if (texIndex >= 0)
+	{
+		if (smpIndex < 0)
+			return float4(1, 0, 0, 1);
+
+		return g_Textures2D[texIndex].Sample(g_Samplers[smpIndex], texCoord);
+	}
+	else
+		return GetTexDefaultColor(texIndex);
+}
+
+float4 SampleTex2DLevel(int texIndex, int smpIndex, float2 texCoord, int level)
+{
+	if (texIndex >= 0)
+	{
+		if (smpIndex < 0)
+			return float4(1, 0, 0, 1);
+
+		return g_Textures2D[texIndex].SampleLevel(g_Samplers[smpIndex], texCoord, level);
+	}
+	else
+		return GetTexDefaultColor(texIndex);
+}
+
+#define SAMPLE_TEX2D(nameCaps, texCoord) SampleTex2D(TEXINDEX_ ## nameCaps, SMPINDEX_ ## nameCaps, texCoord)
+#define SAMPLE_TEX2D_LEVEL(nameCaps, texCoord) SampleTex2DLevel(TEXINDEX_ ## nameCaps, SMPINDEX_ ## nameCaps, texCoord)
 
 [[vk::binding(BINDING_CBUF_SHADERCOMMON)]] cbuffer ShaderCommonConstants
 {

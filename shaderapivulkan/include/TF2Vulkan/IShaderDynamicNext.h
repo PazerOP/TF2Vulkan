@@ -12,6 +12,8 @@
 
 namespace TF2Vulkan
 {
+	union SamplerSettings;
+
 	namespace Shaders
 	{
 		struct VSModelMatrices;
@@ -41,6 +43,9 @@ namespace TF2Vulkan
 		virtual int GetCurrentNumBones() const = 0;
 		virtual void LoadBoneMatrices(Shaders::VSModelMatrices& bones) const = 0;
 
+		virtual void BindSamplers(const SamplerSettings* begin, const SamplerSettings* end, bool merge, uint32_t first) = 0;
+		virtual void BindTextures(const ITexture* const* begin, const ITexture* const* end, bool merge, uint32_t first) = 0;
+
 		// Helpers
 		void SetPixelShader(const IShaderInstance* instance) { SetShaderInstance(ShaderType::Pixel, instance); }
 		void SetPixelShader(const IShaderInstance& instance) { SetShaderInstance(ShaderType::Pixel, &instance); }
@@ -57,6 +62,15 @@ namespace TF2Vulkan
 		{
 			static_assert(size == MAX_VS_LIGHTS);
 			return GetLights(lights, size);
+		}
+
+		void BindSamplers(const SamplerSettings* begin, const SamplerSettings* end)
+		{
+			return BindSamplers(begin, end, false, 0);
+		}
+		void BindTextures(const ITexture* const* begin, const ITexture* const* end)
+		{
+			return BindTextures(begin, end, false, 0);
 		}
 
 	protected:

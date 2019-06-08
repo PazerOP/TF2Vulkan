@@ -40,9 +40,11 @@ void TF2Vulkan::Shaders::detail::LastDitchInitParams(IMaterialVar** params, cons
 		}
 
 		case SHADER_PARAM_TYPE_STRING:
-		case SHADER_PARAM_TYPE_TEXTURE:
 			params[p]->SetStringValue(p.GetDefault());
 			break;
+
+		case SHADER_PARAM_TYPE_TEXTURE:
+			break; // Do nothing for textures (we don't want textures set if they're not begin used
 		}
 	}
 }

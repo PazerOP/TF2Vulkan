@@ -10,13 +10,15 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 	{
 		struct SpecConstBuf
 		{
-			uint1 TEXINDEX_DETAIL;
+			int1 TEXINDEX_DETAIL = TEX_DEFAULT_COLOR_BLACK;
+			uint1 SMPINDEX_DETAIL;
 			uint1 DETAILBLENDMODE;
 			bool32 SEPARATEDETAILUVS;
 		};
 		template<typename T> struct SpecConstLayout
 		{
 			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_DETAIL);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_DETAIL);
 			SPEC_CONST_BUF_ENTRY(T, DETAILBLENDMODE);
 			SPEC_CONST_BUF_ENTRY(T, SEPARATEDETAILUVS);
 		};
@@ -56,7 +58,7 @@ namespace TF2Vulkan{ namespace Shaders{ namespace Components
 			{
 				if (params[DETAIL]->IsTexture())
 				{
-					tb.AddBinding(params[DETAIL]->GetTextureValue(), specConstBuf->TEXINDEX_DETAIL);
+					tb.AddBinding(*params[DETAIL]->GetTextureValue(), specConstBuf->TEXINDEX_DETAIL, specConstBuf->SMPINDEX_DETAIL);
 
 					uniformBuf->m_DetailScale = params[DETAILSCALE]->GetFloatValue();
 					specConstBuf->DETAILBLENDMODE = params[DETAILBLENDMODE]->GetIntValue();

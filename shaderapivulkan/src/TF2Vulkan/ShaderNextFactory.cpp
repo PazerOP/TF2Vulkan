@@ -22,23 +22,28 @@ namespace
 {
 	struct SpecConstLayout final : ISpecConstLayout
 	{
-		SpecConstLayout(const SpecConstLayoutEntry* entries, size_t entryCount);
+		SpecConstLayout(const SpecConstLayoutCreateInfo& ci);
+
+#ifndef __INTELLISENSE__
+		std::strong_ordering operator<=>(const SpecConstLayout& other) const noexcept
+		{
+			if (auto result = m_CreateInfo <=> other.m_CreateInfo; std::is_neq(result))
+				return result;
+			if (auto result = m_BufferSize <=> other.m_BufferSize; std::is_neq(result))
+				return result;
+
+			return std::strong_ordering::equal;
+		}
+#endif
 
 		size_t GetBufferSize() const override { return m_BufferSize; }
-		const SpecConstLayoutEntry* GetEntries(size_t& count) const override
-		{
-			count = m_EntryCount;
-			return m_Entries;
-		}
+		const SpecConstLayoutCreateInfo& GetCreateInfo() const override { return m_CreateInfo; }
 
-		bool operator==(const SpecConstLayout& other) const;
-
-		auto begin() const { return m_Entries; }
-		auto end() const { return m_Entries + m_EntryCount; }
+		auto begin() const { return m_CreateInfo.begin(); }
+		auto end() const { return m_CreateInfo.end(); }
 
 	private:
-		const SpecConstLayoutEntry* m_Entries;
-		size_t m_EntryCount;
+		const SpecConstLayoutCreateInfo m_CreateInfo;
 		size_t m_BufferSize;
 	};
 
@@ -156,7 +161,7 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderNextFactory, IShaderNextFactory, SHADERN
 
 ShaderNextFactory::ShaderNextFactory()
 {
-	m_EmptySCLayout = &*m_SpecConstLayouts.emplace(SpecConstLayout(nullptr, 0)).first;
+	m_EmptySCLayout = &*m_SpecConstLayouts.emplace(SpecConstLayoutCreateInfo{}).first;
 }
 
 void ShaderNextFactory::AutoInit()
@@ -164,17 +169,16 @@ void ShaderNextFactory::AutoInit()
 	m_UniformBufferPool.emplace(1024 * 1024 * 8, vk::BufferUsageFlagBits::eUniformBuffer);
 }
 
-SpecConstLayout::SpecConstLayout(const SpecConstLayoutEntry* entries, size_t entryCount) :
-	m_Entries(entries),
-	m_EntryCount(entryCount)
+SpecConstLayout::SpecConstLayout(const SpecConstLayoutCreateInfo& ci) :
+	m_CreateInfo(ci)
 {
-	assert(!!m_Entries == !!m_EntryCount);
+	assert(!!m_CreateInfo.m_Entries == !!m_CreateInfo.m_EntryCount);
 
 	// Make sure there's no padding and they're in order
 	size_t nextOffset = 0;
-	for (size_t i = 0; i < entryCount; i++)
+	for (size_t i = 0; i < m_CreateInfo.m_EntryCount; i++)
 	{
-		assert(entries[i].m_Offset == nextOffset);
+		assert(m_CreateInfo.m_Entries[i].m_Offset == nextOffset);
 		nextOffset += 4;
 	}
 
@@ -279,6 +283,7 @@ IShaderInstance& ShaderGroup::FindOrCreateInstance(const void* specConstBuf,
 {
 	LOG_FUNC();
 
+	auto test = static_cast<const SpecConstLayout*>(m_SpecConstLayout);
 	if (specConstBufSize != m_SpecConstLayout->GetBufferSize())
 		throw VulkanException("Mismatching specialization constant buffer size", EXCEPTION_DATA());
 
@@ -320,15 +325,5 @@ const ISpecConstLayout& ShaderNextFactory::FindOrCreateSpecConstLayout(
 {
 	LOG_FUNC();
 
-	return *m_SpecConstLayouts.emplace(SpecConstLayout(ci.m_Entries, ci.m_EntryCount)).first;
-}
-
-bool SpecConstLayout::operator==(const SpecConstLayout & other) const
-{
-	if (m_EntryCount != other.m_EntryCount)
-		return false;
-
-	auto result = std::equal(begin(), end(), other.begin());
-	assert(!result || (m_BufferSize == other.m_BufferSize));
-	return result;
+	return *m_SpecConstLayouts.emplace(SpecConstLayoutCreateInfo{ ci.m_Entries, ci.m_EntryCount }).first;
 }

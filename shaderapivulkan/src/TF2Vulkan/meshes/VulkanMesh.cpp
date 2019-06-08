@@ -454,7 +454,7 @@ int VulkanMesh::GetRoomRemaining() const
 	const auto idxRoom = m_IndexBuffer.GetRoomRemaining();
 
 	assert(vtxRoom == idxRoom);
-	return min(vtxRoom, idxRoom);
+	return Util::algorithm::min(vtxRoom, idxRoom);
 }
 
 VulkanIndexBuffer::VulkanIndexBuffer(bool isDynamic) :

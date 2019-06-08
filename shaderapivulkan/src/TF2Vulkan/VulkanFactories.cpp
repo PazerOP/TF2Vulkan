@@ -1,4 +1,5 @@
 #include "interface/internal/IShaderDeviceInternal.h"
+#include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "interface/internal/IShaderAPITexture.h"
 #include "FormatInfo.h"
 #include "VulkanFactories.h"
@@ -356,5 +357,27 @@ const ImageMemoryBarrierFactory& ImageMemoryBarrierFactory::Submit(IVulkanComman
 	if (m_Barrier.newLayout != m_Barrier.oldLayout)
 		cmdBuf.pipelineBarrier(m_SrcStage, m_DstStage, {}, {}, {}, m_Barrier);
 
+	return *this;
+}
+
+DescriptorSetLayoutFactory& DescriptorSetLayoutFactory::AddBinding(uint32_t binding, vk::DescriptorType type,
+	vk::ShaderStageFlagBits stageFlags, uint32_t arraySize)
+{
+	m_Bindings.emplace_back(binding, type, arraySize, stageFlags);
+	return UpdateBindingsPointers();
+}
+
+vk::UniqueDescriptorSetLayout DescriptorSetLayoutFactory::Create() const
+{
+	assert(m_CreateInfo.pBindings == m_Bindings.data());
+	assert(m_CreateInfo.bindingCount == m_Bindings.size());
+	return g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(
+		m_CreateInfo, g_ShaderDeviceMgr.GetAllocationCallbacks());
+}
+
+DescriptorSetLayoutFactory& DescriptorSetLayoutFactory::UpdateBindingsPointers()
+{
+	m_CreateInfo.pBindings = m_Bindings.data();
+	m_CreateInfo.bindingCount = m_Bindings.size();
 	return *this;
 }

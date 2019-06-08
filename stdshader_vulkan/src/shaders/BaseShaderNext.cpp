@@ -120,6 +120,18 @@ void BaseShaderNext::InitVecParam(int param, IMaterialVar** params, float defaul
 		params[param]->SetVecValue(defaultValX, defaultValY, defaultValZ, defaultValW);
 }
 
+void BaseShaderNext::BindResources(const ShaderTextureBinder& texBinder,
+	uint32_t& texCountSpecConst, uint32_t& smpCountSpecConst)
+{
+	const auto& s = texBinder.GetSamplers();
+	smpCountSpecConst = s.size();
+	g_ShaderDynamic->BindSamplers(s.data(), s.data() + s.size());
+
+	const auto& t = texBinder.GetTextures();
+	texCountSpecConst = t.size();
+	g_ShaderDynamic->BindTextures(t.data(), t.data() + t.size());
+}
+
 void BaseShaderNext::LoadLights(ShaderDataCommon& data) const
 {
 	assert(s_pShaderAPI);

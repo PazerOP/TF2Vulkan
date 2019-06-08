@@ -91,12 +91,36 @@ namespace TF2Vulkan{ namespace Shaders
 		float1 OORange;
 	};
 
+#ifdef __cplusplus
 	static constexpr uint1 BINDING_CBUF_SHADERCOMMON = 0;
 	static constexpr uint1 BINDING_CBUF_SHADERCUSTOM = 1;
 	static constexpr uint1 BINDING_CBUF_VSMODELMATRICES = 2;
-	static constexpr uint1 BINDING_TEX2D = 3;
-	static constexpr uint1 BINDING_TEX3D = 4;
-	static constexpr uint1 BINDING_SAMPLERS = 5;
+	static constexpr uint1 BINDING_TEX2D = 9;
+	static constexpr uint1 BINDING_TEX3D = 10;
+	static constexpr uint1 BINDING_SAMPLERS = 11;
+#else
+#define BINDING_CBUF_SHADERCOMMON 0
+#define BINDING_CBUF_SHADERCUSTOM 1
+#define BINDING_CBUF_VSMODELMATRICES 2
+#define BINDING_TEX2D 9
+#define BINDING_TEX3D 10
+#define BINDING_SAMPLERS 11
+#endif
+
+	static constexpr int1 TEX_DEFAULT_COLOR_BLACK = -1;
+	static constexpr int1 TEX_DEFAULT_COLOR_BLACK_TRANSPARENT = -2;
+	static constexpr int1 TEX_DEFAULT_COLOR_WHITE = -3;
+	static constexpr int1 TEX_DEFAULT_COLOR_WHITE_TRANSPARENT = -4;
+	static constexpr int1 TEX_DEFAULT_COLOR_FLATNORMAL = -5;
+
+	static constexpr float4 TEX_DEFAULT_COLORS[] =
+	{
+		float4(0, 0, 0, 1), // black (opaque)
+		float4(0, 0, 0, 0), // black (transparent)
+		float4(1, 1, 1, 1), // white (opaque)
+		float4(1, 1, 1, 0), // white (transparent)
+		float4(0.5f, 0.5f, 1, 1), // flat normal
+	};
 
 #ifdef __cplusplus
 } }

@@ -1,6 +1,8 @@
 #ifndef XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD
 #define XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD
 
+#include "ShaderComponentData.hlsli"
+
 [[vk::binding(BINDING_CBUF_SHADERCUSTOM)]] cbuffer ShaderCustomConstants
 {
 	float4 cBaseTexCoordTransform[2];
@@ -20,6 +22,20 @@
 
 	float g_fVertexAlpha;
 };
+
+struct XLitGenericUniforms
+{
+	BumpmapUniforms bump;
+	DetailUniforms detail;
+	BaseUniforms base;
+
+	struct
+	{
+		float1 vertexAlpha;
+	} xlit;
+};
+
+[[vk::binding(BINDING_CBUF_SHADERCUSTOM)]] ConstantBuffer<XLitGenericUniforms> cCustom;
 
 struct VS_TO_PS_INTERSTAGE_DATA
 {
@@ -45,7 +61,7 @@ struct VS_TO_PS_INTERSTAGE_DATA
 
 	float3 boneWeightsOut       : TEST_BONEWEIGHTSOUT;
 
-	float1 fog : FOG;
+	float1 fog                  : FOG;
 	float4 fogFactorW           : TEXCOORD9;
 };
 
@@ -59,49 +75,18 @@ struct VS_TO_PS_INTERSTAGE_DATA
 
 [[vk::constant_id(SPEC_CONST_ID_BASE + 1)]] const bool AMBIENT_LIGHT = false;
 
-#if 1 // TODO: Array-based textures
-//[[vk::constant_id(SPEC_CONST_ID_BASE + 7)]]  const uint TEXINDEX_BASETEXTURE = 0;
-//[[vk::constant_id(SPEC_CONST_ID_BASE + 8)]]  const uint SMPINDEX_BASETEXTURE = 0;
-
-[[vk::constant_id(SPEC_CONST_ID_BASE + 9)]]  const uint TEXINDEX_BUMPMAP = 0;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 10)]] const uint SMPINDEX_BUMPMAP = 0;
-
-[[vk::constant_id(SPEC_CONST_ID_BASE + 11)]] const uint TEXINDEX_MORPH = 0;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 12)]] const uint SMPINDEX_MORPH = 0;
-
-[[vk::constant_id(SPEC_CONST_ID_BASE + 13)]] const uint TEXINDEX_LIGHTWARP = 0;
-[[vk::constant_id(SPEC_CONST_ID_BASE + 14)]] const uint SMPINDEX_LIGHTWARP = 0;
-
 //#define BaseTexture g_Textures2D[TEXINDEX_BASETEXTURE]
 //#define BaseTextureSampler g_Samplers[SMPINDEX_BASETEXTURE]
-DEFINE_TEX2D(2, BASE);
+DEFINE_TEX2D(2, BASETEXTURE, TEX_DEFAULT_COLOR_WHITE);
+//[[vk::constant_id(SPEC_CONST_ID_BASE + 2)]] const int TEXINDEX_BASETEXTURE = TEX_DEFAULT_COLOR_WHITE;
+//[[vk::constant_id(SPEC_CONST_ID_BASE + 3)]] const int SMPINDEX_BASETEXTURE = -1;
+DEFINE_TEX2D(4, BUMPMAP, TEX_DEFAULT_COLOR_FLATNORMAL);
+DEFINE_TEX2D(6, MORPH, TEX_DEFAULT_COLOR_BLACK);
+DEFINE_TEX2D(8, LIGHTWARP, TEX_DEFAULT_COLOR_WHITE);
 
-#define BumpMapTexture g_Textures2D[TEXINDEX_BUMPMAP]
-#define BumpMapTextureSampler g_Samplers[SMPINDEX_BUMPMAP]
-
-#define morphTexture g_Textures2D[TEXINDEX_MORPH]
-#define morphSampler g_Samplers[SMPINDEX_MORPH]
-
-#define LightWarpTexture g_Textures2D[TEXINDEX_LIGHTWARP]
-#define LightWarpTextureSampler g_Samplers[SMPINDEX_LIGHTWARP]
-
-//#define TEXACTIVE_BASETEXTURE (TEXINDEX_BASETEXTURE > 0)
-#define TEXACTIVE_BUMPMAP (TEXINDEX_BUMPMAP > 0)
-#define TEXACTIVE_MORPH (TEXINDEX_MORPH > 0)
-#define TEXACTIVE_LIGHTWARP (TEXINDEX_LIGHTWARP > 0)
-
-#else
-// Texture2D BaseTexture : register(t0);
-// SamplerState BaseTextureSampler : register(s0);
-
-// Texture2D BumpMapTexture : register(t1);
-// SamplerState BumpMapTextureSampler : register(s1);
-
-// Texture2D morphTexture : register(t2);
-// SamplerState morphSampler : register(s2);
-
-// Texture2D LightWarpTexture : register(t3);
-// SamplerState LightWarpTextureSampler : register(s3);
-#endif
+#define TEXACTIVE_BASETEXTURE (IsTextureActive(TEXINDEX_BASETEXTURE))
+#define TEXACTIVE_BUMPMAP (IsTextureActive(TEXINDEX_BUMPMAP))
+#define TEXACTIVE_MORPH (IsTextureActive(TEXINDEX_MORPH))
+#define TEXACTIVE_LIGHTWARP (IsTextureActive(TEXINDEX_LIGHTWARP))
 
 #endif // XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD

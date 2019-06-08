@@ -43,6 +43,9 @@ namespace TF2Vulkan{ namespace Shaders
 		[[deprecated]] void InitVecParam(int param, IMaterialVar** params, float defaultValX, float defaultValY, float defaultValZ, float defaultValW) const;
 		virtual void OnInitShader(IShaderNextFactory& instanceMgr) = 0;
 
+		void BindResources(const ShaderTextureBinder& texBinder,
+			uint32_t& texCountSpecConst, uint32_t& smpCountSpecConst);
+
 		void LoadLights(TF2Vulkan::Shaders::ShaderDataCommon& data) const;
 
 		struct OnDrawElementsParams

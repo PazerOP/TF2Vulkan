@@ -103,14 +103,13 @@
     <ClInclude Include="include\TF2Vulkan\IShaderShadowNext.h" />
     <ClInclude Include="include\TF2Vulkan\ISpecConstLayout.h" />
     <ClInclude Include="include\TF2Vulkan\IBufferPool.h" />
-    <ClInclude Include="include\TF2Vulkan\ShaderTextureBinder.h" />
+    <ClInclude Include="include\TF2Vulkan\ShaderResourceBinder.h" />
     <ClInclude Include="include\TF2Vulkan\TextureSubrect.h" />
     <ClInclude Include="src\interface\IMaterialInternal.h" />
     <ClInclude Include="src\interface\internal\IDebugTextureInfoInternal.h" />
     <ClInclude Include="src\interface\internal\IMeshInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceInternal.h" />
     <ClInclude Include="src\interface\internal\IShaderInternal.h" />
-    <ClInclude Include="src\interface\internal\IStateManagerDynamic.h" />
     <ClInclude Include="src\interface\internal\IBufferPoolInternal.h" />
     <ClInclude Include="src\interface\internal\IVBAllocTrackerInternal.h" />
     <ClInclude Include="src\interface\ITextureInternal.h" />
@@ -132,7 +131,7 @@
     <ClInclude Include="src\interface\internal\IShaderAPIInternal.h" />
     <ClInclude Include="src\TF2Vulkan\RenderDocAPI.h" />
     <ClInclude Include="src\TF2Vulkan\ResourceBlob.h" />
-    <ClInclude Include="src\TF2Vulkan\SamplerSettings.h" />
+    <ClInclude Include="include\TF2Vulkan\SamplerSettings.h" />
     <ClInclude Include="src\interface\internal\IShaderDeviceMgrInternal.h" />
     <ClInclude Include="src\TF2Vulkan\shaders\VulkanShaderManager.h" />
     <ClInclude Include="src\TF2Vulkan\IShaderAPI\IShaderAPI_StateManagerDynamic.h" />

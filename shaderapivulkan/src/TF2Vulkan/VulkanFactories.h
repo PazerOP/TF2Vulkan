@@ -109,4 +109,19 @@ namespace TF2Vulkan{ namespace Factories
 		vk::PipelineStageFlags m_DstStage;
 		vk::ImageMemoryBarrier m_Barrier;
 	};
+
+	struct DescriptorSetLayoutFactory final
+	{
+		DescriptorSetLayoutFactory() = default;
+
+		DescriptorSetLayoutFactory& AddBinding(uint32_t binding, vk::DescriptorType type,
+			vk::ShaderStageFlagBits stageFlags, uint32_t arraySize = 1);
+
+		vk::UniqueDescriptorSetLayout Create() const;
+
+		DescriptorSetLayoutFactory& UpdateBindingsPointers();
+
+		std::vector<vk::DescriptorSetLayoutBinding> m_Bindings;
+		vk::DescriptorSetLayoutCreateInfo m_CreateInfo;
+	};
 } }

@@ -5,7 +5,7 @@
 
 static void UpdateWorldNormalFromNormalMap(inout float3 worldSpaceNormal, float2 texCoord, float3 worldSpaceTangent, float3 worldSpaceBinormal)
 {
-	float3 normalTexel = BumpMapTexture.Sample(BumpMapTextureSampler, texCoord).xyz;
+	float3 normalTexel = SAMPLE_TEX2D(BUMPMAP, texCoord).xyz;
 	float3 tangentSpaceNormal = normalTexel * 2.0f - 1.0f;
 
 	worldSpaceNormal = Vec3TangentToWorldNormalized(tangentSpaceNormal, worldSpaceNormal, worldSpaceTangent, worldSpaceBinormal);
@@ -47,7 +47,7 @@ static float3 DiffuseTerm(const float3 worldNormal, const float3 lightDir,
 	float3 fOut = float3(fResult, fResult, fResult);
 	if (TEXACTIVE_LIGHTWARP)
 	{
-		fOut = 2.0f * LightWarpTexture.Sample(LightWarpTextureSampler, fResult).rgb;
+		fOut = 2.0f * SAMPLE_TEX2D(LIGHTWARP, fResult).rgb;
 	}
 
 	return fOut;
@@ -142,9 +142,7 @@ float4 main(PS_INPUT i) : SV_TARGET
 	if (DIFFUSELIGHTING || VERTEXCOLOR)
 		diffuseColor = i.color.bgr; // FIXME REALLY SOON: Why is this bgr????
 
-	float4 baseTextureColor = (float4)1;
-	if (TEXACTIVE_BASETEXTURE)
-		baseTextureColor = BASETEXTURE.Sample(BASETEXTURE_SAMPLER, i.baseTexCoord.xy);
+	float4 baseTextureColor = SAMPLE_TEX2D(BASETEXTURE, i.baseTexCoord.xy);
 
 	if (NORMALMAPPING)
 		UpdateWorldNormalFromNormalMap(i.worldSpaceNormal, i.baseTexCoord.xy, i.worldSpaceTangent.xyz, i.worldSpaceBinormal);

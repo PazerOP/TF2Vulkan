@@ -5,7 +5,8 @@
 #include <TF2Vulkan/VertexFormat.h>
 #include <TF2Vulkan/IBufferPool.h>
 #include "TF2Vulkan/FogParams.h"
-#include "TF2Vulkan/ShaderTextureBinder.h"
+#include "TF2Vulkan/SamplerSettings.h"
+#include "TF2Vulkan/ShaderResourceBinder.h"
 #include <TF2Vulkan/Util/InPlaceVector.h>
 #include <TF2Vulkan/Util/lightdesc.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
@@ -50,8 +51,6 @@ namespace TF2Vulkan
 		const IShaderInstanceInternal* m_VSShader = nullptr;
 		const IShaderInstanceInternal* m_PSShader = nullptr;
 
-		std::array<BufferPoolEntry, 8> m_UniformBuffers = {};
-
 		// Scissor settings
 		bool m_ScissorEnable = false;
 		int m_ScissorX = -1;
@@ -79,7 +78,9 @@ namespace TF2Vulkan
 		std::array<int, MAX_INT_RENDER_PARMS> m_RenderParamsInt;
 		std::array<float, MAX_FLOAT_RENDER_PARMS> m_RenderParamsFloat;
 
-		Util::InPlaceVector<ShaderAPITextureHandle_t, MAX_SHADER_TEXTURE_BINDINGS> m_BoundTextures{};
+		std::array<BufferPoolEntry, 8> m_UniformBuffers;
+		Util::InPlaceVector<ShaderAPITextureHandle_t, MAX_SHADER_RESOURCE_BINDINGS> m_BoundTextures{};
+		Util::InPlaceVector<SamplerSettings, MAX_SHADER_RESOURCE_BINDINGS> m_BoundSamplers{};
 
 		uint_fast8_t m_BoneCount = 0;
 		Shaders::VSModelMatrices m_BoneMatrices;
@@ -111,7 +112,7 @@ namespace TF2Vulkan
 
 		// Pixel shader settings
 		const IShaderGroupInternal* m_PSShader = nullptr;
-		Util::InPlaceVector<Sampler, MAX_SHADER_TEXTURE_BINDINGS> m_PSSamplers;
+		Util::InPlaceVector<Sampler, MAX_SHADER_RESOURCE_BINDINGS> m_PSSamplers; // FIXME: we have this AND LogicalDynamicState::m_BoundSamplers???
 
 		// Depth settings
 		ShaderDepthFunc_t m_DepthCompareFunc = SHADER_DEPTHFUNC_NEARER;

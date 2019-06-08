@@ -141,6 +141,7 @@
     <None Include="src\shaders\HLSL\common_fxc.hlsli" />
     <None Include="src\shaders\HLSL\common_ps_fxc.hlsli" />
     <None Include="src\shaders\HLSL\common_vs_fxc.hlsli" />
+    <None Include="src\shaders\HLSL\ShaderComponentData.hlsli" />
     <None Include="src\shaders\HLSL\xlitgeneric.common.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

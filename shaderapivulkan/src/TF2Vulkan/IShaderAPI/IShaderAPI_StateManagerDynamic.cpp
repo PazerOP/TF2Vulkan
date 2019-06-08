@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "IShaderAPI_StateManagerDynamic.h"
 #include "interface/IMaterialInternal.h"
+#include "interface/ITextureInternal.h"
 #include "interface/internal/IShaderInternal.h"
 #include "interface/internal/IStateManagerStatic.h"
 #include "TF2Vulkan/shaders/VulkanShaderManager.h"
@@ -161,13 +162,7 @@ void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle)
 {
 	LOG_FUNC();
-	auto texDbgName = textureHandle ? GetTexture(textureHandle).GetDebugName() : "<NULL>";
-	TF2VULKAN_PIX_MARKER("BindTexture %.*s @ SHADER_SAMPLER%i", PRINTF_SV(texDbgName), sampler);
-
-	if (Util::SafeConvert<size_t>(sampler) >= m_State.m_BoundTextures.size())
-		m_State.m_BoundTextures.resize(sampler + 1);
-
-	Util::SetDirtyVar(m_State.m_BoundTextures, sampler, textureHandle, m_Dirty);
+	return BindTextures(&textureHandle, &textureHandle + 1, true, sampler - SHADER_SAMPLER0);
 }
 
 IShaderAPI_StateManagerDynamic::IShaderAPI_StateManagerDynamic()
@@ -324,6 +319,77 @@ void IShaderAPI_StateManagerDynamic::BindUniformBuffer(const BufferPoolEntry& bu
 		return; // Nothing to do
 
 	Util::SetDirtyVar(m_State.m_UniformBuffers, index, buf, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::BindSamplers(const SamplerSettings* begin, const SamplerSettings* end, bool merge, uint32_t first)
+{
+	LOG_FUNC();
+	const size_t count = end - begin;
+
+	if (!merge)
+	{
+		if (m_State.m_BoundSamplers.size() != count)
+		{
+			m_Dirty = true;
+			m_State.m_BoundSamplers.resize(count);
+		}
+
+		for (size_t i = 0; i < count; i++)
+			Util::SetDirtyVar(m_State.m_BoundSamplers[i], begin[i], m_Dirty);
+	}
+	else
+	{
+		NOT_IMPLEMENTED_FUNC();
+	}
+}
+
+void IShaderAPI_StateManagerDynamic::BindTextures(
+	const ITexture* const* begin, const ITexture* const* end, bool merge, uint32_t first)
+{
+	LOG_FUNC();
+	const size_t count = end - begin;
+
+	auto handles = (ShaderAPITextureHandle_t*)_alloca(sizeof(ShaderAPITextureHandle_t) * count);
+	
+	auto test0 = &ITextureInternal::SetErrorTexture;
+#pragma warning(suppress : 4996)
+	auto test1 = static_cast<void(ITextureInternal::*)(Sampler_t)>(&ITextureInternal::Bind);
+	auto test2 = &ITextureInternal::GetTextureHandle;
+
+	for (size_t i = 0; i < count; i++)
+	{
+		auto texInternal = assert_cast<const ITextureInternal*>(begin[i]);
+		handles[i] = texInternal->GetTextureHandle(0);
+	}
+
+	return BindTextures(handles, handles + count, merge, first);
+}
+
+void IShaderAPI_StateManagerDynamic::BindTextures(
+	const ShaderAPITextureHandle_t* begin, const ShaderAPITextureHandle_t* end, bool merge, uint32_t first)
+{
+	LOG_FUNC();
+	const size_t count = end - begin;
+
+	if (!merge)
+	{
+		if (m_State.m_BoundTextures.size() != count)
+		{
+			m_Dirty = true;
+			m_State.m_BoundTextures.resize(count);
+		}
+
+		for (size_t i = 0; i < count; i++)
+		{
+			auto texDbgName = begin[i] ? GetTexture(begin[i]).GetDebugName() : "<NULL>";
+			TF2VULKAN_PIX_MARKER("BindTexture %.*s @ g_Textures2D[%zu]", PRINTF_SV(texDbgName), i);
+			Util::SetDirtyVar(m_State.m_BoundTextures[i], begin[i], m_Dirty);
+		}
+	}
+	else
+	{
+		NOT_IMPLEMENTED_FUNC();
+	}
 }
 
 void IShaderAPI_StateManagerDynamic::SetOverbright(float overbright)

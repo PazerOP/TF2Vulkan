@@ -93,6 +93,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\color.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ConstexprCRC.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ConstexprRandom.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\CStringBuilder.h" />
     <ClInclude Include="include\TF2Vulkan\Util\DirtyVar.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Enums.h" />
     <ClInclude Include="include\TF2Vulkan\Util\ForwardingHelpers.h" />
@@ -118,6 +119,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\std_compare.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_stdio.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_string.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\std_string_view.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_type_traits.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_variant.h" />

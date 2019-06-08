@@ -3,7 +3,7 @@
 #include "IStateManagerVulkan.h"
 #include "LogicalState.h"
 #include "MaterialSystemHardwareConfig.h"
-#include "SamplerSettings.h"
+#include "TF2Vulkan/SamplerSettings.h"
 #include "interface/internal/IBufferPoolInternal.h"
 #include "interface/internal/IShaderDeviceMgrInternal.h"
 #include "interface/internal/IShaderDeviceInternal.h"
@@ -17,6 +17,7 @@
 #include <TF2Vulkan/Util/MemoryPool.h>
 #include <TF2Vulkan/Util/shaderapi_ishaderdynamic.h>
 #include <TF2Vulkan/Util/StackArray.h>
+#include <TF2Vulkan/Util/std_algorithm.h>
 #include <TF2Vulkan/Util/std_array.h>
 
 #include <stdshader_vulkan/ShaderData.h>
@@ -75,16 +76,16 @@ namespace
 		DescriptorSetLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState);
 		DEFAULT_STRONG_ORDERING_OPERATOR(DescriptorSetLayoutKey);
 
-		const IShaderGroupInternal* m_VSShaderGroup;
-		const IShaderGroupInternal* m_PSShaderGroup;
 		uint32_t m_Texture2DCount = 0;
 		uint32_t m_SamplerCount = 0;
+		Util::InPlaceVector<uint32_t, 8> m_UniformBuffers;
 	};
 }
 
 STD_HASH_DEFINITION(DescriptorSetLayoutKey,
-	v.m_VSShaderGroup,
-	v.m_PSShaderGroup
+	v.m_Texture2DCount,
+	v.m_SamplerCount,
+	v.m_UniformBuffers
 );
 
 namespace
@@ -204,7 +205,7 @@ STD_HASH_DEFINITION(DescriptorPoolKey,
 
 namespace
 {
-	struct DescriptorSetKey
+	struct DescriptorSetKey final
 	{
 		DescriptorSetKey(const DescriptorSetLayout& layout, const LogicalDynamicState& dynamicState);
 
@@ -223,7 +224,8 @@ namespace
 
 		const DescriptorSetLayout* m_Layout = nullptr;
 		std::array<UBRef, 8> m_UniformBuffers;
-		Util::InPlaceVector<ShaderAPITextureHandle_t, MAX_SHADER_TEXTURE_BINDINGS> m_BoundTextures = {};
+		Util::InPlaceVector<ShaderAPITextureHandle_t, MAX_SHADER_RESOURCE_BINDINGS> m_BoundTextures = {};
+		Util::InPlaceVector<SamplerSettings, MAX_SHADER_RESOURCE_BINDINGS> m_BoundSamplers = {};
 	};
 }
 
@@ -235,7 +237,8 @@ STD_HASH_DEFINITION(DescriptorSetKey::UBRef,
 STD_HASH_DEFINITION(DescriptorSetKey,
 	v.m_Layout,
 	v.m_UniformBuffers,
-	v.m_BoundTextures
+	v.m_BoundTextures,
+	v.m_BoundSamplers
 );
 
 namespace
@@ -247,8 +250,9 @@ namespace
 		vk::UniqueDescriptorSet m_DescriptorSet;
 
 		std::vector<vk::WriteDescriptorSet> m_Writes;
-		std::forward_list<vk::DescriptorBufferInfo> m_BufferInfos;
-		std::forward_list<vk::DescriptorImageInfo> m_ImageInfos;
+		std::list<vk::DescriptorBufferInfo> m_BufferInfos;
+		std::vector<vk::DescriptorImageInfo> m_ImageInfos;
+		std::vector<vk::DescriptorImageInfo> m_SamplerInfos;
 	};
 
 	struct Sampler final
@@ -280,7 +284,6 @@ namespace
 		DescriptorSetLayout(const DescriptorSetLayoutKey& key);
 
 		std::vector<vk::DescriptorSetLayoutBinding> m_Bindings;
-
 		vk::DescriptorSetLayoutCreateInfo m_CreateInfo;
 		vk::UniqueDescriptorSetLayout m_Layout;
 
@@ -420,10 +423,6 @@ namespace TF2Vulkan
 		const RenderPass& FindOrCreateRenderPass(const RenderPassKey& key);
 		const Framebuffer& FindOrCreateFramebuffer(const FramebufferKey& key);
 
-		Pipeline CreatePipeline(const PipelineKey& key,
-			const PipelineLayout& layout,
-			const RenderPass& renderPass) const;
-
 		std::recursive_mutex m_Mutex;
 
 		std::unordered_map<PipelineKey, Pipeline> m_StatesToPipelines;
@@ -476,28 +475,34 @@ void ShaderStageCreateInfo::FixupPointers()
 
 DescriptorSetLayout::DescriptorSetLayout(const DescriptorSetLayoutKey& key)
 {
-	const auto CreateBinding = [this](vk::DescriptorType type, uint32_t count, uint32_t binding)
+	const auto CreateBinding = [](vk::DescriptorType type, uint32_t count, uint32_t binding)
 	{
-		auto& newEntry = m_Bindings.emplace_back();
+		vk::DescriptorSetLayoutBinding newEntry;
 		newEntry.binding = binding;
 		newEntry.descriptorType = type;
 		newEntry.descriptorCount = count;
 		newEntry.stageFlags = vk::ShaderStageFlagBits::eAllGraphics;
+		return newEntry;
 	};
 
 	// Bindings
-	if (key.m_Texture2DCount > 0)
-		CreateBinding(vk::DescriptorType::eSampledImage, key.m_Texture2DCount, TF2Vulkan::Shaders::BINDING_TEX2D);
+	//if (key.m_Texture2DCount > 0)
+		m_Bindings.emplace_back(CreateBinding(vk::DescriptorType::eSampledImage,
+			Util::algorithm::max(key.m_Texture2DCount, 1), TF2Vulkan::Shaders::BINDING_TEX2D));
 
-	if (key.m_SamplerCount > 0)
-		CreateBinding(vk::DescriptorType::eSampler, key.m_SamplerCount, TF2Vulkan::Shaders::BINDING_SAMPLERS);
+	//if (key.m_SamplerCount > 0)
+		m_Bindings.emplace_back(CreateBinding(vk::DescriptorType::eSampler,
+			Util::algorithm::max(key.m_SamplerCount, 1), TF2Vulkan::Shaders::BINDING_SAMPLERS));
+
+	for (const auto bufIndex : key.m_UniformBuffers)
+		m_Bindings.emplace_back(CreateBinding(vk::DescriptorType::eUniformBufferDynamic, 1, bufIndex));
 
 	// Descriptor set layout
 	{
 		auto& ci = m_CreateInfo;
 		AttachVector(ci.pBindings, ci.bindingCount, m_Bindings);
 
-		m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci);
+		m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX (%u t2d, %u s)",
 			Util::hash_value(key), key.m_Texture2DCount, key.m_SamplerCount);
 	}
@@ -518,7 +523,8 @@ PipelineLayout::PipelineLayout(const PipelineLayoutKey& key)
 
 		AttachVector(ci.pSetLayouts, ci.setLayoutCount, setLayouts);
 		AttachVector(ci.pPushConstantRanges, ci.pushConstantRangeCount, m_PushConstantRanges);
-		m_Layout = g_ShaderDevice.GetVulkanDevice().createPipelineLayoutUnique(ci);
+		m_Layout = g_ShaderDevice.GetVulkanDevice().createPipelineLayoutUnique(
+			ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 
 		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Pipeline Layout 0x%zX", Util::hash_value(key));
 	}
@@ -621,7 +627,8 @@ RenderPass::RenderPass(const RenderPassKey& key) :
 
 		AttachVector(ci.pSubpasses, ci.subpassCount, subpassTemp);
 
-		m_RenderPass = g_ShaderDevice.GetVulkanDevice().createRenderPassUnique(ci);
+		m_RenderPass = g_ShaderDevice.GetVulkanDevice().createRenderPassUnique(
+			ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		g_ShaderDevice.SetDebugName(m_RenderPass, "TF2Vulkan Render Pass 0x%zX", Util::hash_value(key));
 	}
 }
@@ -699,9 +706,6 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 	m_Layout(&layout),
 	m_RenderPass(&renderPass)
 {
-	assert(&key.m_VSShaderInstance->GetGroup() == key.m_VSShaderGroup);
-	assert(&key.m_PSShaderInstance->GetGroup() == key.m_PSShaderGroup);
-
 	// Shader stage create info(s)
 	{
 		auto& cis = m_ShaderStageCIs;
@@ -713,7 +717,7 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 	{
 		auto& attrs = m_VertexInputAttributeDescriptions;
 
-		const auto& vertexShaderRefl = key.m_VSShaderGroup->GetVulkanShader().GetReflectionData();
+		const auto& vertexShaderRefl = key.m_VSShaderInstance->GetGroup().GetVulkanShader().GetReflectionData();
 
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
@@ -892,7 +896,8 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 		AttachVector(ci.pStages, ci.stageCount, shaderStages);
 
 		// ci.subpass = 0;
-		m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(g_ShaderDevice.GetPipelineCache(), ci);
+		m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(
+			g_ShaderDevice.GetPipelineCache(), ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 
 		g_ShaderDevice.SetDebugName(m_Pipeline, "TF2Vulkan Graphics Pipeline 0x%zX", Util::hash_value(key));
 	}
@@ -955,7 +960,7 @@ Framebuffer::Framebuffer(const FramebufferKey& key)
 
 		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
 
-		m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci);
+		m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		assert(m_Framebuffer);
 		g_ShaderDevice.SetDebugName(m_Framebuffer, debugName.c_str());
 	}
@@ -1032,6 +1037,8 @@ Sampler::Sampler(const SamplerKey& key)
 	ci.magFilter = ConvertFilter(key.m_Settings.m_MagFilter);
 	ci.anisotropyEnable = (key.m_Settings.m_MinFilter == SHADER_TEXFILTERMODE_ANISOTROPIC ||
 		key.m_Settings.m_MagFilter == SHADER_TEXFILTERMODE_ANISOTROPIC);
+	if (ci.anisotropyEnable)
+		ci.maxAnisotropy = 8;
 
 	if (ConvertMipmapMode(key.m_Settings.m_MinFilter) == vk::SamplerMipmapMode::eLinear ||
 		ConvertMipmapMode(key.m_Settings.m_MagFilter) == vk::SamplerMipmapMode::eLinear)
@@ -1043,7 +1050,8 @@ Sampler::Sampler(const SamplerKey& key)
 		ci.mipmapMode = vk::SamplerMipmapMode::eNearest;
 	}
 
-	m_Sampler = g_ShaderDevice.GetVulkanDevice().createSamplerUnique(m_CreateInfo);
+	m_Sampler = g_ShaderDevice.GetVulkanDevice().createSamplerUnique(m_CreateInfo,
+		g_ShaderDeviceMgr.GetAllocationCallbacks());
 	g_ShaderDevice.SetDebugName(m_Sampler, "TF2Vulkan Sampler 0x%zX", Util::hash_value(key));
 }
 
@@ -1095,10 +1103,6 @@ DescriptorSet::DescriptorSet(const DescriptorSetKey& key)
 {
 	auto& device = g_ShaderDevice.GetVulkanDevice();
 
-	auto& writes = m_Writes;
-	auto& imageInfos = m_ImageInfos;
-	auto& bufferInfos = m_BufferInfos;
-
 	assert(key.m_Layout);
 	const auto& layout = *key.m_Layout;
 	auto& pool = s_SMVulkan.FindOrCreateDescriptorPool(layout);
@@ -1110,67 +1114,88 @@ DescriptorSet::DescriptorSet(const DescriptorSetKey& key)
 
 	m_DescriptorSet = std::move(device.allocateDescriptorSetsUnique(allocInfo).at(0));
 
-	writes.reserve(layout.m_Bindings.size());
-	for (size_t i = 0; i < layout.m_Bindings.size(); i++)
+	// Uniform buffers
 	{
-		const vk::DescriptorSetLayoutBinding& binding = layout.m_Bindings.at(i);
-
-		auto& write = writes.emplace_back();
-		write.descriptorType = binding.descriptorType;
-		write.descriptorCount = binding.descriptorCount;
-		write.dstBinding = binding.binding;
+		vk::WriteDescriptorSet write;
+		write.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+		write.descriptorCount = 1;
 		write.dstSet = m_DescriptorSet.get();
 
-		switch (write.descriptorType)
+		const auto RecordUniformBuffer = [&](const DescriptorSetKey::UBRef& ub, uint32_t binding)
 		{
-		case vk::DescriptorType::eSampler:
-		{
-			auto& imgInfo = imageInfos.emplace_front();
-			auto& sampler = s_SMVulkan.FindOrCreateSampler(SamplerSettings{});
-			imgInfo.sampler = sampler.m_Sampler.get();
-			write.pImageInfo = &imgInfo;
-			break;
-		}
-		case vk::DescriptorType::eSampledImage:
-		{
-			auto& imgInfo = imageInfos.emplace_front();
-			auto& tex = g_TextureManager.TryGetTexture(
-				key.m_BoundTextures.at(binding.binding - BINDING_TEXTURE_OFFSET),
-				TEXTURE_BLACK);
-			imgInfo.imageView = tex.FindOrCreateView();
-			//imgInfo.sampler = FindOrCreateSampler(SamplerSettings{}).m_Sampler.get();
-			imgInfo.imageLayout = tex.GetDefaultLayout();
-			write.pImageInfo = &imgInfo;
-			break;
-		}
-		case vk::DescriptorType::eUniformBufferDynamic:
-		{
-			const auto& bufferEntry = key.m_UniformBuffers.at(binding.binding);
+			if (!ub)
+				return;
 
-			vk::DescriptorBufferInfo& bufInfo = bufferInfos.emplace_front();
+			auto& bufInfo = m_BufferInfos.emplace_front();
+			bufInfo.buffer = ub.m_Buffer;
+			bufInfo.range = ub.m_Length;
+
+			write.dstBinding = binding;
 			write.pBufferInfo = &bufInfo;
-			bufInfo.offset = 0;
+			m_Writes.push_back(write);
+		};
 
-			if (bufferEntry)
-			{
-				bufInfo.buffer = bufferEntry.m_Buffer;
-				bufInfo.range = bufferEntry.m_Length;
-			}
-			else
-			{
-				bufInfo.buffer = s_SMVulkan.GetDummyUniformBuffer();
-				bufInfo.range = VK_WHOLE_SIZE;
-			}
-
-			break;
-		}
-
-		default:
-			throw VulkanException("Unexpected DescriptorType", EXCEPTION_DATA());
-		}
+		for (size_t i = 0; i < key.m_UniformBuffers.size(); i++)
+			RecordUniformBuffer(key.m_UniformBuffers[i], i);
 	}
 
-	device.updateDescriptorSets(writes, nullptr);
+	// Textures
+	{
+		vk::WriteDescriptorSet& write = m_Writes.emplace_back();
+		write.descriptorType = vk::DescriptorType::eSampledImage;
+		write.dstSet = m_DescriptorSet.get();
+		write.dstBinding = TF2Vulkan::Shaders::BINDING_TEX2D;
+		write.descriptorCount = key.m_BoundTextures.size();
+		if (write.descriptorCount > 0)
+		{
+			for (const auto& boundTex : key.m_BoundTextures)
+			{
+				vk::DescriptorImageInfo& info = m_ImageInfos.emplace_back();
+				auto& tex = g_TextureManager.GetTexture(boundTex ? boundTex : g_TextureManager.GetStdTextureHandle(TEXTURE_BLACK));
+				info.imageLayout = tex.GetDefaultLayout();
+				info.imageView = tex.FindOrCreateView();
+			}
+		}
+		else
+		{
+			// Can't have zero-sized texture arrays unfortunately
+			write.descriptorCount = 1;
+			vk::DescriptorImageInfo& info = m_ImageInfos.emplace_back();
+			auto& tex = g_TextureManager.GetTexture(g_TextureManager.GetStdTextureHandle(TEXTURE_BLACK));
+			info.imageLayout = tex.GetDefaultLayout();
+			info.imageView = tex.FindOrCreateView();
+		}
+
+		write.pImageInfo = m_ImageInfos.data();
+	}
+
+	// Samplers
+	{
+		vk::WriteDescriptorSet& write = m_Writes.emplace_back();
+		write.descriptorType = vk::DescriptorType::eSampler;
+		write.dstSet = m_DescriptorSet.get();
+		write.dstBinding = TF2Vulkan::Shaders::BINDING_SAMPLERS;
+		write.descriptorCount = key.m_BoundSamplers.size();
+		if (write.descriptorCount > 0)
+		{
+			for (const auto& boundSampler : key.m_BoundSamplers)
+			{
+				vk::DescriptorImageInfo& info = m_SamplerInfos.emplace_back();
+				info.sampler = s_SMVulkan.FindOrCreateSampler(boundSampler).m_Sampler.get();
+			}
+		}
+		else
+		{
+			// Can't have zero-sized sampler arrays unfortunately
+			write.descriptorCount = 1;
+			vk::DescriptorImageInfo& info = m_SamplerInfos.emplace_back();
+			info.sampler = s_SMVulkan.FindOrCreateSampler(SamplerSettings{}).m_Sampler.get();
+		}
+
+		write.pImageInfo = m_SamplerInfos.data();
+	}
+
+	device.updateDescriptorSets(m_Writes, nullptr);
 }
 
 const DescriptorSet& StateManagerVulkan::FindOrCreateDescriptorSet(const DescriptorSetKey& key)
@@ -1249,8 +1274,12 @@ DescriptorPool::DescriptorPool(const DescriptorPoolKey& key)
 	// Sizes
 	for (const auto& binding : key.m_Layout->m_Bindings)
 	{
+		if (binding.descriptorCount <= 0)
+			continue;
+
 		auto& size = m_Sizes.emplace_back();
 		size.descriptorCount = binding.descriptorCount * POOL_SIZE;
+		assert(size.descriptorCount > 0);
 		size.type = binding.descriptorType;
 	}
 
@@ -1262,7 +1291,8 @@ DescriptorPool::DescriptorPool(const DescriptorPoolKey& key)
 		ci.maxSets = POOL_SIZE;
 		ci.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
-		m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci);
+		m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci,
+			g_ShaderDeviceMgr.GetAllocationCallbacks());
 		g_ShaderDevice.SetDebugName(m_DescriptorPool, "TF2Vulkan Descriptor Pool 0x%zX", Util::hash_value(key));
 	}
 }
@@ -1434,15 +1464,47 @@ static std::array<DescriptorSetKey::UBRef, size> ToUBRefArray(const std::array<B
 DescriptorSetKey::DescriptorSetKey(const DescriptorSetLayout& layout, const LogicalDynamicState& dynamicState) :
 	m_Layout(&layout),
 	m_UniformBuffers{ ToUBRefArray(dynamicState.m_UniformBuffers) },
-	m_BoundTextures(dynamicState.m_BoundTextures)
+	m_BoundTextures(dynamicState.m_BoundTextures),
+	m_BoundSamplers(dynamicState.m_BoundSamplers)
 {
+}
+
+template<size_t size>
+static Util::InPlaceVector<uint32_t, size> GetOccupiedIndices(const std::array<BufferPoolEntry, size> & srcUBs)
+{
+	Util::InPlaceVector<uint32_t, size> retVal;
+
+	for (uint32_t i = 0; i < size; i++)
+	{
+		if (srcUBs[i])
+			retVal.push_back(i);
+	}
+
+	return retVal;
 }
 
 DescriptorSetLayoutKey::DescriptorSetLayoutKey(const LogicalShadowState& staticState,
 	const LogicalDynamicState& dynamicState) :
-	m_VSShaderGroup(staticState.m_VSShader),
-	m_PSShaderGroup(staticState.m_PSShader),
 	m_Texture2DCount(dynamicState.m_BoundTextures.size()),
-	m_SamplerCount(staticState.m_PSSamplers.size())
+	m_SamplerCount(dynamicState.m_BoundSamplers.size()),
+	m_UniformBuffers(GetOccupiedIndices(dynamicState.m_UniformBuffers))
 {
+#ifdef _DEBUG
+	// Both 0 or both > 0
+	assert(!m_Texture2DCount == !m_SamplerCount);
+
+	vk::SpecializationInfo specInfoPS, specInfoVS;
+	dynamicState.m_VSShader->GetSpecializationInfo(specInfoVS);
+	dynamicState.m_PSShader->GetSpecializationInfo(specInfoPS);
+
+	uint32_t tex2DCountVS, tex2DCountPS, smpCountVS, smpCountPS;
+	dynamicState.m_VSShader->GetResourceCounts(tex2DCountVS, smpCountVS);
+	dynamicState.m_PSShader->GetResourceCounts(tex2DCountPS, smpCountPS);
+
+	assert(tex2DCountVS == tex2DCountPS);
+	assert(smpCountVS == smpCountPS);
+
+	assert(tex2DCountVS == m_Texture2DCount);
+	assert(smpCountVS == m_SamplerCount);
+#endif
 }

@@ -156,16 +156,20 @@ namespace TF2Vulkan
 		// IShaderDynamicNext
 		void SetShaderInstance(ShaderType type, const IShaderInstance* instance) override final;
 		void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) override final;
+		void BindSamplers(const SamplerSettings* begin, const SamplerSettings* end, bool merge, uint32_t first) override final;
+		void BindTextures(const ITexture* const* begin, const ITexture* const* end, bool merge, uint32_t first) override final;
+		void BindTextures(const ShaderAPITextureHandle_t* begin, const ShaderAPITextureHandle_t* end, bool merge, uint32_t first);
 
 		// Helpers
 		void SetOverbright(float overbright);
 
-		[[deprecated]] void LoadBoneMatrix(int boneIndex, const float* m) override final;
 		void LoadBoneMatrix(uint32_t boneIndex, const matrix3x4_t& m);
 
 		const LogicalDynamicState& GetDynamicState() const { return m_State; }
 
 	private:
+		[[deprecated]] void LoadBoneMatrix(int boneIndex, const float* m) override final;
+
 		MaterialMatrixMode_t m_MatrixMode = {};
 		using MatrixStack = std::stack<VMatrix, std::vector<VMatrix>>;
 		std::array<MatrixStack, NUM_MATRIX_MODES> m_MatrixStacks;

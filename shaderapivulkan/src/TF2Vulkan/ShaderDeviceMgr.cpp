@@ -3,6 +3,7 @@
 #include "interface/internal/IShaderDeviceInternal.h"
 
 #include <stdshader_vulkan/ShaderBlobs.h>
+#include <TF2Vulkan/Util/CStringBuilder.h>
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 
@@ -125,7 +126,7 @@ static std::array<std::array<std::atomic_size_t, VK_SYSTEM_ALLOCATION_SCOPE_RANG
 
 static void* VKAPI_CALL AllocationFunction(void* userData, size_t size, size_t alignment, VkSystemAllocationScope scope)
 {
-	++s_ActiveAllocations;
+	const auto activeAllocations = ++s_ActiveAllocations;
 	return _aligned_malloc(size, alignment);
 }
 
@@ -139,7 +140,11 @@ static void* VKAPI_CALL ReallocationFunction(void* userData, void* original, siz
 
 static void VKAPI_CALL FreeFunction(void* userData, void* memory)
 {
-	--s_ActiveAllocations;
+	if (!memory)
+		return;
+
+	const auto oldActiveAllocations = s_ActiveAllocations--;
+	assert(oldActiveAllocations > 0);
 	return _aligned_free(memory);
 }
 
@@ -386,6 +391,10 @@ static vk::UniqueDevice CreateDevice(vk::PhysicalDevice& adapter, QueueFamilies&
 	createInfo.ppEnabledExtensionNames = DEVICE_EXTENSIONS;
 	createInfo.enabledExtensionCount = std::size(DEVICE_EXTENSIONS);
 
+	vk::PhysicalDeviceFeatures features;
+	features.samplerAnisotropy = true;
+	createInfo.pEnabledFeatures = &features;
+
 	return adapter.createDeviceUnique(createInfo, s_AllocationCallbacks);
 }
 
@@ -413,25 +422,32 @@ static vk::Bool32 DebugUtilsMessengerCallback(
 	if (severity & (Severity::eError | Severity::eWarning))
 	{
 		msgFunc = &Warning;
-		shouldBreak = !!(types & Type::eValidation);
+		shouldBreak = !!(types & Type::eValidation) &&
+			!strstr(data.pMessageIdName, "InvalidImageLayout");
 	}
 
-	msgFunc(
-		"[TF2Vulkan] Debug Message:\n"
-		"\tSeverity:   %s\n"
-		"\tTypes:      %s\n"
-		"\tMessage ID: %s (%i)\n"
-		"\tMessage:    %s\n"
-		"\n",
-		vk::to_string(severity).c_str(),
-		vk::to_string(types).c_str(),
-		data.pMessageIdName, data.messageIdNumber,
-		data.pMessage);
+	Util::CStringBuilder<4096> buf;
+	buf.AppendF("%s: msgNum: %i - %s\n", data.pMessageIdName, data.messageIdNumber, data.pMessage);
+
+	if (data.objectCount > 0)
+	{
+		buf.AppendF("\tObjects: %u\n", data.objectCount);
+
+		for (size_t i = 0; i < data.objectCount; i++)
+		{
+			const auto& obj = data.pObjects[i];
+			buf.AppendF("\t\t[%zu]  0x%llX, type: %s, name: %s\n",
+				i, obj.objectHandle, vk::to_string(obj.objectType).c_str(), obj.pObjectName ? obj.pObjectName : "<null>", "what");
+		}
+	}
+
+	Plat_DebugString(buf.c_str());
+	//msgFunc("%.*s", PRINTF_SV(buf.GetBuffer()));
 
 	if (shouldBreak)
 		__debugbreak();
 
-	return true;
+	return false;
 }
 
 InitReturnVal_t ShaderDeviceMgr::Init()
@@ -472,7 +488,7 @@ InitReturnVal_t ShaderDeviceMgr::Init()
 				*callbackData);
 		};
 
-		//m_DebugMessenger = m_Instance->createDebugUtilsMessengerEXTUnique(dbgCI, nullptr, m_InstanceDynDisp);
+		m_DebugMessenger = m_Instance->createDebugUtilsMessengerEXTUnique(dbgCI, nullptr, m_InstanceDynDisp);
 	}
 
 	auto physicalDevices = m_Instance->enumeratePhysicalDevices();

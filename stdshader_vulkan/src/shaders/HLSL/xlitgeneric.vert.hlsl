@@ -73,12 +73,12 @@ VS_OUTPUT main(const VS_INPUT v)
 	{
 		if (NORMALMAPPING)
 		{
-			ApplyMorph(morphTexture, morphSampler, cMorphTargetTextureDim, cMorphSubrect,
+			ApplyMorph(TEXINDEX_MORPH, SMPINDEX_MORPH, cMorphTargetTextureDim, cMorphSubrect,
 				v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal, vTangent.xyz);
 		}
 		else
 		{
-			ApplyMorph(morphTexture, morphSampler, cMorphTargetTextureDim, cMorphSubrect,
+			ApplyMorph(TEXINDEX_MORPH, SMPINDEX_MORPH, cMorphTargetTextureDim, cMorphSubrect,
 				v.vVertexID, v.vTexCoord2.xyz, vPosition.xyz, vNormal);
 		}
 	}
