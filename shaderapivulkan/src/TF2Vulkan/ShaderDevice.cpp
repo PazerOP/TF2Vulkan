@@ -29,7 +29,7 @@ namespace
 	{
 		const vk::Queue& GetQueue() const override { return m_Queue; }
 		const vk::CommandPool& GetCmdPool() const override { return m_CommandPool.get(); }
-		const vk::Device& GetDevice() const override;
+		Util::SynchronizedObject<vk::Device> GetDevice() const override;
 
 		vk::Queue m_Queue;
 		vk::UniqueCommandPool m_CommandPool;
@@ -120,12 +120,12 @@ namespace
 
 		void VulkanInit(VulkanInitData&& device) override;
 
-		const vk::Device& GetVulkanDevice() override;
+		Util::SynchronizedObject<vk::Device> GetVulkanDevice() override;
 
 		vma::UniqueAllocator& GetVulkanAllocator() override;
 
-		IVulkanQueue& GetGraphicsQueue() override;
-		Util::CheckedPtr<IVulkanQueue> GetTransferQueue() override;
+		Util::SynchronizedObject<IVulkanQueue*> GetGraphicsQueue() override;
+		Util::SynchronizedObject<Util::CheckedPtr<IVulkanQueue>> GetTransferQueue() override;
 
 		const vk::Buffer& GetDummyUniformBuffer() const override { return m_Data.m_DummyUniformBuffer.GetBuffer(); }
 		const vk::Buffer& GetDummyVertexBuffer() const override { return m_Data.m_DummyVertexBuffer.GetBuffer(); }
@@ -176,6 +176,10 @@ namespace
 			vk::UniquePipelineCache m_PipelineCache;
 
 			const IShaderAPITexture* m_DepthTexture = nullptr;
+
+			std::unique_ptr<Util::RecursiveMutexDbg> m_DeviceMutex = std::make_unique<Util::RecursiveMutexDbg>();
+			std::unique_ptr<Util::RecursiveMutexDbg> m_GraphicsQueueMutex = std::make_unique<Util::RecursiveMutexDbg>();
+			std::unique_ptr<Util::RecursiveMutexDbg> m_TransferQueueMutex = std::make_unique<Util::RecursiveMutexDbg>();
 
 		} m_Data;
 
@@ -260,7 +264,7 @@ void ShaderDevice::Present()
 	auto& sc = scData.m_SwapChain.get();
 	auto& currentFrame = scData.m_CurrentFrame;
 	auto& curImg = scData.m_Images.at(currentFrame);
-	auto& device = GetVulkanDevice();
+	auto [device, lock] = GetVulkanDevice().locked();
 
 	auto pixScope = curImg.m_PrimaryCmdBuf->DebugRegionBegin("ShaderDevice::Present()");
 
@@ -527,7 +531,9 @@ static vk::UniqueQueryPool CreateQueryPool(vk::QueryType type, uint32_t count = 
 	vk::QueryPoolCreateInfo ci;
 	ci.queryType = type;
 	ci.queryCount = count;
-	return s_Device.GetVulkanDevice().createQueryPoolUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
+
+	auto [device, lock] = s_Device.GetVulkanDevice().locked();
+	return device.createQueryPoolUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 }
 
 void ShaderDevice::VulkanInit(VulkanInitData&& inData)
@@ -577,10 +583,10 @@ void ShaderDevice::VulkanInit(VulkanInitData&& inData)
 	AutoInitAll();
 }
 
-const vk::Device& ShaderDevice::GetVulkanDevice()
+Util::SynchronizedObject<vk::Device> ShaderDevice::GetVulkanDevice()
 {
 	assert(m_Data.m_Device);
-	return m_Data.m_Device.get();
+	return Util::SynchronizedObject(m_Data.m_Device.get(), *m_Data.m_DeviceMutex);
 }
 
 vma::UniqueAllocator& ShaderDevice::GetVulkanAllocator()
@@ -589,18 +595,18 @@ vma::UniqueAllocator& ShaderDevice::GetVulkanAllocator()
 	return m_Data.m_Allocator;
 }
 
-IVulkanQueue& ShaderDevice::GetGraphicsQueue()
+Util::SynchronizedObject<IVulkanQueue*> ShaderDevice::GetGraphicsQueue()
 {
 	assert(m_Data.m_GraphicsQueue.m_Queue);
 	assert(m_Data.m_GraphicsQueue.m_CommandPool);
-	return m_Data.m_GraphicsQueue;
+	return { &m_Data.m_GraphicsQueue, *m_Data.m_GraphicsQueueMutex };
 }
 
-Util::CheckedPtr<IVulkanQueue> ShaderDevice::GetTransferQueue()
+Util::SynchronizedObject<Util::CheckedPtr<IVulkanQueue>> ShaderDevice::GetTransferQueue()
 {
 	assert(m_Data.m_Device);
 	auto& queue = m_Data.m_TransferQueue;
-	return queue ? &*queue : nullptr;
+	return { queue ? &*queue : nullptr, *m_Data.m_TransferQueueMutex };
 }
 
 bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& info)
@@ -677,6 +683,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 	// Swap chain images and image views
 	{
 		const auto images = m_Data.m_Device->getSwapchainImagesKHR(newSwapChain.m_SwapChain.get());
+		auto [graphicsQueue, lock] = GetGraphicsQueue().locked();
 
 		size_t index = 0;
 		for (auto& img : images)
@@ -703,7 +710,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 			sprintf_s(buf, "TF2Vulkan Swap Chain Image #%zu", index);
 			SetDebugName(img, buf);
 
-			perImg.m_PrimaryCmdBuf = GetGraphicsQueue().CreateCmdBufferAndBegin();
+			perImg.m_PrimaryCmdBuf = graphicsQueue->CreateCmdBufferAndBegin();
 
 			// Initially, images start in ePresentSrcKHR layout. We want them
 			// to be in eColorAttachmentOptimal, since that's what ::Present()
@@ -771,7 +778,7 @@ bool ShaderDevice::SetMode(void* hwnd, int adapter, const ShaderDeviceInfo_t& in
 	return true;
 }
 
-const vk::Device& VulkanQueue::GetDevice() const
+Util::SynchronizedObject<vk::Device> VulkanQueue::GetDevice() const
 {
 	return s_Device.GetVulkanDevice();
 }
@@ -783,7 +790,8 @@ void ShaderDevice::SetDebugName(uint64_t obj, vk::ObjectType type, const char* n
 	info.objectType = type;
 	info.pObjectName = name;
 
-	GetVulkanDevice().setDebugUtilsObjectNameEXT(info, m_Data.m_DynamicLoader);
+	auto [device, lock] = GetVulkanDevice().locked();
+	device.setDebugUtilsObjectNameEXT(info, m_Data.m_DynamicLoader);
 }
 
 vk::Image ShaderDevice::BackbufferColorTexture::GetImage() const

@@ -504,13 +504,15 @@ bool ShaderAPI::DoRenderTargetsNeedSeparateDepthBuffer() const
 
 vk::ImageView ShaderAPI::ShaderTexture::FindOrCreateView(const vk::ImageViewCreateInfo& viewCreateInfo)
 {
+	LOG_FUNC();
 	auto& imgViews = m_ImageViews;
 
 	if (auto found = imgViews.find(viewCreateInfo); found != imgViews.end())
 		return found->second.get();
 
 	// Not found, create now
-	const auto& result = (imgViews[viewCreateInfo] = g_ShaderDevice.GetVulkanDevice().createImageViewUnique(viewCreateInfo));
+	auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+	const auto& result = (imgViews[viewCreateInfo] = device.createImageViewUnique(viewCreateInfo));
 	g_ShaderDevice.SetDebugName(result, Util::string::concat("ImageView: ", m_DebugName).c_str());
 
 	return result.get();
@@ -901,8 +903,8 @@ void ShaderAPI::SetVertexShaderStateAmbientLightCube()
 void ShaderAPI::ForceHardwareSync()
 {
 	LOG_FUNC();
-	// Vulkan makes this so easy :)
-	g_ShaderDevice.GetGraphicsQueue().GetQueue().waitIdle();
+	auto [graphicsQueue, lock] = g_ShaderDevice.GetGraphicsQueue().locked();
+	graphicsQueue->GetQueue().waitIdle();
 }
 
 void ShaderAPI::BeginFrame()

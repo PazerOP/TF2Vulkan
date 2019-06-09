@@ -375,16 +375,13 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 	}
 	else
 	{
-		tempCmdBufStorage = g_ShaderDevice.GetGraphicsQueue().CreateCmdBufferAndBegin();
+		auto [queue, lock] = g_ShaderDevice.GetGraphicsQueue().locked();
+		tempCmdBufStorage = queue->CreateCmdBufferAndBegin();
 		cmdBuffer = tempCmdBufStorage.get();
 	}
 
 	auto& tex = m_Textures.at(texHandle);
 	const ImageFormat targetFormat = FormatInfo::ConvertImageFormat(tex.GetImageCreateInfo().format);
-
-	auto& device = g_ShaderDevice.GetVulkanDevice();
-	auto& alloc = g_ShaderDevice.GetVulkanAllocator();
-	auto& queue = g_ShaderDevice.GetGraphicsQueue();
 
 	std::vector<vk::BufferImageCopy> copyRegions;
 
@@ -414,9 +411,9 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 			region.bufferOffset = totalSize;
 
 			// bufferRowLength and bufferImageHeight are in texels
-			if (slice.m_Stride > 0)
-				region.bufferRowLength = slice.m_Stride / (slice.m_Stride / slice.m_Width);
-			else
+			//if (slice.m_Stride > 0)
+			//	region.bufferRowLength = slice.m_Stride / (slice.m_Stride / slice.m_Width);
+			//else
 				region.bufferRowLength = slice.m_Width;    // Assume tightly packed
 
 			if (slice.m_SliceStride > 0 && slice.m_Stride > 0)
@@ -468,8 +465,8 @@ bool IShaderAPI_TextureManager::UpdateTexture(ShaderAPITextureHandle_t texHandle
 
 			const auto realSliceFormat = FormatInfo::RemoveRuntimeFlags(slice.m_Format);
 
-			const auto srcTightlyPackedStride = Util::SafeConvert<uint32_t>(ImageLoader::GetMemRequired(
-				Util::SafeConvert<int>(slice.m_Width), Util::SafeConvert<int>(1), 1, realSliceFormat, false));
+			//const auto srcTightlyPackedStride = Util::SafeConvert<uint32_t>(ImageLoader::GetMemRequired(
+			//	Util::SafeConvert<int>(slice.m_Width), Util::SafeConvert<int>(1), 1, realSliceFormat, false));
 
 			// Record this copy region
 			{

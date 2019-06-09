@@ -46,7 +46,7 @@ namespace
 			const ShaderInfo* m_Info;
 		};
 
-		std::recursive_mutex m_Mutex;
+		std::mutex m_Mutex;
 		std::unordered_map<CUtlSymbolDbg, CompiledShader> m_Shaders;
 	};
 }
@@ -243,6 +243,7 @@ VulkanShaderManager::CompiledShader::CompiledShader(const CUtlSymbolDbg& name) :
 
 	m_ReflectionData = CreateReflectionData(blobData, ci.codeSize);
 
-	m_Shader = g_ShaderDevice.GetVulkanDevice().createShaderModuleUnique(ci);
+	auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+	m_Shader = device.createShaderModuleUnique(ci);
 	g_ShaderDevice.SetDebugName(m_Shader, m_Name.String());
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "interface/internal/IVulkanCommandBuffer.h"
+#include "TF2Vulkan/Util/SynchronizedObject.h"
 
 namespace TF2Vulkan
 {
@@ -10,7 +11,7 @@ namespace TF2Vulkan
 		~IVulkanQueue() = default;
 
 	public:
-		virtual const vk::Device& GetDevice() const = 0;
+		virtual Util::SynchronizedObject<vk::Device> GetDevice() const = 0;
 		virtual const vk::Queue& GetQueue() const = 0;
 		virtual const vk::CommandPool& GetCmdPool() const = 0;
 

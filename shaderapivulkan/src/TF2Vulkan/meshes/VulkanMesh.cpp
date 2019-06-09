@@ -137,7 +137,8 @@ void VulkanGPUBuffer::CommitModifications(const VulkanGPUBuffer::ModifyData& mod
 		.setSrcOffset(entry.GetOffset())
 		.setDstOffset(modification.m_DataOffset);
 
-	if (auto transfer = g_ShaderDevice.GetTransferQueue())
+
+	if (auto [transfer, lock] = g_ShaderDevice.GetTransferQueue().locked(); transfer)
 	{
 		auto transferCmdBuf = transfer->CreateCmdBufferAndBegin();
 		transferCmdBuf->copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);

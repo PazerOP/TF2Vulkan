@@ -10,8 +10,6 @@ static std::atomic<size_t> s_CmdBufIndex = 1;
 
 namespace
 {
-#pragma warning(push)
-#pragma warning(disable : 4996)
 	class UniqueCmdBuffer final : public IVulkanCommandBuffer
 	{
 	public:
@@ -23,11 +21,13 @@ namespace
 	protected:
 		const vk::CommandBuffer& GetCmdBuffer() const override { return m_Buffer.get(); }
 	};
-#pragma warning(pop)
 }
 
 static std::unique_ptr<UniqueCmdBuffer> CreateCmdBuffer(IVulkanQueue& queue)
 {
+	const auto& device = queue.GetDevice();
+	const auto lock = device.lock_unique();
+
 	auto buf = std::make_unique<UniqueCmdBuffer>();
 	buf->m_Queue = &queue;
 
@@ -36,7 +36,7 @@ static std::unique_ptr<UniqueCmdBuffer> CreateCmdBuffer(IVulkanQueue& queue)
 	allocInfo.commandPool = queue.GetCmdPool();
 	allocInfo.commandBufferCount = 1;
 
-	auto allocated = queue.GetDevice().allocateCommandBuffersUnique(allocInfo);
+	auto allocated = device->allocateCommandBuffersUnique(allocInfo);
 
 	for (auto& newBuf : allocated)
 	{

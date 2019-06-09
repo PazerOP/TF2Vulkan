@@ -193,7 +193,8 @@ vma::AllocatedImage ImageFactory::Create() const
 
 	if (m_DefaultLayout != m_CreateInfo.initialLayout)
 	{
-		auto cmdBuf = g_ShaderDevice.GetGraphicsQueue().CreateCmdBufferAndBegin();
+		auto [queue, lock] = g_ShaderDevice.GetGraphicsQueue().locked();
+		auto cmdBuf = queue->CreateCmdBufferAndBegin();
 
 		Factories::ImageMemoryBarrierFactory{}
 			.SetImage(created.GetImage())
@@ -371,7 +372,7 @@ vk::UniqueDescriptorSetLayout DescriptorSetLayoutFactory::Create() const
 {
 	assert(m_CreateInfo.pBindings == m_Bindings.data());
 	assert(m_CreateInfo.bindingCount == m_Bindings.size());
-	return g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(
+	return g_ShaderDevice.GetVulkanDevice()->createDescriptorSetLayoutUnique(
 		m_CreateInfo, g_ShaderDeviceMgr.GetAllocationCallbacks());
 }
 

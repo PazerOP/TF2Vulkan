@@ -502,7 +502,8 @@ DescriptorSetLayout::DescriptorSetLayout(const DescriptorSetLayoutKey& key)
 		auto& ci = m_CreateInfo;
 		AttachVector(ci.pBindings, ci.bindingCount, m_Bindings);
 
-		m_Layout = g_ShaderDevice.GetVulkanDevice().createDescriptorSetLayoutUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
+		auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+		m_Layout = device.createDescriptorSetLayoutUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Descriptor Set Layout 0x%zX (%u t2d, %u s)",
 			Util::hash_value(key), key.m_Texture2DCount, key.m_SamplerCount);
 	}
@@ -523,7 +524,9 @@ PipelineLayout::PipelineLayout(const PipelineLayoutKey& key)
 
 		AttachVector(ci.pSetLayouts, ci.setLayoutCount, setLayouts);
 		AttachVector(ci.pPushConstantRanges, ci.pushConstantRangeCount, m_PushConstantRanges);
-		m_Layout = g_ShaderDevice.GetVulkanDevice().createPipelineLayoutUnique(
+
+		auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+		m_Layout = device.createPipelineLayoutUnique(
 			ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 
 		g_ShaderDevice.SetDebugName(m_Layout, "TF2Vulkan Pipeline Layout 0x%zX", Util::hash_value(key));
@@ -627,7 +630,8 @@ RenderPass::RenderPass(const RenderPassKey& key) :
 
 		AttachVector(ci.pSubpasses, ci.subpassCount, subpassTemp);
 
-		m_RenderPass = g_ShaderDevice.GetVulkanDevice().createRenderPassUnique(
+		auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+		m_RenderPass = device.createRenderPassUnique(
 			ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		g_ShaderDevice.SetDebugName(m_RenderPass, "TF2Vulkan Render Pass 0x%zX", Util::hash_value(key));
 	}
@@ -896,7 +900,8 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 		AttachVector(ci.pStages, ci.stageCount, shaderStages);
 
 		// ci.subpass = 0;
-		m_Pipeline = g_ShaderDevice.GetVulkanDevice().createGraphicsPipelineUnique(
+		auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+		m_Pipeline = device.createGraphicsPipelineUnique(
 			g_ShaderDevice.GetPipelineCache(), ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 
 		g_ShaderDevice.SetDebugName(m_Pipeline, "TF2Vulkan Graphics Pipeline 0x%zX", Util::hash_value(key));
@@ -960,7 +965,8 @@ Framebuffer::Framebuffer(const FramebufferKey& key)
 
 		ci.renderPass = key.m_RenderPass->m_RenderPass.get();
 
-		m_Framebuffer = g_ShaderDevice.GetVulkanDevice().createFramebufferUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
+		auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+		m_Framebuffer = device.createFramebufferUnique(ci, g_ShaderDeviceMgr.GetAllocationCallbacks());
 		assert(m_Framebuffer);
 		g_ShaderDevice.SetDebugName(m_Framebuffer, debugName.c_str());
 	}
@@ -1050,7 +1056,8 @@ Sampler::Sampler(const SamplerKey& key)
 		ci.mipmapMode = vk::SamplerMipmapMode::eNearest;
 	}
 
-	m_Sampler = g_ShaderDevice.GetVulkanDevice().createSamplerUnique(m_CreateInfo,
+	auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+	m_Sampler = device.createSamplerUnique(m_CreateInfo,
 		g_ShaderDeviceMgr.GetAllocationCallbacks());
 	g_ShaderDevice.SetDebugName(m_Sampler, "TF2Vulkan Sampler 0x%zX", Util::hash_value(key));
 }
@@ -1101,7 +1108,7 @@ void StateManagerVulkan::ApplyRenderPass(const RenderPass& renderPass, IVulkanCo
 
 DescriptorSet::DescriptorSet(const DescriptorSetKey& key)
 {
-	auto& device = g_ShaderDevice.GetVulkanDevice();
+	auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
 
 	assert(key.m_Layout);
 	const auto& layout = *key.m_Layout;
@@ -1291,7 +1298,8 @@ DescriptorPool::DescriptorPool(const DescriptorPoolKey& key)
 		ci.maxSets = POOL_SIZE;
 		ci.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 
-		m_DescriptorPool = g_ShaderDevice.GetVulkanDevice().createDescriptorPoolUnique(ci,
+		auto [device, lock] = g_ShaderDevice.GetVulkanDevice().locked();
+		m_DescriptorPool = device.createDescriptorPoolUnique(ci,
 			g_ShaderDeviceMgr.GetAllocationCallbacks());
 		g_ShaderDevice.SetDebugName(m_DescriptorPool, "TF2Vulkan Descriptor Pool 0x%zX", Util::hash_value(key));
 	}

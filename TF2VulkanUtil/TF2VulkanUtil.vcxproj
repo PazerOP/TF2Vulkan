@@ -124,6 +124,7 @@
     <ClInclude Include="include\TF2Vulkan\Util\std_utility.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_variant.h" />
     <ClInclude Include="include\TF2Vulkan\Util\std_vector.h" />
+    <ClInclude Include="include\TF2Vulkan\Util\SynchronizedObject.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Templates.h" />
     <ClInclude Include="include\TF2Vulkan\Util\Threads.h" />
     <ClInclude Include="include\TF2Vulkan\Util\UniqueObject.h" />

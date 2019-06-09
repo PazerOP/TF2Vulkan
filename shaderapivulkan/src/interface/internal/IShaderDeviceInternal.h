@@ -2,6 +2,7 @@
 
 #include "interface/internal/IVulkanCommandBuffer.h"
 #include "interface/internal/IVulkanQueue.h"
+#include "TF2Vulkan/Util/SynchronizedObject.h"
 
 #include <TF2Vulkan/IBufferPool.h>
 #include <TF2Vulkan/Util/AutoInit.h>
@@ -37,12 +38,13 @@ namespace TF2Vulkan
 
 		virtual void VulkanInit(VulkanInitData && data) = 0;
 
-		virtual const vk::Device & GetVulkanDevice() = 0;
+		virtual Util::SynchronizedObject<vk::Device> GetVulkanDevice() = 0;
+
 		virtual vma::UniqueAllocator & GetVulkanAllocator() = 0;
 		virtual const vk::DispatchLoaderDynamic & GetDynamicDispatch() const = 0;
 
-		virtual IVulkanQueue& GetGraphicsQueue() = 0;
-		virtual Util::CheckedPtr<IVulkanQueue> GetTransferQueue() = 0;
+		virtual Util::SynchronizedObject<IVulkanQueue*> GetGraphicsQueue() = 0;
+		virtual Util::SynchronizedObject<Util::CheckedPtr<IVulkanQueue>> GetTransferQueue() = 0;
 
 		virtual const vk::Buffer& GetDummyUniformBuffer() const = 0;
 		virtual const vk::Buffer& GetDummyVertexBuffer() const = 0;
