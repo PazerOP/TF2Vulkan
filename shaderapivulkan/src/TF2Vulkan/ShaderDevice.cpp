@@ -346,7 +346,10 @@ void ShaderDevice::Present()
 
 void ShaderDevice::GetWindowSize(int& width, int& height) const
 {
-	NOT_IMPLEMENTED_FUNC();
+	LOG_FUNC();
+	const auto& ie = m_Data.m_SwapChain.m_SwapChainCreateInfo.imageExtent;
+	Util::SafeConvert(ie.width, width);
+	Util::SafeConvert(ie.height, height);
 }
 
 void ShaderDevice::SetHardwareGammaRamp(float gamma, float gammaTVRangeMin, float gammaTVRangeMax, float gammaTVExponent, bool tvEnabled)

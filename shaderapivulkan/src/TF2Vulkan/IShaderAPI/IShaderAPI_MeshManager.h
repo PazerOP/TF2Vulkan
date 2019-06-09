@@ -31,7 +31,12 @@ namespace TF2Vulkan
 		void PushActiveMesh(const ActiveMeshData& mesh) override final { m_ActiveMesh.push(mesh); }
 		void PopActiveMesh() override final { m_ActiveMesh.pop(); }
 
+		static std::aligned_storage_t<256> s_FallbackMeshData;
+		static void ComputeVertexDescription(void* buffer, VertexFormat fmt, VertexDesc_t& desc);
+
 	private:
+		[[deprecated]] void ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const override final;
+
 		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
 		VulkanMesh m_FlexMesh;
 
@@ -39,4 +44,6 @@ namespace TF2Vulkan
 
 		std::stack<ActiveMeshData, std::vector<ActiveMeshData>> m_ActiveMesh;
 	};
+
+	extern IShaderAPI_MeshManager& g_MeshManager;
 }

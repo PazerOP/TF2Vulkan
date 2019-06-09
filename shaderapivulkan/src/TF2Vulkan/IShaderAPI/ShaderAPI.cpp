@@ -175,11 +175,9 @@ namespace
 		void EnableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
 		void DisableAlphaToCoverage() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const override { NOT_IMPLEMENTED_FUNC(); }
-
 		bool SupportsShadowDepthTextures() override { NOT_IMPLEMENTED_FUNC(); }
 
-		void SetDisallowAccess(bool disallowed) override { NOT_IMPLEMENTED_FUNC(); }
+		void SetDisallowAccess(bool disallowed) override { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
 		void EnableShaderShaderMutex(bool enabled) override;
 		void ShaderLock() override;
 		void ShaderUnlock() override;
@@ -276,6 +274,7 @@ EXPOSE_SINGLE_INTERFACE_GLOBALVAR(ShaderAPI, IShaderDynamicNext, SHADERDYNAMICNE
 IShaderAPI_StateManagerDynamic& TF2Vulkan::g_StateManagerDynamic = s_ShaderAPI;
 IShaderAPIInternal& TF2Vulkan::g_ShaderAPIInternal = s_ShaderAPI;
 IShaderAPI_TextureManager& TF2Vulkan::g_TextureManager = s_ShaderAPI;
+IShaderAPI_MeshManager& TF2Vulkan::g_MeshManager = s_ShaderAPI;
 
 void ShaderAPI::ClearBuffers(bool clearColor, bool clearDepth, bool clearStencil, int rtWidth, int rtHeight)
 {
@@ -902,7 +901,7 @@ void ShaderAPI::SetVertexShaderStateAmbientLightCube()
 
 void ShaderAPI::ForceHardwareSync()
 {
-	LOG_FUNC();
+	LOG_FUNC_ANYTHREAD();
 	auto [graphicsQueue, lock] = g_ShaderDevice.GetGraphicsQueue().locked();
 	graphicsQueue->GetQueue().waitIdle();
 }
