@@ -87,6 +87,10 @@ auto VulkanGPUBuffer::GetBufferData(size_t size, size_t offset, bool read, bool 
 	auto entryBuffer = realPool.GetBufferInfo(buffer);
 	retVal.m_Data = realPool.GetBufferData(buffer.GetOffset()) + (IsDynamic() ? offset : 0);
 
+#ifdef _DEBUG
+	memset(retVal.m_Data, 0, size);
+#endif
+
 	if (IsDynamic())
 		m_Buffer.emplace<BufferPoolEntry>(buffer);
 	else
@@ -216,7 +220,9 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 
 	if (!VertexCount())
 	{
+		assert(!indexCount == !VertexCount());
 		Warning(TF2VULKAN_PREFIX "No vertices\n");
+		TF2VULKAN_PIX_MARKER("No vertices");
 		return;
 	}
 
@@ -530,32 +536,40 @@ void VulkanIndexBuffer::ModifyBegin(int firstIndex, int indexCount, IndexDesc_t&
 
 void VulkanIndexBuffer::ModifyBegin(uint32_t firstIndex, uint32_t indexCount, IndexDesc_t& desc, bool read, bool write)
 {
-	BeginThreadLock();
 	LOG_FUNC_ANYTHREAD();
-	assert(!m_ModifyData);
 
 	desc = {};
 	desc.m_nIndexSize = sizeof(IndexFormatType) >> 1; // Why?
-
-	if (indexCount <= 0)
-	{
-		desc.m_pIndices = reinterpret_cast<IndexFormatType*>(&IShaderAPI_MeshManager::s_FallbackMeshData);
-		auto& modify = m_ModifyData.emplace();
-		modify.m_Data = nullptr;
-		modify.m_DataLength = 0;
-		modify.m_DataOffset = 0;
-
-		return;
-	}
-
-	auto& modifyData = m_ModifyData.emplace(GetBufferData(
-		indexCount * IndexElementSize(), firstIndex * IndexElementSize(), read, write));
-
-	desc.m_pIndices = reinterpret_cast<IndexFormatType*>(modifyData.m_Data);
 	desc.m_nFirstIndex = 0;
 	desc.m_nOffset = 0;
 
+	assert(firstIndex == 0);
+
+	if (read)
+		NOT_IMPLEMENTED_FUNC_NOBREAK();
+
+	if (indexCount <= 0)
+	{
+		// Not thread safe at this point, but we don't want to unnecessarily
+		// lock if indexCount is zero and we're just returning a pointer to
+		// dummy data.
+		assert(!m_ModifyData);
+
+		desc.m_pIndices = reinterpret_cast<IndexFormatType*>(&IShaderAPI_MeshManager::s_FallbackMeshData);
+		return;
+	}
+
+	BeginThreadLock();
+	assert(!m_ModifyData); // Once more after the lock, just to be sure
+
+	const auto indexDataSize = indexCount * IndexElementSize();
+	auto& modifyData = m_ModifyData.emplace(GetBufferData(
+		indexDataSize, firstIndex * IndexElementSize(), read, write));
+
+	desc.m_pIndices = reinterpret_cast<IndexFormatType*>(modifyData.m_Data);
+
 	assert(desc.m_pIndices);
+	ValidateData(indexCount, 0, desc);
 }
 
 void VulkanIndexBuffer::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
@@ -572,6 +586,9 @@ void VulkanIndexBuffer::ModifyEnd(IndexDesc_t& desc)
 	LOG_FUNC_ANYTHREAD();
 	AssertCheckHeap();
 
+	if (!m_ModifyData)
+		return;
+
 	auto& modify = m_ModifyData.value();
 	if (modify.m_Data && modify.m_DataLength > 0)
 	{
@@ -580,7 +597,7 @@ void VulkanIndexBuffer::ModifyEnd(IndexDesc_t& desc)
 		if (auto newIdxCount = (modify.m_DataOffset + modify.m_DataLength) / IndexElementSize(); newIdxCount > m_TotalIndexCount)
 			Util::SafeConvert(newIdxCount, m_TotalIndexCount);
 
-		ValidateData(modify.m_DataLength, desc);
+		ValidateData(m_TotalIndexCount, desc);
 	}
 
 	m_ModifyData.reset();
@@ -687,6 +704,9 @@ void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 
+	if (!m_ModifyData)
+		return;
+
 	auto& modify = m_ModifyData.value();
 	assert(Util::SafeConvert<size_t>(vertexCount) <= modify.m_VertexCount);
 	Util::SafeConvert(vertexCount, modify.m_VertexCount);
@@ -700,6 +720,9 @@ void VulkanIndexBuffer::Unlock(int indexCount, IndexDesc_t& desc)
 	LOG_FUNC_ANYTHREAD();
 	AssertCheckHeap();
 
+	if (!m_ModifyData)
+		return;
+
 	auto& modify = m_ModifyData.value();
 	assert(Util::SafeConvert<size_t>(indexCount) <= (modify.m_DataLength / IndexElementSize()));
 	Util::SafeConvert(indexCount, m_TotalIndexCount);
@@ -712,11 +735,19 @@ void VulkanVertexBuffer::ModifyEnd(VertexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 
+	if (!m_ModifyData)
+		return;
+
 	const auto& modify = m_ModifyData.value();
 	CommitModifications(modify);
 
+#ifdef _DEBUG
+	[[maybe_unused]] const auto oldVertexCount = m_TotalVertexCount;
+#endif
 	if (modify.m_VertexCount > m_TotalVertexCount)
 		Util::SafeConvert(modify.m_VertexCount, m_TotalVertexCount);
+
+	ValidateData(m_TotalVertexCount, desc);
 
 	m_ModifyData.reset();
 
@@ -732,8 +763,22 @@ void VulkanVertexBuffer::ModifyBegin(int firstVertex, int vertexCount, VertexDes
 
 void VulkanVertexBuffer::ModifyBegin(uint32_t firstVertex, uint32_t vertexCount, VertexDesc_t& desc, bool read, bool write)
 {
-	BeginThreadLock();
 	LOG_FUNC_ANYTHREAD();
+
+	assert(firstVertex == 0);
+
+	desc = {};
+
+	if (vertexCount <= 0)
+	{
+		// Not thread safe yet, but avoid unnecessary locks if just returning dummy data.
+		assert(!m_ModifyData);
+		g_MeshManager.SetDummyDataPointers(desc);
+		return;
+	}
+
+	BeginThreadLock();
+	assert(!m_ModifyData); // Once more, after the lock
 	AssertCheckHeap();
 
 	assert(!m_Format.IsUnknownFormat());
@@ -749,10 +794,13 @@ void VulkanVertexBuffer::ModifyBegin(uint32_t firstVertex, uint32_t vertexCount,
 	const auto vtxElemsCount = m_Format.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
 	assert(!m_ModifyData);
-	auto& modify = m_ModifyData.emplace(GetBufferData(vertexCount * totalVtxSize, firstVertex * totalVtxSize, read, write));
+	const auto vertexDataSize = vertexCount * totalVtxSize;
+	auto& modify = m_ModifyData.emplace(GetBufferData(vertexDataSize, firstVertex * totalVtxSize, read, write));
 	Util::SafeConvert(vertexCount, modify.m_VertexCount);
 
 	g_MeshManager.ComputeVertexDescription(modify.m_Data, m_Format, desc);
+
+	ValidateData(vertexCount, 0, desc);
 }
 
 void VulkanVertexBuffer::ModifyBegin(bool readOnly, int firstVertex, int vertexCount, VertexDesc_t& desc)
@@ -766,6 +814,16 @@ void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)
 	NOT_IMPLEMENTED_FUNC();
 }
 
+template<typename T, size_t count, size_t alignment, typename = std::enable_if_t<std::is_floating_point_v<T>>>
+static void ValidateType(const Shaders::vector<T, count, alignment>& v)
+{
+	for (size_t i = 0; i < count; i++)
+	{
+		if (!std::isfinite(v[i]))
+			DebuggerBreakIfDebugging();
+	}
+}
+
 template<typename T>
 static void ValidateType(const void* base, int elementIndex, int elementSize)
 {
@@ -773,18 +831,7 @@ static void ValidateType(const void* base, int elementIndex, int elementSize)
 		return;
 
 	const T& typed = *reinterpret_cast<const T*>(reinterpret_cast<const std::byte*>(base) + elementSize * elementIndex);
-	using namespace Shaders;
-	if constexpr (std::is_same_v<T, float1> || std::is_same_v<T, float2> || std::is_same_v<T, float3> || std::is_same_v<T, float4>)
-	{
-		if constexpr (T::ELEM_COUNT >= 1)
-			assert(std::isfinite(typed.x));
-		if constexpr (T::ELEM_COUNT >= 2)
-			assert(std::isfinite(typed.y));
-		if constexpr (T::ELEM_COUNT >= 3)
-			assert(std::isfinite(typed.z));
-		if constexpr (T::ELEM_COUNT >= 4)
-			assert(std::isfinite(typed.w));
-	}
+	ValidateType(typed);
 }
 
 void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)

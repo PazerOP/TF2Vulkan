@@ -73,6 +73,7 @@ namespace TF2Vulkan
 		LightState_t m_LightState;
 		std::array<LightDesc_t, 4> m_Lights;
 		std::array<Vector4D, 6> m_LightAmbientCube;
+		Vector m_LightingOrigin;
 
 		std::array<Vector, MAX_VECTOR_RENDER_PARMS> m_RenderParamsVector;
 		std::array<int, MAX_INT_RENDER_PARMS> m_RenderParamsInt;

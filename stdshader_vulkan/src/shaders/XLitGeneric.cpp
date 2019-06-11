@@ -164,7 +164,8 @@ inline namespace XLitGeneric
 		Wireframe,
 		DepthWrite,
 		DebugDrawEnvmapMask,
-		EyeRefract
+		EyeRefract,
+		LightmappedGeneric,
 	};
 
 	class Shader : public ShaderNext<Shader, XLitGenericComponents>
@@ -231,6 +232,7 @@ inline namespace XLitGeneric
 	XLITGENERIC_DERIVED(UnlitGeneric);
 	XLITGENERIC_DERIVED(VertexLitGeneric);
 	XLITGENERIC_DERIVED(EyeRefract);
+	XLITGENERIC_DERIVED(LightmappedGeneric);
 
 	class Wireframe : public Shader
 	{
@@ -253,6 +255,13 @@ DEFINE_NSHADER_FALLBACK(Shadow, UnlitGeneric);
 DEFINE_NSHADER_FALLBACK(UnlitGeneric_DX8, UnlitGeneric);
 DEFINE_NSHADER_FALLBACK(DebugMorphAccumulator, UnlitGeneric);
 //DEFINE_NSHADER_FALLBACK(VertexLitGeneric_DX8, VertexLitGeneric);
+
+DEFINE_NSHADER_FALLBACK(WorldTwoTextureBlend, LightmappedGeneric);
+DEFINE_NSHADER_FALLBACK(WorldVertexTransition, LightmappedGeneric);
+DEFINE_NSHADER_FALLBACK(LightmappedReflective, LightmappedGeneric);
+DEFINE_NSHADER_FALLBACK(LightmappedTwoTexture, LightmappedGeneric);
+DEFINE_NSHADER_FALLBACK(LightmappedGeneric_Decal, LightmappedGeneric);
+DEFINE_NSHADER_FALLBACK(DecalBaseTimesLightmapAlphaBlendSelfIllum, LightmappedGeneric);
 
 static ConVar mat_phong("mat_phong", "1");
 static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
@@ -501,6 +510,12 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 			LoadLights(common);
 
 			drawParams.m_SpecConsts.AMBIENT_LIGHT = (common.m_AmbientCube != AmbientLightCube());
+
+			if (!drawParams.m_SpecConsts.AMBIENT_LIGHT && drawParams.m_SpecConsts.DYNAMIC_LIGHT &&
+				common.m_LightCount == 0)
+			{
+				drawParams.m_SpecConsts.DYNAMIC_LIGHT = false;
+			}
 		}
 
 		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;

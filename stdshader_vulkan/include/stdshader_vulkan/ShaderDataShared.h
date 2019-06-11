@@ -112,14 +112,16 @@ namespace TF2Vulkan{ namespace Shaders
 	static constexpr int1 TEX_DEFAULT_COLOR_WHITE = -3;
 	static constexpr int1 TEX_DEFAULT_COLOR_WHITE_TRANSPARENT = -4;
 	static constexpr int1 TEX_DEFAULT_COLOR_FLATNORMAL = -5;
+	static constexpr int1 TEX_DEFAULT_COLOR_GREY50 = -6;
 
 	static constexpr float4 TEX_DEFAULT_COLORS[] =
 	{
-		float4(0, 0, 0, 1), // black (opaque)
-		float4(0, 0, 0, 0), // black (transparent)
-		float4(1, 1, 1, 1), // white (opaque)
-		float4(1, 1, 1, 0), // white (transparent)
-		float4(0.5f, 0.5f, 1, 1), // flat normal
+		float4(0, 0, 0, 1),           // black (opaque)
+		float4(0, 0, 0, 0),           // black (transparent)
+		float4(1, 1, 1, 1),           // white (opaque)
+		float4(1, 1, 1, 0),           // white (transparent)
+		float4(0.5f, 0.5f, 1, 1),     // flat normal
+		float4(0.5f, 0.5f, 0.5f, 1),  // 50% grey (opaque)
 	};
 
 #ifdef __cplusplus

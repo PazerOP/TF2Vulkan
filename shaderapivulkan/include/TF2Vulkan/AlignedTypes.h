@@ -45,16 +45,16 @@ namespace TF2Vulkan{ namespace Shaders
 
 		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 1, alignment>
 		{
-			T x;
+			T x{};
 		};
 		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 2, alignment>
 		{
-			T x;
-			T y;
+			T x{};
+			T y{};
 		};
 		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 3, alignment>
 		{
-			constexpr vector_storage() : x{}, y{}, z{}
+			constexpr vector_storage()
 			{
 				// vec3s must be aligned to 16 bytes, but we can't use alignas because
 				// then MSVC makes the whole thing take 16 bytes rather than 12. We
@@ -63,16 +63,16 @@ namespace TF2Vulkan{ namespace Shaders
 			}
 			constexpr vector_storage(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
 
-			T x;
-			T y;
-			T z;
+			T x{};
+			T y{};
+			T z{};
 		};
 		template<typename T, size_t alignment> struct alignas(alignment) vector_storage<T, 4, alignment>
 		{
-			T x;
-			T y;
-			T z;
-			T w;
+			T x{};
+			T y{};
+			T z{};
+			T w{};
 		};
 
 		template<typename T, size_t size> static constexpr size_t GetDefaultAlignment()

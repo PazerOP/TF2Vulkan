@@ -120,8 +120,8 @@ namespace TF2Vulkan
 
 		void SetLight(int light, const LightDesc_t& desc) override final;
 		size_t GetLights(LightDesc_t* lights, size_t maxLights) const override final;
-		void SetLightingOrigin(Vector lightingOrigin) override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
-		void SetAmbientLight(float r, float g, float b) override final { NOT_IMPLEMENTED_FUNC_NOBREAK(); }
+		void SetLightingOrigin(Vector lightingOrigin) override final;
+		void SetAmbientLight(float r, float g, float b) override final;
 		void SetAmbientLightCube(Vector4D cube[6]) override final;
 		void GetAmbientLightCube(Shaders::AmbientLightCube& cube) const override final;
 		void SetPixelShaderStateAmbientLightCube(int pshReg, bool forceToBlack) override final { NOT_IMPLEMENTED_FUNC(); }

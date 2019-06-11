@@ -61,6 +61,21 @@ size_t IShaderAPI_StateManagerDynamic::GetLights(LightDesc_t* lights, size_t max
 	return actualLights;
 }
 
+void IShaderAPI_StateManagerDynamic::SetLightingOrigin(Vector lightingOrigin)
+{
+	LOG_FUNC();
+	Util::SetDirtyVar(m_State.m_LightingOrigin, lightingOrigin, m_Dirty);
+}
+
+void IShaderAPI_StateManagerDynamic::SetAmbientLight(float r, float g, float b)
+{
+	LOG_FUNC();
+
+	const Vector4D val(r, g, b, 1);
+	for (uint_fast8_t i = 0; i < m_State.m_LightAmbientCube.size(); i++)
+		Util::SetDirtyVar(m_State.m_LightAmbientCube, i, val, m_Dirty);
+}
+
 void IShaderAPI_StateManagerDynamic::SetAmbientLightCube(Vector4D cube[6])
 {
 	LOG_FUNC();
@@ -350,7 +365,7 @@ void IShaderAPI_StateManagerDynamic::BindTextures(
 	const size_t count = end - begin;
 
 	auto handles = (ShaderAPITextureHandle_t*)_alloca(sizeof(ShaderAPITextureHandle_t) * count);
-	
+
 	auto test0 = &ITextureInternal::SetErrorTexture;
 #pragma warning(suppress : 4996)
 	auto test1 = static_cast<void(ITextureInternal::*)(Sampler_t)>(&ITextureInternal::Bind);

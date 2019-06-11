@@ -70,13 +70,10 @@ IMesh* IShaderAPI_MeshManager::GetDynamicMeshEx(IMaterial* material, VertexForma
 	return &m_DynamicMeshes.try_emplace(fmt, fmt, true).first->second;
 }
 
-void IShaderAPI_MeshManager::ComputeVertexDescription(void* buffer, VertexFormat fmt, VertexDesc_t& desc)
+void IShaderAPI_MeshManager::SetDummyDataPointers(VertexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 
-	desc = {};
-
-	// Set default dummy pointers
 	desc.m_pPosition = reinterpret_cast<float*>(&s_FallbackMeshData);
 	desc.m_pBoneWeight = reinterpret_cast<float*>(&s_FallbackMeshData);
 	desc.m_pBoneMatrixIndex = reinterpret_cast<unsigned char*>(&s_FallbackMeshData);
@@ -89,6 +86,14 @@ void IShaderAPI_MeshManager::ComputeVertexDescription(void* buffer, VertexFormat
 	desc.m_pUserData = reinterpret_cast<float*>(&s_FallbackMeshData);
 	for (auto& tc : desc.m_pTexCoord)
 		tc = reinterpret_cast<float*>(&s_FallbackMeshData);
+}
+
+void IShaderAPI_MeshManager::ComputeVertexDescription(void* buffer, VertexFormat fmt, VertexDesc_t& desc)
+{
+	LOG_FUNC_ANYTHREAD();
+
+	// Set default dummy pointers
+	SetDummyDataPointers(desc);
 
 	VertexFormat::Element vtxElems[VERTEX_ELEMENT_NUMELEMENTS];
 	size_t totalVtxSize;

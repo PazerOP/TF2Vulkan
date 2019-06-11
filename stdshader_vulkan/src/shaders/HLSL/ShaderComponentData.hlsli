@@ -30,4 +30,9 @@ struct SeamlessScaleUniforms
 	float scale;
 };
 
+struct LightmapUniforms
+{
+
+};
+
 #endif // SHADER_COMPONENT_DATA_HLSLI_INCLUDE_GUARD

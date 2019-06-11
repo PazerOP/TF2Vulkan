@@ -34,15 +34,16 @@ inline namespace SHADER_NAME
 		IShaderGroup* m_PSShader = nullptr;
 	};
 
-	static const Shader::InstanceRegister s_Shader;
+	// NOTE: THIS SHADER IS DISABLED! See XLitGeneric.cpp for where it's aliased to XLitGeneric.
+	//static const Shader::InstanceRegister s_Shader;
 }
 
-DEFINE_NSHADER_FALLBACK(WorldTwoTextureBlend, Shader);
-DEFINE_NSHADER_FALLBACK(WorldVertexTransition, Shader);
-DEFINE_NSHADER_FALLBACK(LightmappedReflective, Shader);
-DEFINE_NSHADER_FALLBACK(LightmappedTwoTexture, Shader);
-DEFINE_NSHADER_FALLBACK(LightmappedGeneric_Decal, Shader);
-DEFINE_NSHADER_FALLBACK(DecalBaseTimesLightmapAlphaBlendSelfIllum, Shader);
+//DEFINE_NSHADER_FALLBACK(WorldTwoTextureBlend, Shader);
+//DEFINE_NSHADER_FALLBACK(WorldVertexTransition, Shader);
+//DEFINE_NSHADER_FALLBACK(LightmappedReflective, Shader);
+//DEFINE_NSHADER_FALLBACK(LightmappedTwoTexture, Shader);
+//DEFINE_NSHADER_FALLBACK(LightmappedGeneric_Decal, Shader);
+//DEFINE_NSHADER_FALLBACK(DecalBaseTimesLightmapAlphaBlendSelfIllum, Shader);
 
 void Shader::OnInitShader(IShaderNextFactory& factory)
 {

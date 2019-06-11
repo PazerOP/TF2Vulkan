@@ -33,6 +33,7 @@ namespace TF2Vulkan
 
 		static std::aligned_storage_t<256> s_FallbackMeshData;
 		static void ComputeVertexDescription(void* buffer, VertexFormat fmt, VertexDesc_t& desc);
+		static void SetDummyDataPointers(VertexDesc_t& desc);
 
 	private:
 		[[deprecated]] void ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const override final;
