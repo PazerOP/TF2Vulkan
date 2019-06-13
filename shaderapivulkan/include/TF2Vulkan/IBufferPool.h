@@ -23,6 +23,7 @@ namespace TF2Vulkan
 		size_t GetOffset() const { assert(m_Pool); return m_Offset; }
 
 		template<typename T> BufferPoolEntry& Update(const T& data);
+		BufferPoolEntry& Update(const void* data, size_t size);
 
 		operator bool() const { return !!m_Pool; }
 
@@ -63,10 +64,18 @@ namespace TF2Vulkan
 		}
 	};
 
+	inline BufferPoolEntry& BufferPoolEntry::Update(const void* data, size_t size)
+	{
+		assert(size <= m_Size);
+		GetPool().Update(data, size, m_Offset);
+		return *this;
+	}
+
 	template<typename T>
 	inline BufferPoolEntry& BufferPoolEntry::Update(const T& data)
 	{
-		GetPool().Update(*this, data);
+		static_assert(!std::is_pointer_v<T>);
+		Update(&data, sizeof(data));
 		return *this;
 	}
 }

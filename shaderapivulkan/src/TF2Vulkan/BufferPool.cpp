@@ -14,6 +14,7 @@ vma::AllocatedBuffer BufferPoolContiguous::CreateBackingBuffer(vk::BufferUsageFl
 		.SetSize(m_BackingBufferSize)
 		.SetMemoryRequiredFlags(vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible)
 		.SetAllowMapping()
+		.SetDebugName("BufferPoolContiguous "s + vk::to_string(usage))
 		.Create();
 }
 

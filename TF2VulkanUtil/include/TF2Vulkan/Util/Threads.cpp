@@ -1,5 +1,6 @@
 #include "Threads.h"
 
+#include <tier0/threadtools.h>
 #include <thread>
 
 static const auto& GetMainThreadID()
@@ -10,5 +11,6 @@ static const auto& GetMainThreadID()
 
 bool Util::IsMainThread()
 {
-	return std::this_thread::get_id() == GetMainThreadID();
+	return ThreadInMainThread();
+	//return std::this_thread::get_id() == GetMainThreadID();
 }

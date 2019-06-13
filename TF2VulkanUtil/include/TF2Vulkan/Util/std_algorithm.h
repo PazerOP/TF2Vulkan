@@ -91,12 +91,12 @@ namespace Util{ namespace algorithm
 	inline constexpr auto max(const T1& t1, const T2& t2)
 	{
 		using CT = std::common_type_t<T1, T2>;
-		return std::max<CT>(CT(t1), CT(t2));
+		return std::max<CT>(Util::SafeConvert<CT>(t1), Util::SafeConvert<CT>(t2));
 	}
 	template<typename T1, typename T2>
 	inline constexpr auto min(const T1& t1, const T2& t2)
 	{
 		using CT = std::common_type_t<T1, T2>;
-		return std::min<CT>(CT(t1), CT(t2));
+		return std::min<CT>(Util::SafeConvert<CT>(t1), Util::SafeConvert<CT>(t2));
 	}
 } }

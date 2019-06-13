@@ -7,9 +7,12 @@
 #include "VulkanMesh.h"
 
 #include <TF2Vulkan/Util/FourCC.h>
+#include "TF2Vulkan/Util/Misc.h"
 #include <TF2Vulkan/Util/std_variant.h>
 
 using namespace TF2Vulkan;
+
+static std::atomic<uint32_t> s_VulkanGPUBufferIndex = 0;
 
 void VulkanGPUBuffer::AssertCheckHeap()
 {
@@ -45,111 +48,85 @@ static void ValidateVertexFormat(VertexFormat meshFormat, VertexFormat materialF
 #endif
 }
 
-auto VulkanGPUBuffer::GetBufferData(size_t size, size_t offset, bool read, bool write) -> ModifyData
+void* VulkanGPUBuffer::GetBuffer(size_t size, bool truncate)
 {
 	AssertHasLock();
 	LOG_FUNC_ANYTHREAD();
 
-	ModifyData retVal;
-	retVal.m_DataLength = size;
-	retVal.m_DataOffset = offset;
+	if (truncate || m_CPUBuffer.size() < size)
+		m_CPUBuffer.resize(size);
 
-	if (size <= 0)
-	{
-		retVal.m_Data = &IShaderAPI_MeshManager::s_FallbackMeshData;
-		return retVal;
-	}
-
-	assert(read || write);
-
-	const auto actualMinSize = IsDynamic() ? size + offset : size;
-
-	BufferPoolEntry buffer;
-
-	/*if (read && write)
-	{
-		NOT_IMPLEMENTED_FUNC();
-	}
-	else*/ if (write)
-	{
-		if (read)
-			NOT_IMPLEMENTED_FUNC_NOBREAK();
-
-		const auto usage = IsDynamic() ? m_Usage : vk::BufferUsageFlagBits::eTransferSrc;
-		buffer = g_ShaderDevice.GetBufferPool(usage).Create(actualMinSize);
-	}
-	else if (read)
-	{
-		NOT_IMPLEMENTED_FUNC();
-	}
-
-	auto& realPool = static_cast<IBufferPoolInternal&>(buffer.GetPool());
-	auto entryBuffer = realPool.GetBufferInfo(buffer);
-	retVal.m_Data = realPool.GetBufferData(buffer.GetOffset()) + (IsDynamic() ? offset : 0);
-
-#ifdef _DEBUG
-	memset(retVal.m_Data, 0, size);
-#endif
-
-	if (IsDynamic())
-		m_Buffer.emplace<BufferPoolEntry>(buffer);
-	else
-		retVal.m_PoolEntry = buffer;
-
-	return retVal;
+	return m_CPUBuffer.data();
 }
 
-void VulkanGPUBuffer::CommitModifications(const VulkanGPUBuffer::ModifyData& modification)
+void VulkanGPUBuffer::CommitModifications(size_t updateBegin, size_t updateSize)
 {
 	AssertHasLock();
 	LOG_FUNC_ANYTHREAD();
 
-	if (modification.m_DataLength <= 0)
-		return; // Nothing to do
+	assert(updateSize > 0);
 
-	if (IsDynamic())
-		return; // We write directly into buffer memory, nothing else to do
-
-	assert(std::holds_alternative<std::monostate>(m_Buffer) || std::holds_alternative<vma::AllocatedBuffer>(m_Buffer));
-
-	const auto& entry = modification.m_PoolEntry;
-	assert(entry);
-
-	const auto& realPool = static_cast<const IBufferPoolInternal&>(entry.GetPool());
-	const auto entryInfo = realPool.GetBufferInfo(entry);
-
-	auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
-
-	const auto minSize = modification.m_DataOffset + modification.m_DataLength;
-	auto& dstBuf = Util::get_or_emplace<vma::AllocatedBuffer>(m_Buffer);
-	if (!dstBuf || dstBuf.size() < minSize)
+	if (Util::IsMainThread())
 	{
-		if (dstBuf)
-			cmdBuf.AddResource(std::move(dstBuf));
-
-		dstBuf = Factories::BufferFactory{}
-			.SetSize(minSize)
-			.SetUsage(m_Usage | vk::BufferUsageFlagBits::eTransferDst)
-			.SetMemoryType(vma::MemoryType::eGpuOnly)
-			.Create();
+		TF2VULKAN_PIX_MARKER("CommitModifications %s [%s]: %zu bytes @ offset %zu",
+			vk::to_string(m_Usage).c_str(),
+			IsDynamic() ? "dynamic" : "static",
+			updateBegin, updateSize);
 	}
 
-	const auto region = vk::BufferCopy{}
-		.setSize(modification.m_DataLength)
-		.setSrcOffset(entry.GetOffset())
-		.setDstOffset(modification.m_DataOffset);
-
-
-	if (auto [transfer, lock] = g_ShaderDevice.GetTransferQueue().locked(); transfer)
+	if (IsDynamic())
 	{
-		auto transferCmdBuf = transfer->CreateCmdBufferAndBegin();
-		transferCmdBuf->copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
-		transferCmdBuf->Submit();
+		// Just memcpy into the dynamic buffer
+		//if (updateSize > 0 || !std::holds_alternative<BufferPoolEntry>(m_Buffer))
+			m_Buffer = g_ShaderDevice.GetBufferPool(m_Usage).Create(m_CPUBuffer.size(), m_CPUBuffer.data());
 	}
 	else
 	{
-		cmdBuf.TryEndRenderPass();
-		cmdBuf.copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
+		assert(std::holds_alternative<std::monostate>(m_Buffer) || std::holds_alternative<vma::AllocatedBuffer>(m_Buffer));
+
+		auto entry = g_ShaderDevice
+			.GetBufferPool(vk::BufferUsageFlagBits::eTransferSrc)
+			.Create(updateSize, Util::OffsetPtr(m_CPUBuffer.data(), updateBegin));
+
+		const auto& realPool = static_cast<const IBufferPoolInternal&>(entry.GetPool());
+		const auto entryInfo = realPool.GetBufferInfo(entry);
+
+		auto& cmdBuf = g_ShaderDevice.GetPrimaryCmdBuf();
+
+		auto& dstBuf = Util::get_or_emplace<vma::AllocatedBuffer>(m_Buffer);
+		if (!dstBuf || dstBuf.size() < m_CPUBuffer.size())
+		{
+			if (dstBuf)
+				cmdBuf.AddResource(std::move(dstBuf));
+
+			char dbgName[128];
+			sprintf_s(dbgName, "VulkanGPUBuffer #%u [static] [%zu, %zu)", ++s_VulkanGPUBufferIndex,
+				updateBegin, updateBegin + updateSize);
+
+			dstBuf = Factories::BufferFactory{}
+				.SetSize(m_CPUBuffer.size())
+				.SetUsage(m_Usage | vk::BufferUsageFlagBits::eTransferDst)
+				.SetMemoryType(vma::MemoryType::eGpuOnly)
+				.SetDebugName(dbgName)
+				.Create();
+		}
+
+		const auto region = vk::BufferCopy{}
+			.setSize(updateSize)
+			.setSrcOffset(entry.GetOffset())
+			.setDstOffset(updateBegin);
+
+		if (auto [transfer, lock] = g_ShaderDevice.GetTransferQueue().locked(); transfer)
+		{
+			auto transferCmdBuf = transfer->CreateCmdBufferAndBegin();
+			transferCmdBuf->copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
+			transferCmdBuf->Submit();
+		}
+		else
+		{
+			cmdBuf.TryEndRenderPass();
+			cmdBuf.copyBuffer(entryInfo.m_Buffer, dstBuf.GetBuffer(), region);
+		}
 	}
 }
 
@@ -197,6 +174,8 @@ void VulkanMesh::Draw(int firstIndex, int indexCount)
 		if (indexCount <= 0)
 			return; // Nothing to draw
 	}
+
+	assert((firstIndex + indexCount) <= IndexCount());
 
 	ActiveMeshScope meshScope(ActiveMeshData{ this, firstIndex, indexCount });
 
@@ -299,12 +278,6 @@ void VulkanMesh::LockMesh(int vertexCount, int indexCount, MeshDesc_t& desc)
 	assert(result1 && result2);
 }
 
-void VulkanMesh::ModifyBegin(int firstVertex, int vertexCount, int firstIndex, int indexCount, MeshDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return ModifyBeginEx(false, firstVertex, vertexCount, firstIndex, indexCount, desc);
-}
-
 void VulkanMesh::ModifyEnd(MeshDesc_t& desc)
 {
 	auto lock = ScopeThreadLock();
@@ -342,105 +315,10 @@ void VulkanMesh::DisableFlexMesh()
 	SetFlexMesh(nullptr, 0);
 }
 
-void VulkanMesh::MarkAsDrawn()
-{
-	NOT_IMPLEMENTED_FUNC();
-}
-
 unsigned VulkanMesh::ComputeMemoryUsed()
 {
-	NOT_IMPLEMENTED_FUNC();
-	return 0;
-}
-
-int VulkanMesh::IndexCount() const
-{
 	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.IndexCount();
-}
-
-MaterialIndexFormat_t VulkanMesh::IndexFormat() const
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.IndexFormat();
-}
-
-void VulkanMesh::BeginCastBuffer(MaterialIndexFormat_t format)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.BeginCastBuffer(format);
-}
-
-bool VulkanMesh::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.Lock(maxIndexCount, append, desc);
-}
-
-void VulkanMesh::Unlock(int writtenIndexCount, IndexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.Unlock(writtenIndexCount, desc);
-}
-
-void VulkanMesh::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.ModifyBegin(readOnly, firstIndex, indexCount, desc);
-}
-
-void VulkanMesh::ModifyEnd(IndexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	m_IndexBuffer.ModifyEnd(desc);
-}
-
-void VulkanMesh::Spew(int indexCount, const IndexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.Spew(indexCount, desc);
-}
-
-void VulkanMesh::ValidateData(int indexCount, const IndexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_IndexBuffer.ValidateData(indexCount, desc);
-}
-
-int VulkanMesh::VertexCount() const
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_VertexBuffer.VertexCount();
-}
-
-VertexFormat_t VulkanMesh::GetVertexFormat() const
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_VertexBuffer.GetVertexFormat();
-}
-
-void VulkanMesh::BeginCastBuffer(VertexFormat_t format)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_VertexBuffer.BeginCastBuffer(format);
-}
-
-bool VulkanMesh::Lock(int vertexCount, bool append, VertexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_VertexBuffer.Lock(vertexCount, append, desc);
-}
-
-void VulkanMesh::Unlock(int vertexCount, VertexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_VertexBuffer.Unlock(vertexCount, desc);
-}
-
-void VulkanMesh::Spew(int vertexCount, const VertexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return m_VertexBuffer.Spew(vertexCount, desc);
+	return Util::SafeConvert<unsigned>(m_IndexBuffer.ComputeMemoryUsed() + m_VertexBuffer.ComputeMemoryUsed());
 }
 
 void VulkanMesh::ValidateData(int vertexCount, const VertexDesc_t& desc)
@@ -486,31 +364,6 @@ VulkanIndexBuffer::VulkanIndexBuffer(bool isDynamic) :
 {
 }
 
-int VulkanIndexBuffer::IndexCount() const
-{
-	auto lock = ScopeThreadLock();
-	LOG_FUNC();
-	return Util::SafeConvert<int>(m_TotalIndexCount);
-}
-
-MaterialIndexFormat_t VulkanIndexBuffer::IndexFormat() const
-{
-	LOG_FUNC_ANYTHREAD();
-	return MATERIAL_INDEX_FORMAT;
-}
-
-bool VulkanVertexBuffer::IsDynamic() const
-{
-	LOG_FUNC_ANYTHREAD();
-	return VulkanGPUBuffer::IsDynamic();
-}
-
-bool VulkanIndexBuffer::IsDynamic() const
-{
-	LOG_FUNC_ANYTHREAD();
-	return VulkanGPUBuffer::IsDynamic();
-}
-
 void VulkanIndexBuffer::BeginCastBuffer(MaterialIndexFormat_t format)
 {
 	NOT_IMPLEMENTED_FUNC();
@@ -524,17 +377,10 @@ void VulkanIndexBuffer::EndCastBuffer()
 int VulkanIndexBuffer::GetRoomRemaining() const
 {
 	NOT_IMPLEMENTED_FUNC();
-	return 0;
 }
 
-void VulkanIndexBuffer::ModifyBegin(int firstIndex, int indexCount, IndexDesc_t& desc, bool read, bool write)
-{
-	LOG_FUNC_ANYTHREAD();
-	return ModifyBegin(Util::SafeConvert<uint32_t>(firstIndex), Util::SafeConvert<uint32_t>(indexCount),
-		desc, read, write);
-}
-
-void VulkanIndexBuffer::ModifyBegin(uint32_t firstIndex, uint32_t indexCount, IndexDesc_t& desc, bool read, bool write)
+void VulkanIndexBuffer::ModifyBegin(uint32_t firstIndex, uint32_t indexCount, IndexDesc_t& desc,
+	bool read, bool write, bool replace)
 {
 	LOG_FUNC_ANYTHREAD();
 
@@ -543,33 +389,24 @@ void VulkanIndexBuffer::ModifyBegin(uint32_t firstIndex, uint32_t indexCount, In
 	desc.m_nFirstIndex = 0;
 	desc.m_nOffset = 0;
 
-	assert(firstIndex == 0);
-
-	if (read)
-		NOT_IMPLEMENTED_FUNC_NOBREAK();
-
 	if (indexCount <= 0)
 	{
 		// Not thread safe at this point, but we don't want to unnecessarily
 		// lock if indexCount is zero and we're just returning a pointer to
 		// dummy data.
-		assert(!m_ModifyData);
+		assert(!m_ModifyIndexData);
 
 		desc.m_pIndices = reinterpret_cast<IndexFormatType*>(&IShaderAPI_MeshManager::s_FallbackMeshData);
 		return;
 	}
 
 	BeginThreadLock();
-	assert(!m_ModifyData); // Once more after the lock, just to be sure
-
+	assert(!m_ModifyIndexData); // Once more after the lock, just to be sure
 	const auto indexDataSize = indexCount * IndexElementSize();
-	auto& modifyData = m_ModifyData.emplace(GetBufferData(
-		indexDataSize, firstIndex * IndexElementSize(), read, write));
+	const auto& modifyData = m_ModifyIndexData.emplace<ModifyData>({ firstIndex, indexCount });
 
-	desc.m_pIndices = reinterpret_cast<IndexFormatType*>(modifyData.m_Data);
-
+	desc.m_pIndices = reinterpret_cast<IndexFormatType*>(Util::OffsetPtr(GetBuffer(indexDataSize, replace), firstIndex * IndexElementSize()));
 	assert(desc.m_pIndices);
-	ValidateData(indexCount, 0, desc);
 }
 
 void VulkanIndexBuffer::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
@@ -578,7 +415,7 @@ void VulkanIndexBuffer::ModifyBegin(bool readOnly, int firstIndex, int indexCoun
 
 	const bool shouldAllowRead = true;
 	const bool shouldAllowWrite = !readOnly;
-	return ModifyBegin(firstIndex, indexCount, desc, shouldAllowRead, shouldAllowWrite);
+	return ModifyBegin(firstIndex, indexCount, desc, shouldAllowRead, shouldAllowWrite, false);
 }
 
 void VulkanIndexBuffer::ModifyEnd(IndexDesc_t& desc)
@@ -586,21 +423,17 @@ void VulkanIndexBuffer::ModifyEnd(IndexDesc_t& desc)
 	LOG_FUNC_ANYTHREAD();
 	AssertCheckHeap();
 
-	if (!m_ModifyData)
+	if (!m_ModifyIndexData)
 		return;
 
-	auto& modify = m_ModifyData.value();
-	if (modify.m_Data && modify.m_DataLength > 0)
-	{
-		CommitModifications(modify);
+	const auto& modify = m_ModifyIndexData.value();
+	assert(IsDynamic() || modify.m_Count > 0);
 
-		if (auto newIdxCount = (modify.m_DataOffset + modify.m_DataLength) / IndexElementSize(); newIdxCount > m_TotalIndexCount)
-			Util::SafeConvert(newIdxCount, m_TotalIndexCount);
+	CommitModifications(modify.m_Offset * IndexElementSize(), modify.m_Count * IndexElementSize());
 
-		ValidateData(m_TotalIndexCount, desc);
-	}
+	ValidateData(m_IndexCount, 0, desc);
 
-	m_ModifyData.reset();
+	m_ModifyIndexData.reset();
 
 	EndThreadLock();
 }
@@ -654,20 +487,6 @@ VulkanVertexBuffer::VulkanVertexBuffer(const VertexFormat& format, bool isDynami
 {
 }
 
-int VulkanVertexBuffer::VertexCount() const
-{
-	auto lock = ScopeThreadLock();
-	LOG_FUNC_ANYTHREAD();
-	return Util::SafeConvert<int>(m_TotalVertexCount);
-}
-
-VertexFormat_t VulkanVertexBuffer::GetVertexFormat() const
-{
-	auto lock = ScopeThreadLock();
-	LOG_FUNC_ANYTHREAD();
-	return m_Format;
-}
-
 void VulkanVertexBuffer::BeginCastBuffer(VertexFormat_t format)
 {
 	NOT_IMPLEMENTED_FUNC();
@@ -688,7 +507,7 @@ bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 	assert(vertexCount >= 0);
-	ModifyBegin(append ? VertexCount() : 0, vertexCount, desc, false, true);
+	ModifyBegin(append ? VertexCount() : 0, vertexCount, desc, false, true, true);
 	return true;
 }
 
@@ -696,7 +515,7 @@ bool VulkanIndexBuffer::Lock(int indexCount, bool append, IndexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 	assert(indexCount >= 0);
-	ModifyBegin(append ? IndexCount() : 0, indexCount, desc, false, true);
+	ModifyBegin(append ? IndexCount() : 0, indexCount, desc, false, true, true);
 	return true;
 }
 
@@ -704,13 +523,20 @@ void VulkanVertexBuffer::Unlock(int vertexCount, VertexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 
-	if (!m_ModifyData)
+	if (!m_ModifyVertexData)
 		return;
 
-	auto& modify = m_ModifyData.value();
-	assert(Util::SafeConvert<size_t>(vertexCount) <= modify.m_VertexCount);
-	Util::SafeConvert(vertexCount, modify.m_VertexCount);
-	Util::SafeConvert(modify.m_VertexCount, m_TotalVertexCount);
+	auto& modify = m_ModifyVertexData.value();
+
+	[[maybe_unused]] const auto oldModifySize = modify.m_Size;
+	[[maybe_unused]] const auto oldVertexCount = m_VertexCount;
+
+	assert(vertexCount >= 0);
+	if (vertexCount > 0)
+	{
+		Util::SafeConvert(vertexCount * desc.m_ActualVertexSize, modify.m_Size);
+		Util::SafeConvert(vertexCount, m_VertexCount);
+	}
 
 	ModifyEnd(desc);
 }
@@ -720,13 +546,20 @@ void VulkanIndexBuffer::Unlock(int indexCount, IndexDesc_t& desc)
 	LOG_FUNC_ANYTHREAD();
 	AssertCheckHeap();
 
-	if (!m_ModifyData)
+	if (!m_ModifyIndexData)
 		return;
 
-	auto& modify = m_ModifyData.value();
-	assert(Util::SafeConvert<size_t>(indexCount) <= (modify.m_DataLength / IndexElementSize()));
-	Util::SafeConvert(indexCount, m_TotalIndexCount);
-	Util::SafeConvert(m_TotalIndexCount * IndexElementSize(), modify.m_DataLength);
+	auto& modify = m_ModifyIndexData.value();
+
+	[[maybe_unused]] const auto oldModifyCount = modify.m_Count;
+	[[maybe_unused]] const auto oldIndexCount = m_IndexCount;
+
+	assert(indexCount >= 0);
+	if (indexCount > 0)
+	{
+		Util::SafeConvert(indexCount, modify.m_Count);
+		Util::SafeConvert(modify.m_Count, m_IndexCount);
+	}
 
 	ModifyEnd(desc);
 }
@@ -735,56 +568,42 @@ void VulkanVertexBuffer::ModifyEnd(VertexDesc_t& desc)
 {
 	LOG_FUNC_ANYTHREAD();
 
-	if (!m_ModifyData)
+	if (!m_ModifyVertexData)
 		return;
 
-	const auto& modify = m_ModifyData.value();
-	CommitModifications(modify);
+	const auto& modify = m_ModifyVertexData.value();
 
-#ifdef _DEBUG
-	[[maybe_unused]] const auto oldVertexCount = m_TotalVertexCount;
-#endif
-	if (modify.m_VertexCount > m_TotalVertexCount)
-		Util::SafeConvert(modify.m_VertexCount, m_TotalVertexCount);
+	CommitModifications(modify.m_Offset, modify.m_Size);
 
-	ValidateData(m_TotalVertexCount, desc);
+	m_VertexCount = Util::algorithm::max(m_VertexCount, (modify.m_Size + modify.m_Offset) / desc.m_ActualVertexSize);
 
-	m_ModifyData.reset();
+	ValidateData(modify.m_Size / desc.m_ActualVertexSize, desc);
+
+	m_ModifyVertexData.reset();
 
 	EndThreadLock();
 }
 
-void VulkanVertexBuffer::ModifyBegin(int firstVertex, int vertexCount, VertexDesc_t& desc, bool read, bool write)
+void VulkanVertexBuffer::ModifyBegin(uint32_t firstVertex, uint32_t vertexCount, VertexDesc_t& desc,
+	bool read, bool write, bool replace)
 {
 	LOG_FUNC_ANYTHREAD();
-	return ModifyBegin(Util::SafeConvert<uint32_t>(firstVertex), Util::SafeConvert<uint32_t>(vertexCount),
-		desc, read, write);
-}
-
-void VulkanVertexBuffer::ModifyBegin(uint32_t firstVertex, uint32_t vertexCount, VertexDesc_t& desc, bool read, bool write)
-{
-	LOG_FUNC_ANYTHREAD();
-
-	assert(firstVertex == 0);
 
 	desc = {};
 
 	if (vertexCount <= 0)
 	{
 		// Not thread safe yet, but avoid unnecessary locks if just returning dummy data.
-		assert(!m_ModifyData);
+		assert(!m_ModifyVertexData);
 		g_MeshManager.SetDummyDataPointers(desc);
 		return;
 	}
 
 	BeginThreadLock();
-	assert(!m_ModifyData); // Once more, after the lock
+	assert(!m_ModifyVertexData); // Once more, after the lock
 	AssertCheckHeap();
 
 	assert(!m_Format.IsUnknownFormat());
-
-	if (read)
-		NOT_IMPLEMENTED_FUNC_NOBREAK();
 
 	VertexFormat::Element vtxElems[VERTEX_ELEMENT_NUMELEMENTS];
 	size_t totalVtxSize;
@@ -793,20 +612,13 @@ void VulkanVertexBuffer::ModifyBegin(uint32_t firstVertex, uint32_t vertexCount,
 
 	const auto vtxElemsCount = m_Format.GetVertexElements(vtxElems, std::size(vtxElems), &totalVtxSize);
 
-	assert(!m_ModifyData);
-	const auto vertexDataSize = vertexCount * totalVtxSize;
-	auto& modify = m_ModifyData.emplace(GetBufferData(vertexDataSize, firstVertex * totalVtxSize, read, write));
-	Util::SafeConvert(vertexCount, modify.m_VertexCount);
+	assert(!m_ModifyVertexData);
+	const auto& modify = m_ModifyVertexData.emplace<ModifyData>({ firstVertex * totalVtxSize, vertexCount * totalVtxSize });
+	assert(modify.m_Size > 0);
 
-	g_MeshManager.ComputeVertexDescription(modify.m_Data, m_Format, desc);
+	g_MeshManager.ComputeVertexDescription(GetBuffer(modify.m_Offset + modify.m_Size, replace), m_Format, desc);
 
-	ValidateData(vertexCount, 0, desc);
-}
-
-void VulkanVertexBuffer::ModifyBegin(bool readOnly, int firstVertex, int vertexCount, VertexDesc_t& desc)
-{
-	LOG_FUNC_ANYTHREAD();
-	return ModifyBegin(firstVertex, vertexCount, desc, true, !readOnly);
+	//ValidateData(vertexCount, firstVertex, desc);
 }
 
 void VulkanVertexBuffer::Spew(int vertexCount, const VertexDesc_t& desc)
