@@ -38,8 +38,8 @@ namespace TF2Vulkan
 	private:
 		[[deprecated]] void ComputeVertexDescription(unsigned char* buffer, VertexFormat_t fmt, MeshDesc_t& desc) const override final;
 
-		std::unordered_map<VertexFormat, VulkanMesh> m_DynamicMeshes;
-		VulkanMesh m_FlexMesh;
+		std::unordered_map<VertexFormat, VulkanDynamicMesh> m_DynamicMeshes;
+		VulkanDynamicMesh m_FlexMesh;
 
 		CMeshBuilder m_MeshBuilder;
 

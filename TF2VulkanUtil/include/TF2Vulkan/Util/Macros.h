@@ -55,7 +55,7 @@ namespace Util
 #if defined(TF2VULKAN_ENABLE_FUNCTION_LOGGING)
 #define LOG_FUNC_MSG_IMPL(msg, checkThread) ::Util::LogFunctionCallScope<TF2VULKAN_LOCAL_ENABLE_FUNCTION_LOGGING> EXPAND_CONCAT(_TF2Vulkan_LogFunctionCallScope_, __COUNTER__) (__FUNCSIG__, __FILE__, __LINE__, msg, checkThread)
 #else
-#define LOG_FUNC_MSG_IMPL(msg, checkThread) { if (checkThread) { ASSERT_MAIN_THREAD(); } }
+#define LOG_FUNC_MSG_IMPL(msg, checkThread) { if constexpr (checkThread) { ASSERT_MAIN_THREAD(); } }
 #endif
 
 #define LOG_FUNC_MSG_ANYTHREAD(msg) LOG_FUNC_MSG_IMPL(msg, false)

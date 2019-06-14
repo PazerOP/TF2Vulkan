@@ -7,7 +7,7 @@ using namespace TF2Vulkan;
 std::aligned_storage_t<256> IShaderAPI_MeshManager::s_FallbackMeshData;
 
 IShaderAPI_MeshManager::IShaderAPI_MeshManager() :
-	m_FlexMesh(VertexFormat(VertexFormatFlags(VertexFormatFlags::Position | VertexFormatFlags::Normal | VertexFormatFlags::Wrinkle)), true)
+	m_FlexMesh(VertexFormat(VertexFormatFlags(VertexFormatFlags::Position | VertexFormatFlags::Normal | VertexFormatFlags::Wrinkle)))
 {
 
 }
@@ -67,7 +67,14 @@ IMesh* IShaderAPI_MeshManager::GetDynamicMeshEx(IMaterial* material, VertexForma
 	VertexFormat fmt(vertexFormat);
 	fmt.SetBoneWeightCount(hwSkinBoneCount);
 
-	return &m_DynamicMeshes.try_emplace(fmt, fmt, true).first->second;
+	VulkanDynamicMesh* found = &m_DynamicMeshes.try_emplace(fmt, fmt).first->second;
+
+	if (vertexOverride)
+		found->OverrideVertexBuffer(vertexOverride);
+	if (indexOverride)
+		found->OverrideIndexBuffer(indexOverride);
+
+	return found;
 }
 
 void IShaderAPI_MeshManager::SetDummyDataPointers(VertexDesc_t& desc)

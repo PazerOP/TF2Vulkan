@@ -21,10 +21,10 @@ namespace TF2Vulkan
 	private:
 		using MutexType = Util::RecursiveMutexDbg;
 	protected:
-		std::unique_lock<MutexType> ScopeThreadLock() const;
-		void BeginThreadLock() const;
-		void EndThreadLock() const;
-		void AssertHasLock() const;
+		std::unique_lock<MutexType> ScopeThreadLock() const { return std::unique_lock(m_Mutex); }
+		void BeginThreadLock() const { m_Mutex.lock(); }
+		void EndThreadLock() const { m_Mutex.unlock(); }
+		void AssertHasLock() const { m_Mutex.assert_has_lock(); }
 
 	private:
 		mutable MutexType m_Mutex;
@@ -35,11 +35,12 @@ namespace TF2Vulkan
 	public:
 		VulkanGPUBuffer(bool isDynamic, vk::BufferUsageFlags usage);
 
-		void GetGPUBuffer(vk::Buffer& buffer, size_t& offset) const;
+		void GetGPUBuffer(vk::Buffer& buffer, size_t& offset);
 
 		bool IsDynamic() const { return m_IsDynamic; }
 
 	protected:
+		void UpdateDynamicBuffer();
 		void* GetBuffer(size_t size, bool truncate = false);
 		void CommitModifications(size_t updateBegin, size_t updateSize);
 
@@ -64,25 +65,25 @@ namespace TF2Vulkan
 
 		bool IsDynamic() const override;
 
-		void BeginCastBuffer(VertexFormat_t format) override;
-		void EndCastBuffer() override;
+		void BeginCastBuffer(VertexFormat_t format) override { NOT_IMPLEMENTED_FUNC(); }
+		void EndCastBuffer() override { NOT_IMPLEMENTED_FUNC(); }
 
-		int GetRoomRemaining() const override;
+		int GetRoomRemaining() const override { NOT_IMPLEMENTED_FUNC(); }
 
 		bool Lock(int vertexCount, bool append, VertexDesc_t& desc) override;
 		void Unlock(int vertexCount, VertexDesc_t& desc) override;
-		void ModifyBegin(uint32_t firstVertex, uint32_t vertexCount, VertexDesc_t& desc, bool read, bool write, bool replace);
+		void ModifyBegin(uint32_t firstVertex, uint32_t vertexCount, VertexDesc_t& desc, bool read, bool write, bool truncate);
 		void ModifyBegin(bool readOnly, int firstIndex, int indexCount, VertexDesc_t& desc);
 		void ModifyEnd(VertexDesc_t& desc);
 
-		void Spew(int vertexCount, const VertexDesc_t& desc) override;
+		void Spew(int vertexCount, const VertexDesc_t& desc) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void ValidateData(int vertexCount, const VertexDesc_t& desc) override;
+		void ValidateData(uint32_t vertexCount, uint32_t firstVertex, const VertexDesc_t& desc);
 
 		size_t ComputeMemoryUsed() const { NOT_IMPLEMENTED_FUNC(); }
 
 	private:
-		void ValidateData(uint32_t vertexCount, uint32_t firstVertex, const VertexDesc_t& desc);
 
 		struct ModifyData
 		{
@@ -109,19 +110,19 @@ namespace TF2Vulkan
 
 		bool IsDynamic() const override;
 
-		void BeginCastBuffer(MaterialIndexFormat_t format) override;
-		void EndCastBuffer() override;
+		void BeginCastBuffer(MaterialIndexFormat_t format) override { NOT_IMPLEMENTED_FUNC(); }
+		void EndCastBuffer() override { NOT_IMPLEMENTED_FUNC(); }
 
-		int GetRoomRemaining() const override;
+		int GetRoomRemaining() const override { NOT_IMPLEMENTED_FUNC(); }
 
 		bool Lock(int maxIndexCount, bool append, IndexDesc_t& desc) override;
 		void Unlock(int writtenIndexCount, IndexDesc_t& desc) override;
 
-		void ModifyBegin(uint32_t firstIndex, uint32_t indexCount, IndexDesc_t& desc, bool read, bool write, bool replace);
+		void ModifyBegin(uint32_t firstIndex, uint32_t indexCount, IndexDesc_t& desc, bool read, bool write, bool truncate);
 		void ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc) override;
 		void ModifyEnd(IndexDesc_t& desc) override;
 
-		void Spew(int indexCount, const IndexDesc_t& desc) override;
+		void Spew(int indexCount, const IndexDesc_t& desc) override { NOT_IMPLEMENTED_FUNC(); }
 
 		void ValidateData(int indexCount, const IndexDesc_t& desc) override;
 
@@ -141,70 +142,83 @@ namespace TF2Vulkan
 		uint32_t m_IndexCount = 0;
 	};
 
-	class VulkanMesh final : public IMeshInternal, virtual VulkanMeshCommon
+	class VulkanMesh : public IMeshInternal, protected virtual VulkanMeshCommon
 	{
-	public:
+	protected:
 		explicit VulkanMesh(const VertexFormat& fmt, bool isDynamic);
 
-		void SetPrimitiveType(MaterialPrimitiveType_t type) override;
+	public:
+		explicit VulkanMesh(const VertexFormat& fmt);
 
+		void SetPrimitiveType(MaterialPrimitiveType_t type) override final;
+		MaterialPrimitiveType_t GetPrimitiveType() const { return m_PrimitiveType; }
+
+		void Draw(CPrimList* lists, int listCount) override final;
 		void Draw(int firstIndex, int indexCount) override;
 		void DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int indexCount);
 
-		void SetColorMesh(IMesh* colorMesh, int vertexOffset) override;
-
-		void Draw(CPrimList* lists, int listCount) override;
+		void SetColorMesh(IMesh* colorMesh, int vertexOffset) override final;
 
 		void CopyToMeshBuilder(int startVert, int vertCount,
 			int startIndex, int indexCount, int indexOffset,
-			CMeshBuilder& builder) override;
+			CMeshBuilder& builder) override final;
 
-		void Spew(int vertexCount, int indexCount, const MeshDesc_t& desc) override;
+		void Spew(int vertexCount, int indexCount, const MeshDesc_t& desc) override final;
 
-		void ValidateData(int vertexCount, int indexCount, const MeshDesc_t& desc) override;
+		void ValidateData(int vertexCount, int indexCount, const MeshDesc_t& desc) override final;
 
 		void LockMesh(int vertexCount, int indexCount, MeshDesc_t& desc) override;
 		void UnlockMesh(int vertexCount, int indexCount, MeshDesc_t& desc) override;
-		void ModifyBegin(int firstVertex, int vertexCount, int firstIndex, int indexCount, MeshDesc_t& desc) override;
-		void ModifyEnd(MeshDesc_t& desc) override;
+		void ModifyBegin(int firstVertex, int vertexCount, int firstIndex, int indexCount, MeshDesc_t& desc) override final;
+		void ModifyEnd(MeshDesc_t& desc) override final;
 
 		void ModifyBeginEx(bool readOnly, int firstVertex, int vertexCount, int firstIndex, int indexCount,
-			MeshDesc_t& desc) override;
+			MeshDesc_t& desc) override final;
 
-		void SetFlexMesh(IMesh* mesh, int vertexOffset) override;
-		void DisableFlexMesh() override;
+		void SetFlexMesh(IMesh* mesh, int vertexOffset) override final;
+		void DisableFlexMesh() override final;
 
-		void MarkAsDrawn() override { NOT_IMPLEMENTED_FUNC(); }
-		unsigned ComputeMemoryUsed() override;
+		void MarkAsDrawn() override { LOG_FUNC_ANYTHREAD(); }
+		unsigned ComputeMemoryUsed() override final;
 
 		// IIndexBuffer
-		int IndexCount() const override;
-		MaterialIndexFormat_t IndexFormat() const override;
-		void BeginCastBuffer(MaterialIndexFormat_t format) override;
-		bool Lock(int maxIndexCount, bool append, IndexDesc_t& desc) override;
-		void Unlock(int writtenIndexCount, IndexDesc_t& desc) override;
-		void ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc) override;
-		void ModifyEnd(IndexDesc_t& desc) override;
-		void Spew(int indexCount, const IndexDesc_t& desc) override;
-		void ValidateData(int indexCount, const IndexDesc_t& desc) override;
+		int IndexCount() const override final;
+		MaterialIndexFormat_t IndexFormat() const override final;
+		void BeginCastBuffer(MaterialIndexFormat_t format) override final;
+		bool Lock(int maxIndexCount, bool append, IndexDesc_t& desc) override final;
+		void Unlock(int writtenIndexCount, IndexDesc_t& desc) override final;
+		void ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc) override final;
+		void ModifyEnd(IndexDesc_t& desc) override final;
+		void Spew(int indexCount, const IndexDesc_t& desc) override final;
+		void ValidateData(int indexCount, const IndexDesc_t& desc) override final;
 
 		// IVertexBuffer
-		int VertexCount() const override;
-		VertexFormat_t GetVertexFormat() const override;
-		void BeginCastBuffer(VertexFormat_t format) override;
-		bool Lock(int vertexCount, bool append, VertexDesc_t& desc) override;
-		void Unlock(int vertexCount, VertexDesc_t& desc) override;
-		void Spew(int vertexCount, const VertexDesc_t& desc) override;
-		void ValidateData(int vertexCount, const VertexDesc_t& desc) override;
+		int VertexCount() const override final;
+		VertexFormat_t GetVertexFormat() const override final;
+		void BeginCastBuffer(VertexFormat_t format) override final;
+		bool Lock(int vertexCount, bool append, VertexDesc_t& desc) override final;
+		void Unlock(int vertexCount, VertexDesc_t& desc) override final;
+		void Spew(int vertexCount, const VertexDesc_t& desc) override final;
+		void ValidateData(int vertexCount, const VertexDesc_t& desc) override final;
+		void ModifyEnd(VertexDesc_t& desc);
 
 		// Ambiguous methods
-		bool IsDynamic() const override;
-		void EndCastBuffer() override;
-		int GetRoomRemaining() const override;
+		bool IsDynamic() const override { LOG_FUNC_ANYTHREAD(); return false; }
+		void EndCastBuffer() override final;
+		int GetRoomRemaining() const override final;
+
+		void OverrideVertexBuffer(IMesh* src);
+		void OverrideIndexBuffer(IMesh* src);
+
+		bool HasVertexBufferOverride() const { return !!m_OriginalVertexBuffer; }
+		bool HasIndexBufferOverride() const { return !!m_OriginalIndexBuffer; }
 
 	private:
-		VulkanVertexBuffer m_VertexBuffer;
-		VulkanIndexBuffer m_IndexBuffer;
+		std::shared_ptr<VulkanVertexBuffer> m_VertexBuffer;
+		std::shared_ptr<VulkanIndexBuffer> m_IndexBuffer;
+
+		std::shared_ptr<VulkanVertexBuffer> m_OriginalVertexBuffer;
+		std::shared_ptr<VulkanIndexBuffer> m_OriginalIndexBuffer;
 
 		IMesh* m_ColorMesh = nullptr;
 		int m_ColorMeshVertexOffset = 0;
@@ -212,94 +226,127 @@ namespace TF2Vulkan
 		MaterialPrimitiveType_t m_PrimitiveType = MATERIAL_TRIANGLES;
 	};
 
+	class VulkanDynamicMesh final : public VulkanMesh
+	{
+		using BaseClass = VulkanMesh;
+	public:
+		VulkanDynamicMesh(const VertexFormat& fmt);
+
+		bool IsDynamic() const override final { LOG_FUNC_ANYTHREAD(); return true; }
+
+		void LockMesh(int vertexCount, int indexCount, MeshDesc_t& desc) override;
+		void UnlockMesh(int vertexCount, int indexCount, MeshDesc_t& desc) override;
+
+		void Draw(int firstIndex, int indexCount) override;
+
+		void MarkAsDrawn() override;
+
+	private:
+		uint32_t m_FirstUndrawnIndex = 0;
+		uint32_t m_FirstUndrawnVertex = 0;
+
+		uint32_t m_TotalVertices = 0;
+		uint32_t m_TotalIndices = 0;
+
+		bool m_HasDrawn = false;
+	};
+
 	inline int VulkanMesh::IndexCount() const
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.IndexCount();
+		return m_IndexBuffer->IndexCount();
 	}
 
 	inline MaterialIndexFormat_t VulkanMesh::IndexFormat() const
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.IndexFormat();
+		return m_IndexBuffer->IndexFormat();
 	}
 
 	inline void VulkanMesh::BeginCastBuffer(MaterialIndexFormat_t format)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.BeginCastBuffer(format);
+		//assert(!HasIndexBufferOverride());
+		return m_IndexBuffer->BeginCastBuffer(format);
 	}
 
 	inline bool VulkanMesh::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.Lock(maxIndexCount, append, desc);
+		//assert(!HasIndexBufferOverride());
+		return m_IndexBuffer->Lock(maxIndexCount, append, desc);
 	}
 
 	inline void VulkanMesh::Unlock(int writtenIndexCount, IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.Unlock(writtenIndexCount, desc);
+		//assert(!HasIndexBufferOverride());
+		return m_IndexBuffer->Unlock(writtenIndexCount, desc);
 	}
 
 	inline void VulkanMesh::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.ModifyBegin(readOnly, firstIndex, indexCount, desc);
+		//assert(!HasIndexBufferOverride());
+		return m_IndexBuffer->ModifyBegin(readOnly, firstIndex, indexCount, desc);
 	}
 
 	inline void VulkanMesh::ModifyEnd(IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		m_IndexBuffer.ModifyEnd(desc);
+		//assert(!HasIndexBufferOverride());
+		m_IndexBuffer->ModifyEnd(desc);
 	}
 
 	inline void VulkanMesh::Spew(int indexCount, const IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.Spew(indexCount, desc);
+		return m_IndexBuffer->Spew(indexCount, desc);
 	}
 
 	inline void VulkanMesh::ValidateData(int indexCount, const IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_IndexBuffer.ValidateData(indexCount, desc);
+		return m_IndexBuffer->ValidateData(indexCount, desc);
 	}
 
 	inline int VulkanMesh::VertexCount() const
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_VertexBuffer.VertexCount();
+		return m_VertexBuffer->VertexCount();
 	}
 
 	inline VertexFormat_t VulkanMesh::GetVertexFormat() const
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_VertexBuffer.GetVertexFormat();
+		return m_VertexBuffer->GetVertexFormat();
 	}
 
 	inline void VulkanMesh::BeginCastBuffer(VertexFormat_t format)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_VertexBuffer.BeginCastBuffer(format);
+		//assert(!HasVertexBufferOverride());
+		return m_VertexBuffer->BeginCastBuffer(format);
 	}
 
 	inline bool VulkanMesh::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_VertexBuffer.Lock(vertexCount, append, desc);
+		//assert(!HasVertexBufferOverride());
+		return m_VertexBuffer->Lock(vertexCount, append, desc);
 	}
 
 	inline void VulkanMesh::Unlock(int vertexCount, VertexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_VertexBuffer.Unlock(vertexCount, desc);
+		//assert(!HasVertexBufferOverride());
+		return m_VertexBuffer->Unlock(vertexCount, desc);
 	}
 
 	inline void VulkanMesh::Spew(int vertexCount, const VertexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		return m_VertexBuffer.Spew(vertexCount, desc);
+		return m_VertexBuffer->Spew(vertexCount, desc);
 	}
 
 	inline int VulkanIndexBuffer::IndexCount() const
@@ -348,5 +395,118 @@ namespace TF2Vulkan
 	{
 		LOG_FUNC_ANYTHREAD();
 		return ModifyBeginEx(false, firstVertex, vertexCount, firstIndex, indexCount, desc);
+	}
+
+	inline void VulkanVertexBuffer::ValidateData(int vertexCount, const VertexDesc_t& desc)
+	{
+		LOG_FUNC_ANYTHREAD();
+		return ValidateData(Util::SafeConvert<uint32_t>(vertexCount), 0, desc);
+	}
+
+	inline void VulkanMesh::ModifyEnd(MeshDesc_t& desc)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		ModifyEnd(static_cast<VertexDesc_t&>(desc));
+		ModifyEnd(static_cast<IndexDesc_t&>(desc));
+	}
+
+	inline void VulkanMesh::ModifyEnd(VertexDesc_t& desc)
+	{
+		LOG_FUNC_ANYTHREAD();
+		m_VertexBuffer->ModifyEnd(desc);
+	}
+
+	inline void VulkanMesh::UnlockMesh(int vertexCount, int indexCount, MeshDesc_t& desc)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+
+		//if (vertexCount || !HasVertexBufferOverride())
+			Unlock(vertexCount, static_cast<VertexDesc_t&>(desc));
+		//if (indexCount || !HasIndexBufferOverride())
+			Unlock(indexCount, static_cast<IndexDesc_t&>(desc));
+	}
+
+	inline void VulkanMesh::LockMesh(int vertexCount, int indexCount, MeshDesc_t& desc)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		const auto result1 = Lock(vertexCount, false, static_cast<VertexDesc_t&>(desc));
+		const auto result2 = Lock(indexCount, false, static_cast<IndexDesc_t&>(desc));
+		assert(result1 && result2);
+	}
+
+	inline void VulkanMesh::ValidateData(int vertexCount, int indexCount, const MeshDesc_t& desc)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		ValidateData(vertexCount, static_cast<const VertexDesc_t&>(desc));
+		ValidateData(indexCount, static_cast<const IndexDesc_t&>(desc));
+	}
+
+	inline void VulkanMesh::DisableFlexMesh()
+	{
+		LOG_FUNC_ANYTHREAD();
+		SetFlexMesh(nullptr, 0);
+	}
+
+	inline void VulkanMesh::Spew(int vertexCount, int indexCount, const MeshDesc_t& desc)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		Spew(vertexCount, static_cast<const VertexDesc_t&>(desc));
+		Spew(vertexCount, static_cast<const IndexDesc_t&>(desc));
+	}
+
+	inline unsigned VulkanMesh::ComputeMemoryUsed()
+	{
+		LOG_FUNC_ANYTHREAD();
+		return Util::SafeConvert<unsigned>(m_IndexBuffer->ComputeMemoryUsed() + m_VertexBuffer->ComputeMemoryUsed());
+	}
+
+	inline void VulkanMesh::ValidateData(int vertexCount, const VertexDesc_t& desc)
+	{
+		LOG_FUNC_ANYTHREAD();
+		return m_VertexBuffer->ValidateData(vertexCount, desc);
+	}
+
+	inline bool VulkanVertexBuffer::Lock(int vertexCount, bool append, VertexDesc_t& desc)
+	{
+		LOG_FUNC_ANYTHREAD();
+		assert(vertexCount >= 0);
+		ModifyBegin(append ? VertexCount() : 0, vertexCount, desc, false, true, true);
+		return true;
+	}
+
+	inline bool VulkanIndexBuffer::Lock(int indexCount, bool append, IndexDesc_t& desc)
+	{
+		LOG_FUNC_ANYTHREAD();
+		assert(indexCount >= 0);
+		ModifyBegin(append ? IndexCount() : 0, indexCount, desc, false, true, true);
+		return true;
+	}
+
+	inline void VulkanMesh::ModifyBeginEx(bool readOnly, int firstVertex, int vertexCount, int firstIndex, int indexCount, MeshDesc_t& desc)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		m_VertexBuffer->ModifyBegin(readOnly, firstVertex, vertexCount, desc);
+		ModifyBegin(readOnly, firstIndex, indexCount, static_cast<IndexDesc_t&>(desc));
+	}
+
+	inline void VulkanMesh::EndCastBuffer()
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		m_VertexBuffer->EndCastBuffer();
+		m_IndexBuffer->EndCastBuffer();
+	}
+
+	inline void VulkanMesh::SetPrimitiveType(MaterialPrimitiveType_t type)
+	{
+		auto lock = ScopeThreadLock();
+		LOG_FUNC_ANYTHREAD();
+		m_PrimitiveType = type;
 	}
 }

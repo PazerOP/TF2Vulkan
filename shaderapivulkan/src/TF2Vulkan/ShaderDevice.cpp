@@ -416,7 +416,7 @@ IMesh* ShaderDevice::CreateStaticMesh(VertexFormat_t format, const char* texture
 {
 	// TODO: Tracking of these?
 	const VertexFormat realFmt(format);
-	return new VulkanMesh(realFmt, false);
+	return new VulkanMesh(realFmt);
 }
 
 void ShaderDevice::DestroyStaticMesh(IMesh* mesh)
