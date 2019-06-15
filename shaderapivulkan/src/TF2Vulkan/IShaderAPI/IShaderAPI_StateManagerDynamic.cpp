@@ -9,9 +9,11 @@
 #include <TF2Vulkan/Util/Color.h>
 #include <TF2Vulkan/Util/DirtyVar.h>
 #include <TF2Vulkan/Util/platform.h>
+#include <TF2Vulkan/Util/std_iterator.h>
 
 #include <materialsystem/IShader.h>
 #include <materialsystem/imaterialvar.h>
+#include <shaderapi/ishaderutil.h>
 
 #undef min
 #undef max
@@ -177,7 +179,16 @@ void IShaderAPI_StateManagerDynamic::Bind(IMaterial* material)
 void IShaderAPI_StateManagerDynamic::BindTexture(Sampler_t sampler, ShaderAPITextureHandle_t textureHandle)
 {
 	LOG_FUNC();
-	return BindTextures(&textureHandle, &textureHandle + 1, true, sampler - SHADER_SAMPLER0);
+
+	assert(sampler >= SHADER_SAMPLER0);
+	const ShaderAPITextureRange range
+	{
+		.m_Resources = &textureHandle,
+		.m_Count = 1,
+		.m_Offset = size_t(sampler - SHADER_SAMPLER0),
+	};
+
+	return BindTextureRanges(&range, &range + 1, true);
 }
 
 IShaderAPI_StateManagerDynamic::IShaderAPI_StateManagerDynamic()
@@ -336,75 +347,140 @@ void IShaderAPI_StateManagerDynamic::BindUniformBuffer(const BufferPoolEntry& bu
 	Util::SetDirtyVar(m_State.m_UniformBuffers, index, buf, m_Dirty);
 }
 
-void IShaderAPI_StateManagerDynamic::BindSamplers(const SamplerSettings* begin, const SamplerSettings* end, bool merge, uint32_t first)
+template<typename T, typename TOnBindFunc = void*>
+static void BindRanges(const IShaderDynamicNext::ResourceRange<T>* begin, const IShaderDynamicNext::ResourceRange<T>* end,
+	bool merge, Util::InPlaceVector<T, MAX_SHADER_RESOURCE_BINDINGS>& bindsVec, bool& dirty, const T& defaultVal,
+	const TOnBindFunc& onBindFunc = nullptr)
 {
 	LOG_FUNC();
-	const size_t count = end - begin;
+
+	uint32_t assignedCount = 0;
+	uint32_t unassignedSlots = std::numeric_limits<uint32_t>::max();
+	static_assert(MAX_SHADER_RESOURCE_BINDINGS <= sizeof(unassignedSlots) * CHAR_BIT);
+
+	for (const auto& range : Util::iterator::IterRangeWrapper(begin, end))
+	{
+		for (size_t i = 0; i < range.m_Count; i++)
+		{
+			const uint32_t bindIndex = range.m_Offset + i;
+
+			if (bindIndex >= assignedCount)
+				assignedCount = bindIndex + 1;
+
+			if (range.m_Resources)
+			{
+				if (bindsVec.size() <= bindIndex)
+					bindsVec.resize(bindIndex + 1);
+
+				if constexpr (!std::is_same_v<TOnBindFunc, void*>)
+					onBindFunc(bindIndex, range.m_Resources[i]);
+
+				Util::SetDirtyVar(bindsVec.at(bindIndex), range.m_Resources[i], dirty);
+			}
+			else
+			{
+				assert(unassignedSlots & (1 << bindIndex)); // Check for overlapping ranges
+			}
+
+			unassignedSlots &= ~(1 << bindIndex);
+		}
+	}
 
 	if (!merge)
 	{
-		if (m_State.m_BoundSamplers.size() != count)
+		// Shrink to fit
+		if (bindsVec.size() != assignedCount)
 		{
-			m_Dirty = true;
-			m_State.m_BoundSamplers.resize(count);
+			dirty = true;
+			bindsVec.resize(assignedCount);
 		}
 
-		for (size_t i = 0; i < count; i++)
-			Util::SetDirtyVar(m_State.m_BoundSamplers[i], begin[i], m_Dirty);
-	}
-	else
-	{
-		NOT_IMPLEMENTED_FUNC();
+		for (size_t i = 0; i < assignedCount; i++)
+		{
+			if (unassignedSlots & (1 << i))
+				bindsVec[i] = defaultVal;
+		}
 	}
 }
 
-void IShaderAPI_StateManagerDynamic::BindTextures(
-	const ITexture* const* begin, const ITexture* const* end, bool merge, uint32_t first)
+void IShaderAPI_StateManagerDynamic::BindSamplerRanges(const SamplerRange* begin, const SamplerRange* end, bool merge)
 {
 	LOG_FUNC();
-	const size_t count = end - begin;
-
-	auto handles = (ShaderAPITextureHandle_t*)_alloca(sizeof(ShaderAPITextureHandle_t) * count);
-
-	auto test0 = &ITextureInternal::SetErrorTexture;
-#pragma warning(suppress : 4996)
-	auto test1 = static_cast<void(ITextureInternal::*)(Sampler_t)>(&ITextureInternal::Bind);
-	auto test2 = &ITextureInternal::GetTextureHandle;
-
-	for (size_t i = 0; i < count; i++)
-	{
-		auto texInternal = assert_cast<const ITextureInternal*>(begin[i]);
-		handles[i] = texInternal->GetTextureHandle(0);
-	}
-
-	return BindTextures(handles, handles + count, merge, first);
+	return BindRanges(begin, end, merge, m_State.m_BoundSamplers, m_Dirty, SamplerSettings{});
 }
 
-void IShaderAPI_StateManagerDynamic::BindTextures(
-	const ShaderAPITextureHandle_t* begin, const ShaderAPITextureHandle_t* end, bool merge, uint32_t first)
+void IShaderAPI_StateManagerDynamic::BindTextureRanges(
+	const ShaderAPITextureRange* begin, const ShaderAPITextureRange* end, bool merge)
 {
 	LOG_FUNC();
-	const size_t count = end - begin;
+	return BindRanges(begin, end, merge, m_State.m_BoundTextures, m_Dirty, INVALID_SHADERAPI_TEXTURE_HANDLE,
+		[&](uint32_t index, ShaderAPITextureHandle_t texID)
+		{
+			auto texDbgName = texID ? GetTexture(texID).GetDebugName() : "<NULL>";
+			TF2VULKAN_PIX_MARKER("BindTexture%s %.*s @ g_Textures2D[%zu]",
+				merge ? "(merge)" : "", PRINTF_SV(texDbgName), index);
+		});
+}
 
-	if (!merge)
+void IShaderAPI_StateManagerDynamic::BindStandardTexture(Sampler_t sampler, StandardTextureId_t id)
+{
+	LOG_FUNC();
+
+	if (auto handle = GetStdTextureHandle(id); handle != INVALID_SHADERAPI_TEXTURE_HANDLE)
 	{
-		if (m_State.m_BoundTextures.size() != count)
-		{
-			m_Dirty = true;
-			m_State.m_BoundTextures.resize(count);
-		}
-
-		for (size_t i = 0; i < count; i++)
-		{
-			auto texDbgName = begin[i] ? GetTexture(begin[i]).GetDebugName() : "<NULL>";
-			TF2VULKAN_PIX_MARKER("BindTexture %.*s @ g_Textures2D[%zu]", PRINTF_SV(texDbgName), i);
-			Util::SetDirtyVar(m_State.m_BoundTextures[i], begin[i], m_Dirty);
-		}
+		BindTexture(sampler, GetStdTextureHandle(id));
 	}
 	else
 	{
-		NOT_IMPLEMENTED_FUNC();
+		g_ShaderUtil->BindStandardTexture(sampler, id);
 	}
+}
+
+void IShaderAPI_StateManagerDynamic::BindTextureRanges(
+	const TextureRange* begin, const TextureRange* end, bool merge)
+{
+	LOG_FUNC();
+	const size_t rangesCount = end - begin;
+
+	auto outputRanges = (ShaderAPITextureRange*)_alloca(sizeof(ShaderAPITextureRange) * rangesCount);
+
+	size_t texCount = 0;
+	// Count the number of ITexture* pointers inside all of the ranges
+	for (auto& inputRange : Util::iterator::IterRangeWrapper{ begin, end })
+	{
+		if (inputRange.m_Resources)
+			texCount += inputRange.m_Count;
+	}
+
+	// Stack allocate a single buffer for all of the ShaderAPITextureHandle_t inside our output ranges
+	auto texturePointers = (ShaderAPITextureHandle_t*)_alloca(sizeof(ShaderAPITextureHandle_t) * texCount);
+	texCount = 0;
+
+	// Create all of our output ranges
+	for (size_t rangeIndex = 0; rangeIndex < rangesCount; rangeIndex++)
+	{
+		const auto& inputRange = begin[rangeIndex];
+		auto& outputRange = outputRanges[rangeIndex];
+		outputRange.m_Count = inputRange.m_Count;
+		outputRange.m_Offset = inputRange.m_Offset;
+
+		if (inputRange.m_Resources)
+		{
+			auto* outHandles = &texturePointers[texCount];
+			outputRange.m_Resources = outHandles;
+			for (size_t i = 0; i < inputRange.m_Count; i++)
+			{
+				auto texInternal = assert_cast<const ITextureInternal*>(inputRange.m_Resources[i]);
+				outHandles[i] = texInternal->GetTextureHandle(0);
+			}
+		}
+		else
+		{
+			outputRange.m_Resources = nullptr;
+		}
+	}
+
+	return BindTextureRanges(outputRanges, outputRanges + rangesCount, merge);
 }
 
 void IShaderAPI_StateManagerDynamic::SetOverbright(float overbright)

@@ -17,6 +17,8 @@ namespace TF2Vulkan
 	public:
 		void AddBinding(ITexture& texture, int32_t& texLocationSpecConst, uint32_t& smpLocationSpecConst,
 			const SamplerSettings* sampler = nullptr);
+		void AddDummyBinding(int32_t& texLocationSpecConst, uint32_t& smpLocationSpecConst,
+			const SamplerSettings* sampler = nullptr);
 
 		const auto& GetTextures() const { return m_Textures; }
 		const auto& GetSamplers() const { return m_Samplers; }
@@ -29,6 +31,14 @@ namespace TF2Vulkan
 		Util::InPlaceVector<ITexture*, MAX_SHADER_RESOURCE_BINDINGS> m_Textures;
 		Util::InPlaceVector<SamplerSettings, MAX_SHADER_RESOURCE_BINDINGS> m_Samplers;
 	};
+
+	inline void ShaderTextureBinder::AddDummyBinding(int32_t& texLocationSpecConst,
+		uint32_t& smpLocationSpecConst, const SamplerSettings* sampler)
+	{
+		texLocationSpecConst = m_Textures.size();
+		m_Textures.push_back(nullptr);
+		smpLocationSpecConst = FindOrInsertSampler(sampler ? *sampler : SamplerSettings{});
+	}
 
 	inline void ShaderTextureBinder::AddBinding(ITexture& texture, int32_t& texLocationSpecConst,
 		uint32_t& smpLocationSpecConst, const SamplerSettings* sampler)

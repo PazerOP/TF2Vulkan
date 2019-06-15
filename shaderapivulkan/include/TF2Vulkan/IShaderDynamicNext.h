@@ -43,8 +43,29 @@ namespace TF2Vulkan
 		virtual int GetCurrentNumBones() const = 0;
 		virtual void LoadBoneMatrices(Shaders::VSModelMatrices& bones) const = 0;
 
-		virtual void BindSamplers(const SamplerSettings* begin, const SamplerSettings* end, bool merge, uint32_t first) = 0;
-		virtual void BindTextures(const ITexture* const* begin, const ITexture* const* end, bool merge, uint32_t first) = 0;
+		template<typename T> struct ResourceRange
+		{
+			/// <summary>
+			/// If this is nullptr, then this range of resources is left unmodified.
+			/// </summary>
+			const T* m_Resources = nullptr;
+			size_t m_Count = 0;
+			size_t m_Offset = 0;
+		};
+		using SamplerRange = ResourceRange<SamplerSettings>;
+		using TextureRange = ResourceRange<const ITexture*>;
+
+		/// <summary>
+		/// Binds multiple contiguous ranges of SamplerSettings.
+		/// </summary>
+		/// <param name="merge">False to unbind any samplers not included in the ranges.</param>
+		virtual void BindSamplerRanges(const SamplerRange* begin, const SamplerRange* end, bool merge) = 0;
+
+		/// <summary>
+		/// Binds multiple contiguous ranges of ITextures.
+		/// </summary>
+		/// <param name="merge">False to unbind any textures not included in the ranges.</param>
+		virtual void BindTextureRanges(const TextureRange* begin, const TextureRange* end, bool merge) = 0;
 
 		// Helpers
 		void SetPixelShader(const IShaderInstance* instance) { SetShaderInstance(ShaderType::Pixel, instance); }
@@ -66,14 +87,22 @@ namespace TF2Vulkan
 
 		void BindSamplers(const SamplerSettings* begin, const SamplerSettings* end)
 		{
-			return BindSamplers(begin, end, false, 0);
+			const SamplerRange range
+			{
+				.m_Resources = begin,
+				.m_Count = size_t(end - begin),
+			};
+			return BindSamplerRanges(&range, &range + 1, false);
 		}
 		void BindTextures(const ITexture* const* begin, const ITexture* const* end)
 		{
-			return BindTextures(begin, end, false, 0);
+			const TextureRange range
+			{
+				.m_Resources = begin,
+				.m_Count = size_t(end - begin),
+			};
+			return BindTextureRanges(&range, &range + 1, false);
 		}
-
-	protected:
 	};
 
 #define SHADERDYNAMICNEXT_INTERFACE_VERSION "TF2Vulkan_IShaderDynamicNext001"

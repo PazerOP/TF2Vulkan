@@ -123,13 +123,52 @@ void BaseShaderNext::InitVecParam(int param, IMaterialVar** params, float defaul
 void BaseShaderNext::BindResources(const ShaderTextureBinder& texBinder,
 	uint32_t& texCountSpecConst, uint32_t& smpCountSpecConst)
 {
-	const auto& s = texBinder.GetSamplers();
-	smpCountSpecConst = s.size();
-	g_ShaderDynamic->BindSamplers(s.data(), s.data() + s.size());
+	// Bind samplers
+	{
+		const auto& s = texBinder.GetSamplers();
+		smpCountSpecConst = s.size();
+		g_ShaderDynamic->BindSamplers(s.data(), s.data() + s.size());
+	}
 
-	const auto& t = texBinder.GetTextures();
-	texCountSpecConst = t.size();
-	g_ShaderDynamic->BindTextures(t.data(), t.data() + t.size());
+	// Bind textures
+	{
+		const auto& t = texBinder.GetTextures();
+		texCountSpecConst = t.size();
+		ITexture* const* texBegin = t.data();
+		ITexture* const* texEnd = t.data() + t.size();
+
+		if (Util::algorithm::all_of(t))
+		{
+			// All of the ITexture pointers are non-null, so we don't have any placeholders.
+			// We can just bind all of them at once.
+			g_ShaderDynamic->BindTextures(texBegin, texEnd);
+		}
+		else
+		{
+			// We have some placeholder textures (nullptr) that have been previously bound
+			// via legacy code. We don't want to overwrite those when batch binding the
+			// other textures. Bind the remaining ITextures in as few contiguous groups
+			// as possible.
+			Util::InPlaceVector<IShaderDynamicNext::TextureRange, MAX_SHADER_RESOURCE_BINDINGS> ranges;
+			for (ITexture* const* rangeBegin = t.data(); rangeBegin < texEnd; )
+			{
+				ITexture* const* rangeEnd = rangeBegin + 1;
+				while (rangeEnd < texEnd && !*rangeEnd == !*rangeBegin)
+					rangeEnd++;
+
+				const size_t first = rangeBegin - t.data();
+
+				auto& newRange = ranges.emplace_back();
+				newRange.m_Resources = *rangeBegin ? rangeBegin : nullptr;
+				newRange.m_Count = rangeEnd - rangeBegin;
+				newRange.m_Offset = rangeBegin - t.data();
+
+				rangeBegin = rangeEnd;
+			}
+
+			g_ShaderDynamic->BindTextureRanges(ranges.data(), ranges.data() + ranges.size(), false);
+		}
+	}
 }
 
 void BaseShaderNext::LoadLights(ShaderDataCommon& data) const

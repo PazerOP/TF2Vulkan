@@ -166,6 +166,15 @@ VS_OUTPUT main(const VS_INPUT v)
 		o.detailTexCoord.y = dot(v.vTexCoord0, cCustom.base.texCoordTransform[1]);
 	}
 
+	/*if (TEXACTIVE_LIGHTMAP0 && TEXACTIVE_LIGHTMAP1 && TEXACTIVE_LIGHTMAP2)
+	{
+		TODO: bumped lightmaps
+	}
+	else*/ if (TEXACTIVE_LIGHTMAP0)
+	{
+		o.lightmapTexCoord12.xy = v.vTexCoord1.xy;
+	}
+
 	// Light attenuation
 	for (uint i = 0; i < NUM_LIGHTS; i++)
 		o.lightAtten[i] = GetVertexAttenForLight(o.worldSpacePos, i);

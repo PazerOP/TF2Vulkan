@@ -85,6 +85,13 @@ inline namespace XLitGeneric
 
 			bool32 AMBIENT_LIGHT;
 			bool32 DYNAMIC_LIGHT;
+
+			int1 TEXINDEX_LIGHTMAP0 = TEX_DEFAULT_COLOR_GREY50;
+			int1 TEXINDEX_LIGHTMAP1 = TEX_DEFAULT_COLOR_GREY50;
+			int1 TEXINDEX_LIGHTMAP2 = TEX_DEFAULT_COLOR_GREY50;
+			uint1 SMPINDEX_LIGHTMAP0 = 0;
+			uint1 SMPINDEX_LIGHTMAP1 = 0;
+			uint1 SMPINDEX_LIGHTMAP2 = 0;
 		};
 		template<typename T>
 		struct SpecConstLayout
@@ -97,6 +104,13 @@ inline namespace XLitGeneric
 
 			SPEC_CONST_BUF_ENTRY(T, AMBIENT_LIGHT);
 			SPEC_CONST_BUF_ENTRY(T, DYNAMIC_LIGHT);
+
+			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_LIGHTMAP0);
+			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_LIGHTMAP1);
+			SPEC_CONST_BUF_ENTRY(T, TEXINDEX_LIGHTMAP2);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_LIGHTMAP0);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_LIGHTMAP1);
+			SPEC_CONST_BUF_ENTRY(T, SMPINDEX_LIGHTMAP2);
 		};
 
 		struct UniformBuf
@@ -382,6 +396,20 @@ void Shader::OnInitShaderParams(IMaterialVar** params, const char* materialName)
 	if (!g_pConfig->UseSpecular() && params[ENVMAP]->IsDefined() && params[BASETEXTURE]->IsDefined())
 		params[ENVMAP]->SetUndefined();
 #endif
+
+	if (const auto derivedType = GetDerivedType(); derivedType == DerivedShaderType::LightmappedGeneric)
+	{
+		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);
+	}
+#if false
+	const auto material = params[BASETEXTURE]->GetOwningMaterial();
+	const bool needsLightmap = material->GetPropertyFlag(MATERIAL_PROPERTY_NEEDS_LIGHTMAP);
+	const bool needsBumpedLightmap = material->GetPropertyFlag(MATERIAL_PROPERTY_NEEDS_BUMPED_LIGHTMAPS);
+	if (needsLightmap || needsBumpedLightmap)
+	{
+		__debugbreak();
+	}
+#endif
 }
 
 void Shader::OnInitShaderInstance(IMaterialVar** params, IShaderInit* shaderInit,
@@ -427,7 +455,8 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 	DrawParams drawParams(params);
 
-	const bool bVertexLitGeneric = IsVertexLit();
+	const auto derivedType = GetDerivedType();
+	const bool bVertexLitGeneric = derivedType == DerivedShaderType::VertexLitGeneric;
 	const bool hasDiffuseLighting = drawParams.m_SpecConsts.DIFFUSELIGHTING = bVertexLitGeneric;
 	const bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST);
 	//const bool bHasBaseTexture = drawParams.m_SpecConsts.TEXACTIVE_BASETEXTURE = params[BASETEXTURE]->IsTexture();
@@ -516,6 +545,13 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 			{
 				drawParams.m_SpecConsts.DYNAMIC_LIGHT = false;
 			}
+		}
+		else if (derivedType == DerivedShaderType::LightmappedGeneric)
+		{
+			auto& tb = drawParams.m_TextureBinder;
+			auto& sc = drawParams.m_SpecConsts;
+			tb.AddDummyBinding(sc.TEXINDEX_LIGHTMAP0, sc.SMPINDEX_LIGHTMAP0);
+			dynamic->BindStandardTexture(Sampler_t(SHADER_SAMPLER0 + sc.TEXINDEX_LIGHTMAP0), StandardTextureId_t::TEXTURE_LIGHTMAP);
 		}
 
 		custom.m_VertexAlpha = bHasVertexAlpha ? 1 : 0;

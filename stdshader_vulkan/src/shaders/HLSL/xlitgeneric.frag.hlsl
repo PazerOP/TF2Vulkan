@@ -154,7 +154,23 @@ float4 main(PS_INPUT i) : SV_TARGET
 			false, 1.0f);
 	}
 
-	const float3 finalColor = /*LinearToGamma(diffuseColor.rgb) **/ baseTextureColor.rgb;
+	float3 lightmapColors[3] =
+	{
+		float3(1, 1, 1),
+		float3(1, 1, 1),
+		float3(1, 1, 1),
+	};
+	/*if (TEXACTIVE_LIGHTMAP0 && TEXACTIVE_LIGHTMAP1 && TEXACTIVE_LIGHTMAP2)
+	{
+		TODO
+	}
+	else*/ if (TEXACTIVE_LIGHTMAP0)
+	{
+		float2 lightmapTexCoord0 = ComputeLightmapCoordinates(i.lightmapTexCoord12, i.lightmapTexCoord3.xy);
+		lightmapColors[0] = LightMapSample(SMPINDEX_LIGHTMAP0, TEXINDEX_LIGHTMAP0, lightmapTexCoord0);
+	}
+
+	const float3 finalColor = /*LinearToGamma(diffuseColor.rgb) **/ lightmapColors[0] * baseTextureColor.rgb;
 	const float finalAlpha = lerp(baseTextureColor.a, baseTextureColor.a * i.color.a, cCustom.xlit.vertexAlpha);
 	return float4(finalColor, finalAlpha);
 }

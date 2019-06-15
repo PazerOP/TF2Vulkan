@@ -99,4 +99,15 @@ namespace Util{ namespace algorithm
 		using CT = std::common_type_t<T1, T2>;
 		return std::min<CT>(Util::SafeConvert<CT>(t1), Util::SafeConvert<CT>(t2));
 	}
+
+	template<typename TIter>
+	inline bool all_of(TIter begin, TIter end)
+	{
+		return std::all_of(begin, end, [](const auto& v) { return !!v; });
+	}
+	template<typename TContainer>
+	inline bool all_of(const TContainer& container)
+	{
+		return all_of(std::begin(container), std::end(container));
+	}
 } }

@@ -154,11 +154,14 @@ namespace TF2Vulkan
 		void SetSkinningMatrices() override final;
 
 		// IShaderDynamicNext
+		using ShaderAPITextureRange = ResourceRange<ShaderAPITextureHandle_t>;
 		void SetShaderInstance(ShaderType type, const IShaderInstance* instance) override final;
 		void BindUniformBuffer(const BufferPoolEntry& buf, UniformBufferIndex index) override final;
-		void BindSamplers(const SamplerSettings* begin, const SamplerSettings* end, bool merge, uint32_t first) override final;
-		void BindTextures(const ITexture* const* begin, const ITexture* const* end, bool merge, uint32_t first) override final;
-		void BindTextures(const ShaderAPITextureHandle_t* begin, const ShaderAPITextureHandle_t* end, bool merge, uint32_t first);
+		void BindSamplerRanges(const SamplerRange* begin, const SamplerRange* end, bool merge) override final;
+		void BindTextureRanges(const TextureRange* begin, const TextureRange* end, bool merge) override final;
+		void BindTextureRanges(const ShaderAPITextureRange* begin, const ShaderAPITextureRange* end, bool merge);
+		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override final;
+		void BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id) override final { NOT_IMPLEMENTED_FUNC(); }
 
 		// Helpers
 		void SetOverbright(float overbright);

@@ -11,3 +11,5 @@
 #include <TF2Vulkan/Util/std_compare.h>
 
 using namespace std::literals;
+
+extern class IShaderUtil* g_ShaderUtil;

@@ -7,6 +7,7 @@
 #include <TF2Vulkan/Util/interface.h>
 #include <TF2Vulkan/Util/std_algorithm.h>
 
+#include <shaderapi/ishaderutil.h>
 #include <tier0/icommandline.h>
 #include <tier1/tier1.h>
 #include <tier2/tier2.h>
@@ -105,6 +106,7 @@ IShaderDeviceMgrInternal& TF2Vulkan::g_ShaderDeviceMgr = s_DeviceMgr;
 
 static CDllDemandLoader s_StdShaderVulkanDll("stdshader_vulkan");
 const IShaderBlobs* TF2Vulkan::g_ShaderBlobs;
+IShaderUtil* g_ShaderUtil;
 
 static ConVar mat_alphacoverage("mat_alphacoverage", "0");
 static ConVar mat_frame_sync_enable("mat_frame_sync_enable", "1");
@@ -207,6 +209,8 @@ bool ShaderDeviceMgr::Connect(CreateInterfaceFn factory)
 		auto stdshaderVulkanFactory = s_StdShaderVulkanDll.GetFactory();
 		Util::ConnectInterface(stdshaderVulkanFactory, SHADER_BLOBS_INTERFACE_VERSION, g_ShaderBlobs);
 	}
+
+	Util::ConnectInterface(factory, SHADER_UTIL_INTERFACE_VERSION, g_ShaderUtil);
 
 	return true;
 }

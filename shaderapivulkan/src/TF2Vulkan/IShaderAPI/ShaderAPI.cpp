@@ -226,9 +226,6 @@ namespace
 		void OverrideAlphaWriteEnable(bool enable, bool alphaWriteEnable) override { NOT_IMPLEMENTED_FUNC(); }
 		void OverrideColorWriteEnable(bool overrideEnable, bool colorWriteEnable) override { NOT_IMPLEMENTED_FUNC(); }
 
-		void BindStandardTexture(Sampler_t sampler, StandardTextureId_t id) override;
-		void BindStandardVertexTexture(VertexTextureSampler_t sampler, StandardTextureId_t id) override { NOT_IMPLEMENTED_FUNC(); }
-
 		ITexture* GetRenderTargetEx(int renderTargetID) override;
 
 		void GetDXLevelDefaults(uint& dxLevelMax, uint& dxLevelRecommended) override { NOT_IMPLEMENTED_FUNC(); }
@@ -923,13 +920,6 @@ void ShaderAPI::EndFrame()
 	LOG_FUNC();
 	assert(m_IsInFrame);
 	m_IsInFrame = false;
-}
-
-void ShaderAPI::BindStandardTexture(Sampler_t sampler, StandardTextureId_t id)
-{
-	// TODO: Move to IShaderAPI_StateManagerDynamic
-	LOG_FUNC();
-	BindTexture(sampler, GetStdTextureHandle(id));
 }
 
 void ShaderAPI::InvalidateDelayedShaderConstants()

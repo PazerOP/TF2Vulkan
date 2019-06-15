@@ -1,6 +1,7 @@
 #ifndef XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD
 #define XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD
 
+#include "common_fxc.hlsli"
 #include "ShaderComponentData.hlsli"
 
 struct XLitGenericUniforms
@@ -44,6 +45,9 @@ struct VS_TO_PS_INTERSTAGE_DATA
 
 	float1 fog                  : FOG;
 	float4 fogFactorW           : TEXCOORD9;
+
+	float4 lightmapTexCoord12   : LMTEXCOORD12;
+	float2 lightmapTexCoord3    : LMTEXCOORD3;
 };
 
 #ifdef VERTEX_SHADER
@@ -63,13 +67,27 @@ DEFINE_TEX2D(4, BUMPMAP, TEX_DEFAULT_COLOR_FLATNORMAL);
 DEFINE_TEX2D(6, MORPH, TEX_DEFAULT_COLOR_BLACK);
 DEFINE_TEX2D(8, LIGHTWARP, TEX_DEFAULT_COLOR_WHITE);
 
-DEFINE_TEX2D(10, LIGHTMAP1, TEX_DEFAULT_COLOR_GREY50);
-DEFINE_TEX2D(12, LIGHTMAP2, TEX_DEFAULT_COLOR_GREY50);
-DEFINE_TEX2D(14, LIGHTMAP3, TEX_DEFAULT_COLOR_GREY50);
+DEFINE_TEX2D(10, LIGHTMAP0, TEX_DEFAULT_COLOR_GREY50);
+DEFINE_TEX2D(12, LIGHTMAP1, TEX_DEFAULT_COLOR_GREY50);
+DEFINE_TEX2D(14, LIGHTMAP2, TEX_DEFAULT_COLOR_GREY50);
 
 #define TEXACTIVE_BASETEXTURE (IsTextureActive(TEXINDEX_BASETEXTURE))
 #define TEXACTIVE_BUMPMAP (IsTextureActive(TEXINDEX_BUMPMAP))
 #define TEXACTIVE_MORPH (IsTextureActive(TEXINDEX_MORPH))
 #define TEXACTIVE_LIGHTWARP (IsTextureActive(TEXINDEX_LIGHTWARP))
+
+#define TEXACTIVE_LIGHTMAP0 (IsTextureActive(TEXINDEX_LIGHTMAP0))
+#define TEXACTIVE_LIGHTMAP1 (IsTextureActive(TEXINDEX_LIGHTMAP1))
+#define TEXACTIVE_LIGHTMAP2 (IsTextureActive(TEXINDEX_LIGHTMAP2))
+
+static float2 ComputeLightmapCoordinates(float4 lightmapTexCoord12, float2 lightmapTexCoord3)
+{
+	return lightmapTexCoord12.xy;
+}
+
+static float3 LightMapSample(uint lightmapSampler, int lightmapTexture, float2 texCoord)
+{
+	return SampleTex2D(lightmapTexture, lightmapSampler, texCoord).rgb;
+}
 
 #endif // XLITGENERIC_COMMON_HLSLI_INCLUDE_GUARD
