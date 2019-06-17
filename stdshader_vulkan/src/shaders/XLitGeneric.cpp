@@ -501,6 +501,8 @@ void Shader::OnDrawElements(const OnDrawElementsParams& params)
 
 		if (params[BASETEXTURE]->IsTexture())
 			drawParams.m_Format.AddTexCoord();
+		if (derivedType == DerivedShaderType::LightmappedGeneric)
+			drawParams.m_Format.AddTexCoord();
 
 		{
 			int texCoordSizes[8];

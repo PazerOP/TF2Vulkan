@@ -83,6 +83,8 @@ namespace TF2Vulkan
 
 		size_t ComputeMemoryUsed() const { NOT_IMPLEMENTED_FUNC(); }
 
+		void GetGPUBuffer(vk::Buffer& buffer, size_t& offset) override final;
+
 	private:
 
 		struct ModifyData
@@ -127,6 +129,8 @@ namespace TF2Vulkan
 		void ValidateData(int indexCount, const IndexDesc_t& desc) override;
 
 		size_t ComputeMemoryUsed() const { NOT_IMPLEMENTED_FUNC(); }
+
+		void GetGPUBuffer(vk::Buffer& buffer, size_t& offset) override final;
 
 	private:
 		void ValidateData(uint32_t indexCount, uint32_t firstIndex, const IndexDesc_t& desc);
@@ -207,11 +211,17 @@ namespace TF2Vulkan
 		void EndCastBuffer() override final;
 		int GetRoomRemaining() const override final;
 
+		// IMeshInternal
+		VertexFormat GetColorMeshFormat() const override final;
+
 		void OverrideVertexBuffer(IMesh* src);
 		void OverrideIndexBuffer(IMesh* src);
 
 		bool HasVertexBufferOverride() const { return !!m_OriginalVertexBuffer; }
 		bool HasIndexBufferOverride() const { return !!m_OriginalIndexBuffer; }
+
+		const IIndexBufferInternal& GetIndexBuffer() const override final;
+		const IVertexBufferInternal& GetVertexBuffer() const override final;
 
 	private:
 		std::shared_ptr<VulkanVertexBuffer> m_VertexBuffer;
@@ -221,7 +231,7 @@ namespace TF2Vulkan
 		std::shared_ptr<VulkanIndexBuffer> m_OriginalIndexBuffer;
 
 		IMesh* m_ColorMesh = nullptr;
-		int m_ColorMeshVertexOffset = 0;
+		uint32_t m_ColorMeshVertexOffset = 0;
 
 		MaterialPrimitiveType_t m_PrimitiveType = MATERIAL_TRIANGLES;
 	};
@@ -251,6 +261,30 @@ namespace TF2Vulkan
 		bool m_HasDrawn = false;
 	};
 
+	inline const IIndexBufferInternal& VulkanMesh::GetIndexBuffer() const
+	{
+		LOG_FUNC_ANYTHREAD();
+		return *m_IndexBuffer;
+	}
+
+	inline const IVertexBufferInternal& VulkanMesh::GetVertexBuffer() const
+	{
+		LOG_FUNC_ANYTHREAD();
+		return *m_VertexBuffer;
+	}
+
+	inline void VulkanVertexBuffer::GetGPUBuffer(vk::Buffer& buffer, size_t& offset)
+	{
+		LOG_FUNC_ANYTHREAD();
+		return VulkanGPUBuffer::GetGPUBuffer(buffer, offset);
+	}
+
+	inline void VulkanIndexBuffer::GetGPUBuffer(vk::Buffer& buffer, size_t& offset)
+	{
+		LOG_FUNC_ANYTHREAD();
+		return VulkanGPUBuffer::GetGPUBuffer(buffer, offset);
+	}
+
 	inline int VulkanMesh::IndexCount() const
 	{
 		LOG_FUNC_ANYTHREAD();
@@ -266,35 +300,30 @@ namespace TF2Vulkan
 	inline void VulkanMesh::BeginCastBuffer(MaterialIndexFormat_t format)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasIndexBufferOverride());
 		return m_IndexBuffer->BeginCastBuffer(format);
 	}
 
 	inline bool VulkanMesh::Lock(int maxIndexCount, bool append, IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasIndexBufferOverride());
 		return m_IndexBuffer->Lock(maxIndexCount, append, desc);
 	}
 
 	inline void VulkanMesh::Unlock(int writtenIndexCount, IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasIndexBufferOverride());
 		return m_IndexBuffer->Unlock(writtenIndexCount, desc);
 	}
 
 	inline void VulkanMesh::ModifyBegin(bool readOnly, int firstIndex, int indexCount, IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasIndexBufferOverride());
 		return m_IndexBuffer->ModifyBegin(readOnly, firstIndex, indexCount, desc);
 	}
 
 	inline void VulkanMesh::ModifyEnd(IndexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasIndexBufferOverride());
 		m_IndexBuffer->ModifyEnd(desc);
 	}
 
@@ -325,21 +354,18 @@ namespace TF2Vulkan
 	inline void VulkanMesh::BeginCastBuffer(VertexFormat_t format)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasVertexBufferOverride());
 		return m_VertexBuffer->BeginCastBuffer(format);
 	}
 
 	inline bool VulkanMesh::Lock(int vertexCount, bool append, VertexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasVertexBufferOverride());
 		return m_VertexBuffer->Lock(vertexCount, append, desc);
 	}
 
 	inline void VulkanMesh::Unlock(int vertexCount, VertexDesc_t& desc)
 	{
 		LOG_FUNC_ANYTHREAD();
-		//assert(!HasVertexBufferOverride());
 		return m_VertexBuffer->Unlock(vertexCount, desc);
 	}
 

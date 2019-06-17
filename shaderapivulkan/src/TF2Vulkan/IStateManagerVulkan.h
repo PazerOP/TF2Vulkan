@@ -2,6 +2,7 @@
 
 namespace TF2Vulkan
 {
+	class IMeshInternal;
 	struct LogicalShadowState;
 	struct LogicalDynamicState;
 
@@ -19,13 +20,13 @@ namespace TF2Vulkan
 		virtual VulkanStateID FindOrCreateState(
 			const LogicalShadowState& staticState,
 			const LogicalDynamicState& dynamicState,
-			const IMesh& mesh) = 0;
+			const IMeshInternal& mesh) = 0;
 
 		virtual void ApplyState(VulkanStateID stateID, const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState, const IMesh& mesh, IVulkanCommandBuffer& buf) = 0;
+			const LogicalDynamicState& dynamicState, const IMeshInternal& mesh, IVulkanCommandBuffer& buf) = 0;
 
 		VulkanStateID ApplyState(const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState, const IMesh& mesh,
+			const LogicalDynamicState& dynamicState, const IMeshInternal& mesh,
 			IVulkanCommandBuffer& buf)
 		{
 			const auto& stateID = FindOrCreateState(staticState, dynamicState, mesh);

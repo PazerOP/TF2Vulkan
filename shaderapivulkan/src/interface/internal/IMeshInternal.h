@@ -4,7 +4,15 @@
 
 namespace TF2Vulkan
 {
-	class IVertexBufferInternal : public IVertexBuffer
+	class IBufferCommonInternal
+	{
+	public:
+		virtual ~IBufferCommonInternal() = default;
+
+		virtual void GetGPUBuffer(vk::Buffer& buffer, size_t& offset) = 0;
+	};
+
+	class IVertexBufferInternal : public IVertexBuffer, public IBufferCommonInternal
 	{
 	private:
 		// These are here to catch any potentially missing virtual functions
@@ -22,7 +30,7 @@ namespace TF2Vulkan
 	public:
 	};
 
-	class IIndexBufferInternal : public IIndexBuffer
+	class IIndexBufferInternal : public IIndexBuffer, public IBufferCommonInternal
 	{
 	private:
 		// These are here to catch any potentially missing virtual functions
@@ -56,5 +64,22 @@ namespace TF2Vulkan
 		virtual void DummyFunc9() const final { NOT_IMPLEMENTED_FUNC(); }
 
 	public:
+		virtual VertexFormat GetColorMeshFormat() const = 0;
+
+		virtual const IIndexBufferInternal& GetIndexBuffer() const = 0;
+		virtual const IVertexBufferInternal& GetVertexBuffer() const = 0;
+
+		IIndexBufferInternal& GetIndexBuffer();
+		IVertexBufferInternal& GetVertexBuffer();
 	};
+
+	inline IIndexBufferInternal& IMeshInternal::GetIndexBuffer()
+	{
+		return const_cast<IIndexBufferInternal&>(Util::as_const(this)->GetIndexBuffer());
+	}
+
+	inline IVertexBufferInternal& IMeshInternal::GetVertexBuffer()
+	{
+		return const_cast<IVertexBufferInternal&>(Util::as_const(this)->GetVertexBuffer());
+	}
 }

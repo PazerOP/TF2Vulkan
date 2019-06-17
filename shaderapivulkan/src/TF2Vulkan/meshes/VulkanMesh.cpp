@@ -60,6 +60,12 @@ int VulkanMesh::GetRoomRemaining() const
 	return Util::algorithm::min(vtxRoom, idxRoom);
 }
 
+VertexFormat VulkanMesh::GetColorMeshFormat() const
+{
+	LOG_FUNC_ANYTHREAD();
+	return m_ColorMesh ? VertexFormat(m_ColorMesh->GetVertexFormat()) : VertexFormat{};
+}
+
 void VulkanMesh::OverrideVertexBuffer(IMesh* src)
 {
 	auto lock = ScopeThreadLock();
@@ -264,26 +270,40 @@ void VulkanMesh::DrawInternal(IVulkanCommandBuffer& cmdBuf, int firstIndex, int 
 		return;
 	}
 
-	vk::Buffer indexBuffer, vertexBuffer;
-	size_t indexBufferOffset, vertexBufferOffset;
+	vk::Buffer indexBuffer, vertexBuffer, vertexBufferColor;
+	size_t indexBufferOffset, vertexBufferOffset, vertexBufferColorOffset = 0; // intentionally only last one assigned
+
 	m_IndexBuffer->GetGPUBuffer(indexBuffer, indexBufferOffset);
-	m_VertexBuffer->GetGPUBuffer(vertexBuffer, vertexBufferOffset);
 	cmdBuf.bindIndexBuffer(indexBuffer, indexBufferOffset, vk::IndexType::eUint16);
+
+	m_VertexBuffer->GetGPUBuffer(vertexBuffer, vertexBufferOffset);
+	if (m_ColorMesh)
+	{
+		auto colorMeshInternal = assert_cast<IMeshInternal*>(m_ColorMesh);
+		auto& colorVB = colorMeshInternal->GetVertexBuffer();
+		colorVB.GetGPUBuffer(vertexBufferColor, vertexBufferColorOffset);
+		vertexBufferColorOffset += m_ColorMeshVertexOffset;
+	}
 
 	// Bind vertex buffers
 	{
 		const vk::Buffer vtxBufs[] =
 		{
-			vertexBuffer,
 			g_ShaderDevice.GetDummyVertexBuffer(),
+			vertexBuffer,
+			vertexBufferColor,
 		};
 		const vk::DeviceSize offsets[] =
 		{
-			vertexBufferOffset,
 			0,
+			vertexBufferOffset,
+			Util::SafeConvert<vk::DeviceSize>(vertexBufferColorOffset)
 		};
+
+		const uint32_t vbCount = m_ColorMesh ? 3 : 2;
+
 		static_assert(std::size(vtxBufs) == std::size(offsets));
-		cmdBuf.bindVertexBuffers(0, TF2Vulkan::to_array_proxy(vtxBufs), TF2Vulkan::to_array_proxy(offsets));
+		cmdBuf.bindVertexBuffers(0, vk::ArrayProxy(vbCount, vtxBufs), vk::ArrayProxy(vbCount, offsets));
 	}
 
 	cmdBuf.drawIndexed(Util::SafeConvert<uint32_t>(indexCount), 1, Util::SafeConvert<uint32_t>(firstIndex));
@@ -295,6 +315,7 @@ void VulkanMesh::SetColorMesh(IMesh* colorMesh, int vertexOffset)
 {
 	auto lock = ScopeThreadLock();
 	LOG_FUNC_ANYTHREAD();
+
 	m_ColorMesh = colorMesh;
 	m_ColorMeshVertexOffset = vertexOffset;
 }
@@ -305,6 +326,7 @@ void VulkanMesh::Draw(CPrimList* lists, int listCount)
 	LOG_FUNC();
 
 	// TODO: Indirect rendering?
+	//assert(listCount == 1);
 	for (int i = 0; i < listCount; i++)
 		Draw(lists[i].m_FirstIndex, lists[i].m_NumIndices);
 }
@@ -405,6 +427,8 @@ VulkanGPUBuffer::VulkanGPUBuffer(bool isDynamic, vk::BufferUsageFlags usage) :
 
 void VulkanGPUBuffer::GetGPUBuffer(vk::Buffer& buffer, size_t& offset)
 {
+	auto lock = ScopeThreadLock();
+
 	if (IsDynamic())
 		UpdateDynamicBuffer();
 

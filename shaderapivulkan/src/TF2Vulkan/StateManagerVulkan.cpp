@@ -22,7 +22,7 @@
 
 #include <stdshader_vulkan/ShaderData.h>
 
-#include <materialsystem/imesh.h>
+#include "interface/internal/IMeshInternal.h"
 
 #undef min
 #undef max
@@ -93,12 +93,12 @@ namespace
 	struct PipelineLayoutKey : DescriptorSetLayoutKey
 	{
 		PipelineLayoutKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
-			const IMesh& mesh);
+			const IMeshInternal& mesh);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineLayoutKey);
 
 		// TODO: Pipeline layout only needs to know shader groups, not specific instances
 		const IShaderInstanceInternal* m_VSShaderInstance;
-		VertexFormat m_VSVertexFormat;
+		std::array<VertexFormat, 2> m_VSVertexFormats;
 
 		const IShaderInstanceInternal* m_PSShaderInstance;
 	};
@@ -106,7 +106,7 @@ namespace
 
 STD_HASH_DEFINITION(PipelineLayoutKey,
 	v.m_VSShaderInstance,
-	v.m_VSVertexFormat,
+	v.m_VSVertexFormats,
 
 	v.m_PSShaderInstance
 );
@@ -116,7 +116,7 @@ namespace
 	struct PipelineKey final : RenderPassKey, PipelineLayoutKey
 	{
 		PipelineKey(const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
-			const IMesh& mesh);
+			const IMeshInternal& mesh);
 		DEFAULT_STRONG_ORDERING_OPERATOR(PipelineKey);
 
 		ShaderDepthFunc_t m_DepthCompareFunc;
@@ -402,10 +402,10 @@ namespace TF2Vulkan
 	public:
 		void ApplyState(VulkanStateID stateID,
 			const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
-			const IMesh& mesh, IVulkanCommandBuffer& buf) override;
+			const IMeshInternal& mesh, IVulkanCommandBuffer& buf) override;
 
 		VulkanStateID FindOrCreateState(const LogicalShadowState& staticState,
-			const LogicalDynamicState& dynamicState, const IMesh& mesh) override;
+			const LogicalDynamicState& dynamicState, const IMeshInternal& mesh) override;
 
 		const DescriptorSet& FindOrCreateDescriptorSet(const DescriptorSetKey& key);
 		const DescriptorPool& FindOrCreateDescriptorPool(const DescriptorPoolKey& key);
@@ -705,28 +705,27 @@ static vk::Format ConvertVertexFormat(const ShaderReflection::VertexAttribute& v
 	return FormatInfo::ConvertDataFormat(componentType, var.m_ComponentCount, componentSize);
 }
 
-Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
-	const RenderPass& renderPass) :
-	m_Layout(&layout),
-	m_RenderPass(&renderPass)
+static void InitVertexInputState(
+	std::vector<vk::VertexInputAttributeDescription>& attrDescs,
+	std::vector<vk::VertexInputBindingDescription>& bindDescs,
+	vk::PipelineVertexInputStateCreateInfo& ci,
+	const ShaderReflection::ReflectionData& vertexShaderRefl,
+	const std::array<VertexFormat, 2>& vertexFormats)
 {
-	// Shader stage create info(s)
+	using VIAD = vk::VertexInputAttributeDescription;
+	for (size_t streamIndex = 0; streamIndex < vertexFormats.size(); streamIndex++)
 	{
-		auto& cis = m_ShaderStageCIs;
-		cis.emplace_back(*key.m_VSShaderInstance, vk::ShaderStageFlagBits::eVertex);
-		cis.emplace_back(*key.m_PSShaderInstance, vk::ShaderStageFlagBits::eFragment);
-	}
-
-	// Vertex input state create info
-	{
-		auto& attrs = m_VertexInputAttributeDescriptions;
-
-		const auto& vertexShaderRefl = key.m_VSShaderInstance->GetGroup().GetVulkanShader().GetReflectionData();
+		const VertexFormat& stream = vertexFormats[streamIndex];
 
 		VertexFormat::Element vertexElements[VERTEX_ELEMENT_NUMELEMENTS];
 		size_t totalVertexSize;
-		const auto vertexElementCount = key.m_VSVertexFormat.GetVertexElements(vertexElements, std::size(vertexElements), &totalVertexSize);
-		using VIAD = vk::VertexInputAttributeDescription;
+		const auto vertexElementCount = stream.GetVertexElements(vertexElements, std::size(vertexElements), &totalVertexSize);
+		if (vertexElementCount <= 0)
+			continue;
+
+		if (streamIndex > 0)
+			DebuggerBreakIfDebugging();
+
 		for (uint_fast8_t i = 0; i < vertexElementCount; i++)
 		{
 			const auto& vertexElement = vertexElements[i];
@@ -734,7 +733,7 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 			VIAD attr;
 			attr.offset = vertexElement.m_Offset;
 			attr.format = vertexElement.m_Type->GetVKFormat();
-			attr.binding = 0;
+			attr.binding = streamIndex + 1;
 
 			static constexpr auto INVALID_LOCATION = std::numeric_limits<uint32_t>::max();
 			attr.location = INVALID_LOCATION;
@@ -753,39 +752,54 @@ Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
 				continue;
 			}
 
-			attrs.emplace_back(attr);
+			attrDescs.emplace_back(attr);
 		}
 
-		for (const auto& input : vertexShaderRefl.m_VertexInputs)
-		{
-			bool found = false;
-			for (auto& attr : attrs)
-			{
-				if (attr.location == input.m_Location)
-				{
-					found = true;
-					break;
-				}
-			}
-
-			if (found)
-				continue;
-
-			// Otherwise, insert an empty one
-			//attrs.emplace_back(VIAD(input.m_Location, 1, vk::Format::eR32G32B32A32Sfloat));
-			attrs.emplace_back(VIAD(input.m_Location, 1, ConvertVertexFormat(input)));
-		}
-
-		auto & binds = m_VertexInputBindingDescriptions;
-		binds.emplace_back(vk::VertexInputBindingDescription(0, totalVertexSize));
-
-		// "Fake" binding with no real data
-		binds.emplace_back(vk::VertexInputBindingDescription(1, sizeof(float) * 4, vk::VertexInputRate::eInstance));
-
-		auto& ci = m_VertexInputStateCI;
-		AttachVector(ci.pVertexAttributeDescriptions, ci.vertexAttributeDescriptionCount, attrs);
-		AttachVector(ci.pVertexBindingDescriptions, ci.vertexBindingDescriptionCount, binds);
+		bindDescs.emplace_back(vk::VertexInputBindingDescription(streamIndex + 1, totalVertexSize));
 	}
+
+	// Bind missing vertex input attributes to binding 0 (the fake binding)
+	for (const auto& input : vertexShaderRefl.m_VertexInputs)
+	{
+		bool found = false;
+		for (auto& attr : attrDescs)
+		{
+			if (attr.location == input.m_Location)
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (found)
+			continue;
+
+		// Insert a reference to the fake binding (index 0)
+		attrDescs.emplace_back(VIAD(input.m_Location, 0, ConvertVertexFormat(input)));
+	}
+
+	// "Fake" binding with no real data
+	bindDescs.emplace_back(vk::VertexInputBindingDescription(0, /*0*/sizeof(float) * 4, vk::VertexInputRate::eInstance));
+
+	AttachVector(ci.pVertexAttributeDescriptions, ci.vertexAttributeDescriptionCount, attrDescs);
+	AttachVector(ci.pVertexBindingDescriptions, ci.vertexBindingDescriptionCount, bindDescs);
+}
+
+Pipeline::Pipeline(const PipelineKey& key, const PipelineLayout& layout,
+	const RenderPass& renderPass) :
+	m_Layout(&layout),
+	m_RenderPass(&renderPass)
+{
+	// Shader stage create info(s)
+	{
+		auto& cis = m_ShaderStageCIs;
+		cis.emplace_back(*key.m_VSShaderInstance, vk::ShaderStageFlagBits::eVertex);
+		cis.emplace_back(*key.m_PSShaderInstance, vk::ShaderStageFlagBits::eFragment);
+	}
+
+	// Vertex input state create info
+	InitVertexInputState(m_VertexInputAttributeDescriptions, m_VertexInputBindingDescriptions, m_VertexInputStateCI,
+		key.m_VSShaderInstance->GetGroup().GetVulkanShader().GetReflectionData(), key.m_VSVertexFormats);
 
 	// Vertex input assembly state create info
 	{
@@ -1258,7 +1272,7 @@ void StateManagerVulkan::ApplyDescriptorSets(const Pipeline& pipeline,
 }
 
 void StateManagerVulkan::ApplyState(VulkanStateID id, const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState, const IMesh& mesh, IVulkanCommandBuffer& buf)
+	const LogicalDynamicState& dynamicState, const IMeshInternal& mesh, IVulkanCommandBuffer& buf)
 {
 	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
@@ -1327,7 +1341,7 @@ const PipelineLayout& StateManagerVulkan::FindOrCreatePipelineLayout(const Pipel
 
 VulkanStateID StateManagerVulkan::FindOrCreateState(
 	const LogicalShadowState& staticState, const LogicalDynamicState& dynamicState,
-	const IMesh& mesh)
+	const IMeshInternal& mesh)
 {
 	LOG_FUNC();
 	std::lock_guard lock(m_Mutex);
@@ -1348,7 +1362,7 @@ VulkanStateID StateManagerVulkan::FindOrCreateState(
 }
 
 PipelineKey::PipelineKey(const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState, const IMesh& mesh) :
+	const LogicalDynamicState& dynamicState, const IMeshInternal& mesh) :
 
 	RenderPassKey(staticState, dynamicState),
 	PipelineLayoutKey(staticState, dynamicState, mesh),
@@ -1388,11 +1402,11 @@ PipelineKey::PipelineKey(const LogicalShadowState& staticState,
 }
 
 PipelineLayoutKey::PipelineLayoutKey(const LogicalShadowState& staticState,
-	const LogicalDynamicState& dynamicState, const IMesh& mesh) :
+	const LogicalDynamicState& dynamicState, const IMeshInternal& mesh) :
 	DescriptorSetLayoutKey(staticState, dynamicState),
 
 	m_VSShaderInstance(dynamicState.m_VSShader),
-	m_VSVertexFormat(mesh.GetVertexFormat()),
+	m_VSVertexFormats{ VertexFormat(mesh.GetVertexFormat()), mesh.GetColorMeshFormat() },
 
 	m_PSShaderInstance(dynamicState.m_PSShader)
 {
